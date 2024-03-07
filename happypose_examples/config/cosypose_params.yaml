@@ -1,0 +1,26 @@
+#
+# Warning!!!
+#
+# Detecion of HAPPYPOSE_DATA_DIR environemnt variable is not built into ROS 2 paramters
+# parsing mechanis. It is manually parsed inside of each launch file in this package
+#
+/**:
+  device: gpu
+  model: cosypose
+  detector:
+    dataset: ycbv
+    config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/detector-bop-ycbv-pbr--970850
+
+  pose_estimator:
+    dataset_path: $(env HAPPYPOSE_DATA_DIR)/experiments//bop_datasets/ycbv/models_bop-compat
+    label_format: ycbv-{label}
+    batch_renderer/n_workers: 1
+    coarse/config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/coarse-bop-ycbv-pbr--724183
+    refiner/config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/refiner-bop-ycbv-pbr--604090
+
+  cameras:
+    timeout: -1
+    min_num: 1
+    cameras: ["webcam"]
+    webcam:
+      compressed: false

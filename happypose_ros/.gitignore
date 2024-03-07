@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# Linter cache
+.ruff_cache
+
 # Colcon custom files
 COLCON_IGNORE
 AMENT_IGNORE
