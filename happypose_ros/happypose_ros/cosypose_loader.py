@@ -1,8 +1,10 @@
 import torch
 import pathlib
 import yaml
+from typing import Any, Union
 
 from rclpy.node import Node
+from rclpy.parameter import Parameter
 
 from happypose.pose_estimators.cosypose.cosypose.integrated.detector import Detector
 from happypose.pose_estimators.cosypose.cosypose.integrated.pose_estimator import (
@@ -32,7 +34,22 @@ class CosyPoseLoader:
         return path
 
     @staticmethod
-    def load_detector(node: Node, device: str) -> Detector:
+    def _load_param_dict(
+        node: Node, ns: str, params_definition: tuple[str, Parameter.Type, Any]
+    ) -> dict[str, Union[float, list[str], int]]:
+        params_definition = [
+            pd for pd in params_definition if node.has_parameter(pd[0])
+        ]
+        node.declare_parameters(ns, params_definition)
+        param_vals = node.get_parameters([ns + p[0] for p in params_definition])
+        param_dict = {
+            definition[0]: value
+            for definition, value in zip(params_definition, param_vals)
+        }
+        return param_dict
+
+    @staticmethod
+    def _load_detector(node: Node, device: str) -> Detector:
         ns = "detector"
         node.declare_parameter(ns + "detector/dataset")
         node.declare_parameter(ns + "detector/config_path")
@@ -75,22 +92,19 @@ class CosyPoseLoader:
             node.get_parameter(ns + "/label_format").get_parameter_value().string_value
         )
 
-        n_workers = (
-            node.get_parameter(ns + "/batch_renderer/n_workers")
-            .get_parameter_value()
-            .integer_value
-        )
-
         object_dataset = BOPObjectDataset(
             dataset_path,
             label_format=label_format,
         )
 
-        renderer = Panda3dBatchRenderer(
-            object_dataset,
-            n_workers=n_workers,
-            preload_cache=False,
-        )
+        ns = "renderer"
+        params_definition = [
+            ("n_workers", Parameter.Type.INTEGER, 8),
+            ("preload_cache", Parameter.Type.BOOL, True),
+            ("split_objects", Parameter.Type.BOOL, False),
+        ]
+        renderer_params = CosyPoseLoader._load_param_dict(node, ns, params_definition)
+        renderer = Panda3dBatchRenderer(object_dataset, **renderer_params)
 
         mesh_db = MeshDataBase.from_object_ds(object_dataset)
         mesh_db_batched = mesh_db.batched().to(device)
@@ -101,7 +115,21 @@ class CosyPoseLoader:
         return PoseEstimator(
             refiner_model=refiner_model,
             coarse_model=coarse_model,
-            detector_model=None,
+            detector_model=CosyPoseLoader._load_detector(node, device),
             bsz_objects=1,
             bsz_images=1,
         )
+
+    @staticmethod
+    def load_inference_params(node: Node) -> dict[str, Union[float, list[str], int]]:
+        ns = "inference"
+        params_definition = [
+            ("n_refiner_iterations", Parameter.Type.INTEGER, 1),
+            ("n_coarse_iterations", Parameter.Type.INTEGER, 1),
+            ("bsz_images", Parameter.Type.INTEGER, None),
+            ("bsz_objects", Parameter.Type.INTEGER, None),
+            ("detection_th", Parameter.Type.DOUBLE, 0.7),
+            ("mask_th", Parameter.Type.DOUBLE, 0.8),
+            ("labels_to_keep", Parameter.Type.STRING_ARRAY, []),
+        ]
+        return CosyPoseLoader._load_param_dict(node, ns, params_definition)

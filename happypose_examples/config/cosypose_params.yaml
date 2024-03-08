@@ -14,9 +14,21 @@
   pose_estimator:
     dataset_path: $(env HAPPYPOSE_DATA_DIR)/experiments//bop_datasets/ycbv/models_bop-compat
     label_format: ycbv-{label}
-    batch_renderer/n_workers: 1
     coarse/config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/coarse-bop-ycbv-pbr--724183
     refiner/config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/refiner-bop-ycbv-pbr--604090
+
+  renderer:
+    n_workers: 8
+    preload_cache: True
+    split_objects: False
+
+  inference:
+    n_refiner_iterations:
+    n_coarse_iterations:
+    detection_th: 0.9
+    mask_th: 0.8
+    labels_to_keep:
+      - ycbv-obj_000014
 
   cameras:
     timeout: -1

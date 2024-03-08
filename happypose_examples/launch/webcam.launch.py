@@ -6,6 +6,8 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
+from launch.substitutions import FindPackageShare, PathJoinSubstitution
+
 
 def generate_launch_description():
     happypose_params_path = (
@@ -21,6 +23,14 @@ def generate_launch_description():
             env_path = os.environ[match[6:-1]]
             cosypose_params = re.sub(pattern, env_path, cosypose_params)
 
+    webcam_params_path = PathJoinSubstitution(
+        [
+            FindPackageShare("happypose_examples"),
+            "config",
+            "webcam_params",
+        ]
+    )
+
     happypose_node = (
         Node(
             package="happypose_ros",
@@ -30,4 +40,12 @@ def generate_launch_description():
         ),
     )
 
-    return LaunchDescription([happypose_node])
+    webcam_node = Node(
+        package="usb_cam",
+        executable="usb_cam_node_exe",
+        output="screen",
+        name="usb_cam_node",
+        parameters=webcam_params_path,
+    )
+
+    return LaunchDescription([happypose_node, webcam_node])
