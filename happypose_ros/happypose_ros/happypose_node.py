@@ -12,8 +12,8 @@ from happypose.pose_estimators.cosypose.cosypose.integrated.pose_estimator impor
 )
 from happypose.toolbox.inference.types import ObservationTensor
 
-from happypose_ros.happypose_ros.cosypose_loader import CosyPoseLoader
-from happypose_ros.happypose_ros.camera_wrapper import CameraWrapper
+from happypose_ros.cosypose_loader import CosyPoseLoader
+from happypose_ros.camera_wrapper import CameraWrapper
 
 
 class HappyposeWorker(mp.Process):

@@ -51,12 +51,12 @@ class CosyPoseLoader:
     @staticmethod
     def _load_detector(node: Node, device: str) -> Detector:
         ns = "detector"
-        node.declare_parameter(ns + "detector/dataset")
-        node.declare_parameter(ns + "detector/config_path")
+        node.declare_parameter(ns + "/dataset")
+        node.declare_parameter(ns + "/config_path")
 
         dataset = node.get_parameter(ns + "/dataset").get_parameter_value().string_value
 
-        config_path = CosyPoseLoader.ros_param_path(ns + "/config_path")
+        config_path = CosyPoseLoader.ros_param_path(node, ns + "/config_path")
 
         # TODO discuss exposing it as ROS parameters
         cfg = check_update_config_detector(
@@ -84,9 +84,13 @@ class CosyPoseLoader:
         node.declare_parameter(ns + "/coarse/config_path")
         node.declare_parameter(ns + "/refiner/config_path")
 
-        dataset_path = CosyPoseLoader.ros_param_path(ns + "/dataset_path")
-        coarse_config_path = CosyPoseLoader.ros_param_path(ns + "/coarse/config_path")
-        refiner_config_path = CosyPoseLoader.ros_param_path(ns + "/refiner/config_path")
+        dataset_path = CosyPoseLoader.ros_param_path(node, ns + "/dataset_path")
+        coarse_config_path = CosyPoseLoader.ros_param_path(
+            node, ns + "/coarse/config_path"
+        )
+        refiner_config_path = CosyPoseLoader.ros_param_path(
+            node, ns + "/refiner/config_path"
+        )
 
         label_format = (
             node.get_parameter(ns + "/label_format").get_parameter_value().string_value
