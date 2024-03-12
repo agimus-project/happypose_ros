@@ -1,0 +1,169 @@
+happypose_ros:
+  pose_estimator_type: {
+    type: string,
+    default_value: "cosypose",
+    description: "Specyfies which pose estimator to use in the pipeline.",
+    validation: {
+      one_of<>: [[ "cosypose" ]],
+    }
+  }
+  device: {
+    type: string,
+    default_value: "cpu",
+    description: "Device to which the models will be loaded.",
+    validation: {
+      one_of<>: [[ "cpu", "cuda:0" ]],
+    }
+  }
+  cosypose:
+    detector:
+      config_path: {
+        type: string,
+        default_value: "",
+        description: "Path to a folder containing config.yaml and checkpoint.pth.tar files for the detector.",
+        validation: {
+          "utils::validate_path_folder": null
+        }
+      }
+      dataset_name: {
+        type: string,
+        default_value: "",
+        description: "Dataset name.",
+        validation: {
+          one_of<>: [[ "ycbv" ]],
+        }
+      }
+
+    pose_estimator:
+      dataset:
+        path: {
+          type: string,
+          default_value: "",
+          description: "Path to a dataset used by detector.",
+          validation: {
+            "utils::validate_path_folder": null
+          }
+        }
+        label_format: {
+          type: string,
+          default_value: "",
+          description: "Format of the labels used.",
+          validation: {
+            # TODO add more acceptable label formats
+            one_of<>: [[ "ycbv-{label}" ]]
+          }
+        }
+      renderer:
+        n_workers: {
+          type: int,
+          default_value: 1,
+          description: "Number of CPU cores to use during rendering.",
+          validation: {
+            gt_eq<>: 1,
+          }
+        }
+        preload_cache: {
+          type: bool,
+          default_value: true,
+          # TODO better explenation
+          description: "Set if cache has to be preloded.",
+        }
+        split_objects: {
+          type: bool,
+          default_value: false,
+          # TODO any explenation
+          description: "?",
+        }
+      coarse:
+        config_path: {
+          type: string,
+          default_value: "",
+          description: "Path to a folder containing config.yaml and checkpoint.pth.tar for coarse pose estimator.",
+          validation: {
+            "utils::validate_path_folder": null
+          }
+        }
+      refiner:
+        config_path: {
+          type: string,
+          default_value: "",
+          description: "Path to a folder containing config.yaml and checkpoint.pth.tar for refiner pose estimator.",
+          validation: {
+            "utils::validate_path_folder": null
+          }
+        }
+    inference:
+      n_refiner_iterations: {
+        type: int,
+        default_value: 1,
+        description: "Number of iterations for the refiner.",
+        validation: {
+          gt_eq<>: [ 1 ],
+        }
+      }
+      n_coarse_iterations: {
+        type: int,
+        default_value: 1,
+        description: "Number of iterations for the coarse estimate.",
+        validation: {
+          gt_eq<>: [ 1] ,
+        }
+      }
+      detection_th: {
+        type: double,
+        default_value: 0.7,
+        description: "Detection threshold of an object used by detector.",
+        validation: {
+          bounds<>: [0.0, 1.0],
+        }
+      }
+      mask_th: {
+        type: double,
+        default_value: 0.8,
+        # TODO any description
+        description: "?",
+        validation: {
+          bounds<>: [0.0, 1.0],
+        }
+      }
+      labels_to_keep: {
+        type: string_array,
+        default_value: [],
+        description: "Lables of detected objects to keep.",
+        validation: {
+          unique<>: null,
+        }
+      }
+  cameras:
+    timeout: {
+      type: double,
+      default_value: 0.0,
+      description: "Timeout after which frame from a camera is considered too old. Value '0.0' disables timeout.",
+      validation: {
+        ge<>: [0.0],
+      }
+    }
+    n_min_cameras: {
+      type: int,
+      default_value: 1,
+      description: "Minimum number of cameras to consider during single view.",
+      validation: {
+        ge<>: [1],
+      }
+    }
+    camera_names: {
+      type: string_array,
+      default_value: [],
+      description: "Names of cameras to subscribe.",
+      read_only: true,
+      validation: {
+        size_gt<>: [1],
+        unique<>: null,
+      }
+    }
+    __map_camera_names:
+      compressed: {
+        type: bool,
+        default_value: false,
+        description: "Expect compressed messages from given camera.",
+      }

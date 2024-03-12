@@ -12,14 +12,11 @@ from cv_bridge import CvBridge
 
 class CameraWrapper:
     def __init__(
-        self, node: Node, camera_name: str, ns: str, image_sync_hook: Callable
+        self, node: Node, params: dict, name: str, image_sync_hook: Callable
     ) -> None:
-        self._camera_name = ns + "/" + camera_name
         self._image_sync_hook = image_sync_hook
-        node.declare_parameter(self._camera_name + "/compressed", False)
-        compressed = node.get_parameter("model").get_parameter_value().bool_value
 
-        if not compressed:
+        if not params[name].compressed:
             img_msg_type = CompressedImage
             topic_name = "image_compressed"
         else:
@@ -31,7 +28,7 @@ class CameraWrapper:
         self._cvb = CvBridge()
 
         self._image_sub = node.create_subscription(
-            img_msg_type, f"/{self._camera_name}/{topic_name}", self._camera_cb, 5
+            img_msg_type, f"/{name}/{topic_name}", self._camera_cb, 5
         )
 
         self._info_sub = node.create_subscription(

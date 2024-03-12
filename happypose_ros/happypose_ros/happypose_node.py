@@ -1,4 +1,3 @@
-from typing import Union
 from ctypes import c_bool
 
 import torch
@@ -7,21 +6,17 @@ import torch.multiprocessing as mp
 import rclpy
 from rclpy.node import Node
 
-from happypose.pose_estimators.cosypose.cosypose.integrated.pose_estimator import (
-    PoseEstimator,
-)
 from happypose.toolbox.inference.types import ObservationTensor
 
-from happypose_ros.cosypose_loader import CosyPoseLoader
 from happypose_ros.camera_wrapper import CameraWrapper
+from happypose_ros.pipeline import HappyposePipeline
+from happypose_ros.happypose_ros_parameters import happypose_ros_parameters
 
 
 class HappyposeWorker(mp.Process):
     def __init__(
         self,
-        device,
-        pose_estimator: PoseEstimator,
-        inference_params: dict[str, Union[float, list[str], int]],
+        params: dict,
         worker_flag: mp.Value,
         stop_worker: mp.Value,
         image_queue: mp.Queue,
@@ -30,9 +25,8 @@ class HappyposeWorker(mp.Process):
         result_queue: mp.Queue,
     ) -> None:
         super().__init__()
-        self._pose_estimator = pose_estimator
-        self._inference_params = inference_params
-        self._device = device
+        self._device = params["device"]
+        self._pipeline = HappyposePipeline(params, self._device)
         self._worker_free = worker_flag
         self._stop_worker = stop_worker
         self._image_queue = image_queue
@@ -40,7 +34,7 @@ class HappyposeWorker(mp.Process):
         self._k_queue = k_queue
         self._result_queue = result_queue
 
-    def run(self):
+    def run(self) -> None:
         while True:
             # Stop the process if paren is stopped
             with self._stop_worker.get_lock():
@@ -61,11 +55,8 @@ class HappyposeWorker(mp.Process):
                 rgb=rgb_tensor, K=K_tensor
             ).to(self._device)
 
-            preds, preds_extra = self._pose_estimator.run_inference_pipeline(
-                observation=observation, run_detector=True, **self._inference_params
-            )
-
-            self._output_queue.put((preds, preds_extra))
+            result = self._pipeline(observation)
+            self._output_queue.put(result)
 
             # Notify parent that processing finished
             with self._stop_worker.get_lock():
@@ -76,26 +67,8 @@ class HappyposeNode(Node):
     def __init__(self) -> None:
         super().__init__("happypose_node")
 
-        self.declare_parameter("device", "cpu")
-        self.declare_parameter("model")
-
-        cam_ns = "cameras"
-        self.declare_parameter(cam_ns + "/timeout")
-        self.declare_parameter(cam_ns + "/min_num")
-        self.declare_parameter(cam_ns + "/cameras")
-
-        self._device = self.get_parameter("device").get_parameter_value().string_value
-        model_name = self.get_parameter("model").get_parameter_value().string_value
-        if model_name == "cosypose":
-            loader = CosyPoseLoader
-        else:
-            self.get_logger().error(
-                f"Incorrect loader name: {model_name}! Only 'cosypose' is supported!"
-            )
-            rclpy.shutdown()
-
-        pose_estimator = loader.load_pose_estimator(self, self._device)
-        inference_params = loader.load_inference_params(self)
+        self._param_listener = happypose_ros_parameters.ParamListener(self)
+        self._params = self.param_listener.get_params()
 
         self._manager = mp.Manager()
         self._worker_free = self._manager.Value(c_bool, True)
@@ -105,9 +78,7 @@ class HappyposeNode(Node):
         self._k_queue = self._manager.Queue(1)
         self._result_queue = self._manager.Queue(1)
         self._happypose_worker = HappyposeWorker(
-            pose_estimator,
-            inference_params,
-            self._device,
+            self._params,
             self._worker_free,
             self._stop_worker,
             self._image_queue,
@@ -117,22 +88,10 @@ class HappyposeNode(Node):
         )
         self._happypose_worker.start()
 
-        # Create list of camera subscribers
-        self._camera_timeout = (
-            self.get_parameter(cam_ns + "/timeout").get_parameter_value().double_value
-        )
-        self._camera_min_num = (
-            self.get_parameter(cam_ns + "/min_num").get_parameter_value().integer_value
-        )
-        camera_names = (
-            self.get_parameter(cam_ns + "/cameras")
-            .get_parameter_value()
-            .string_array_value
-        )
         # Each camera registers it's topics and fires synchronisation callback on new image
         self._cameras = {
-            name: CameraWrapper(self, name, cam_ns, self._on_image_cb)
-            for name in camera_names
+            name: CameraWrapper(self, name, self._params, self._on_image_cb)
+            for name in self._params.camera_names
         }
         self._processed_cameras = []
         self._last_pipeline_trigger = None
