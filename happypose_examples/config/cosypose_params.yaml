@@ -1,39 +1,38 @@
-#
-# Warning!!!
-#
-# Detecion of HAPPYPOSE_DATA_DIR environemnt variable is not built into ROS 2 paramters
-# parsing mechanis. It is manually parsed inside of each launch file in this package
-#
 /**:
   ros__parameters:
-    device: gpu
-    model: cosypose
-    detector:
-      dataset: ycbv
-      config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/detector-bop-ycbv-pbr--970850
+    device: cpu
+    pose_estimator_type: cosypose
+    cosypose:
+      object_dataset:
+        label_format: ycbv-{label}
+        config_path: $(env HAPPYPOSE_DATA_DIR)/bop_datasets/ycbv/models_bop-compat
 
-    pose_estimator:
-      dataset_path: $(env HAPPYPOSE_DATA_DIR)/experiments/bop_datasets/ycbv/models_bop-compat
-      label_format: ycbv-{label}
-      coarse/config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/coarse-bop-ycbv-pbr--724183
-      refiner/config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/refiner-bop-ycbv-pbr--604090
+      detector:
+        dataset_name: ycbv
+        config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/detector-bop-ycbv-pbr--970850
 
-    renderer:
-      n_workers: 8
-      preload_cache: True
-      split_objects: False
+      pose_estimator:
+        coarse:
+          config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/coarse-bop-ycbv-pbr--724183
+        refiner:
+          config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/refiner-bop-ycbv-pbr--604090
 
-    inference:
-      n_refiner_iterations: 1
-      n_coarse_iterations: 1
-      detection_th: 0.9
-      mask_th: 0.8
-      labels_to_keep:
-        - ycbv-obj_000014
+      renderer:
+        n_workers: 8
+        preload_cache: True
+        split_objects: False
+
+      inference:
+        n_refiner_iterations: 1
+        n_coarse_iterations: 1
+        detection_th: 0.9
+        mask_th: 0.8
+        labels_to_keep:
+          - "ycbv-obj_000014"
 
     cameras:
-      timeout: -1
+      timeout: 0.0
       min_num: 1
-      cameras: ["webcam"]
+      names: ["webcam"]
       webcam:
         compressed: false

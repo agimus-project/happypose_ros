@@ -6,7 +6,7 @@ package_name = "happypose_ros"
 
 module_name = "happypose_ros_parameters"
 yaml_file = "happypose_ros/happypose_ros_parameters.yaml"
-validation_module = "happypose_ros.utils"
+validation_module = "happypose_ros.custom_validators"
 generate_parameter_module(module_name, yaml_file, validation_module=validation_module)
 
 setup(

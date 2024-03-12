@@ -16,15 +16,26 @@ happypose_ros:
     }
   }
   cosypose:
-    detector:
+    object_dataset:
       config_path: {
         type: string,
         default_value: "",
-        description: "Path to a folder containing config.yaml and checkpoint.pth.tar files for the detector.",
+        description: "Path to a folder containing 3D meshes of objects and their renders. The path accespts '$(env MY_ENV)' and 'pacakge://' syntax.",
         validation: {
-          "utils::validate_path_folder": null
+          size_gt<>: [0],
+          "custom_validators::validate_path_folder": null
         }
       }
+      label_format: {
+        type: string,
+        default_value: "",
+        description: "Format of the labels used.",
+        validation: {
+          # TODO add more acceptable label formats
+          one_of<>: [[ "ycbv-{label}" ]]
+        }
+      }
+    detector:
       dataset_name: {
         type: string,
         default_value: "",
@@ -33,26 +44,17 @@ happypose_ros:
           one_of<>: [[ "ycbv" ]],
         }
       }
+      config_path: {
+        type: string,
+        default_value: "",
+        description: "Path to a folder containing config.yaml and checkpoint.pth.tar files for the detector. The path accespts '$(env MY_ENV)' and 'pacakge://' syntax.",
+        validation: {
+          size_gt<>: [0],
+          "custom_validators::validate_path_folder": null
+        }
+      }
 
     pose_estimator:
-      dataset:
-        path: {
-          type: string,
-          default_value: "",
-          description: "Path to a dataset used by detector.",
-          validation: {
-            "utils::validate_path_folder": null
-          }
-        }
-        label_format: {
-          type: string,
-          default_value: "",
-          description: "Format of the labels used.",
-          validation: {
-            # TODO add more acceptable label formats
-            one_of<>: [[ "ycbv-{label}" ]]
-          }
-        }
       renderer:
         n_workers: {
           type: int,
@@ -78,18 +80,20 @@ happypose_ros:
         config_path: {
           type: string,
           default_value: "",
-          description: "Path to a folder containing config.yaml and checkpoint.pth.tar for coarse pose estimator.",
+          description: "Path to a folder containing config.yaml and checkpoint.pth.tar for coarse pose estimator. The path accespts '$(env MY_ENV)' and 'pacakge://' syntax.",
           validation: {
-            "utils::validate_path_folder": null
+            size_gt<>: [0],
+            "custom_validators::validate_path_folder": null
           }
         }
       refiner:
         config_path: {
           type: string,
           default_value: "",
-          description: "Path to a folder containing config.yaml and checkpoint.pth.tar for refiner pose estimator.",
+          description: "Path to a folder containing config.yaml and checkpoint.pth.tar for refiner pose estimator. The path accespts '$(env MY_ENV)' and 'pacakge://' syntax.",
           validation: {
-            "utils::validate_path_folder": null
+            size_gt<>: [0],
+            "custom_validators::validate_path_folder": null
           }
         }
     inference:
@@ -128,7 +132,6 @@ happypose_ros:
       }
       labels_to_keep: {
         type: string_array,
-        default_value: [],
         description: "Lables of detected objects to keep.",
         validation: {
           unique<>: null,
@@ -140,7 +143,7 @@ happypose_ros:
       default_value: 0.0,
       description: "Timeout after which frame from a camera is considered too old. Value '0.0' disables timeout.",
       validation: {
-        ge<>: [0.0],
+        gt_eq<>: [0.0],
       }
     }
     n_min_cameras: {
@@ -148,20 +151,19 @@ happypose_ros:
       default_value: 1,
       description: "Minimum number of cameras to consider during single view.",
       validation: {
-        ge<>: [1],
+        gt_eq<>: [1],
       }
     }
-    camera_names: {
+    names: {
       type: string_array,
-      default_value: [],
-      description: "Names of cameras to subscribe.",
+      description: "List of names of cameras to subscribe.",
       read_only: true,
       validation: {
-        size_gt<>: [1],
+        size_gt<>: [0],
         unique<>: null,
       }
     }
-    __map_camera_names:
+    __map_names:
       compressed: {
         type: bool,
         default_value: false,

@@ -18,12 +18,13 @@ from happypose.toolbox.lib3d.rigid_mesh_database import MeshDataBase
 from happypose.toolbox.renderer.panda3d_batch_renderer import Panda3dBatchRenderer
 
 from happypose_ros.utils import unwrap_ros_path
+from happypose_ros.happypose_ros_parameters import happypose_ros
 
 
 class CosyPoseLoader:
     @staticmethod
-    def _load_detector(params: dict, device: str = "cpu") -> Detector:
-        config_path = unwrap_ros_path(params["config_path"])
+    def _load_detector(params, device: str = "cpu") -> Detector:
+        config_path = unwrap_ros_path(params.config_path)
         cfg = check_update_config_detector(
             yaml.load(
                 (config_path / "config.yaml").read_text(), Loader=yaml.UnsafeLoader
@@ -39,40 +40,52 @@ class CosyPoseLoader:
         model = model.to(device).eval()
         model.cfg = cfg
         model.config = cfg
-        return Detector(model, params["dataset_name"])
+        return Detector(model, params.dataset_name)
 
     @staticmethod
-    def load_pose_estimator(params: dict, device: str) -> PoseEstimator:
-        object_dataset = BOPObjectDataset(
-            unwrap_ros_path(params["dataset_path"]),
-            label_format=params["label_format"],
+    def load_pose_estimator(params, device: str) -> PoseEstimator:
+        kwargs = dict(params.object_dataset.__dict__)
+        kwargs["ds_dir"] = unwrap_ros_path(params.object_dataset.config_path)
+        del kwargs["config_path"]
+        object_dataset = BOPObjectDataset(**kwargs)
+
+        renderer = Panda3dBatchRenderer(
+            object_dataset, **dict(params.pose_estimator.renderer.__dict__)
         )
-        renderer = Panda3dBatchRenderer(object_dataset, **params["renderer"])
 
         mesh_db = MeshDataBase.from_object_ds(object_dataset)
         mesh_db_batched = mesh_db.batched().to(device)
-        kwargs = {"renderer": renderer, "mesh_db": mesh_db_batched, "device": device}
-        coarse_model = load_model_cosypose(params["coarse"]["config_path"], **kwargs)
-        refiner_model = load_model_cosypose(params["refiner"]["config_path"], **kwargs)
+        kwargs = {
+            "renderer": renderer,
+            "mesh_db_batched": mesh_db_batched,
+            "device": device,
+        }
+        coarse_path = unwrap_ros_path(params.pose_estimator.coarse.config_path)
+        coarse_model = load_model_cosypose(coarse_path, **kwargs)
+
+        refiner_path = unwrap_ros_path(params.pose_estimator.refiner.config_path)
+        refiner_model = load_model_cosypose(refiner_path, **kwargs)
 
         return PoseEstimator(
             refiner_model=refiner_model,
             coarse_model=coarse_model,
-            detector_model=CosyPoseLoader._load_detector(params, device),
+            detector_model=CosyPoseLoader._load_detector(params.detector, device),
+            # TODO get more information what is this
             bsz_objects=1,
             bsz_images=1,
         )
 
 
 class HappyposePipeline:
-    def __init__(self, config: dict) -> None:
+    def __init__(self, config: happypose_ros.Params) -> None:
         super().__init__()
         self._config = config
-        self._device = self._config["device"]
-        if self._config["pose_estimator_type"] == "cosypose":
+        self._device = self._config.device
+        if self._config.pose_estimator_type == "cosypose":
             loader = CosyPoseLoader
+            loader_config = self._config.cosypose
 
-        self._pose_estimator = loader(self._config, self._device)
+        self._pose_estimator = loader.load_pose_estimator(loader_config, self._device)
 
     def __call__(self, observation: ObservationTensor) -> tuple:
         preds, preds_extra = self._pose_estimator.run_inference_pipeline(
