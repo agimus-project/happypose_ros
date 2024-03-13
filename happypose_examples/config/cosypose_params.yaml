@@ -33,6 +33,8 @@
     cameras:
       timeout: 0.0
       min_num: 1
-      names: ["webcam"]
-      webcam:
+      names: ["cam_1"]
+      cam_1:
         compressed: false
+        image_topic: /image_raw
+        info_topic: /camera_info

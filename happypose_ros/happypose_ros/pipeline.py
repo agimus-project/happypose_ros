@@ -7,7 +7,7 @@ from happypose.pose_estimators.cosypose.cosypose.integrated.pose_estimator impor
     PoseEstimator,
 )
 from happypose.pose_estimators.cosypose.cosypose.training.detector_models_cfg import (
-    check_update_config as check_update_config_detector,
+    check_update_config as check_update_params_detector,
     create_model_detector,
 )
 from happypose.pose_estimators.cosypose.cosypose.training.pose_models_cfg import (
@@ -25,7 +25,7 @@ class CosyPoseLoader:
     @staticmethod
     def _load_detector(params, device: str = "cpu") -> Detector:
         config_path = unwrap_ros_path(params.config_path)
-        cfg = check_update_config_detector(
+        cfg = check_update_params_detector(
             yaml.load(
                 (config_path / "config.yaml").read_text(), Loader=yaml.UnsafeLoader
             ),
@@ -39,7 +39,7 @@ class CosyPoseLoader:
         model.load_state_dict(ckpt)
         model = model.to(device).eval()
         model.cfg = cfg
-        model.config = cfg
+        model.params = cfg
         return Detector(model, params.dataset_name)
 
     @staticmethod
@@ -77,18 +77,18 @@ class CosyPoseLoader:
 
 
 class HappyposePipeline:
-    def __init__(self, config: happypose_ros.Params) -> None:
+    def __init__(self, params: happypose_ros.Params) -> None:
         super().__init__()
-        self._config = config
-        self._device = self._config.device
-        if self._config.pose_estimator_type == "cosypose":
+        self._device = params.device
+        if params.pose_estimator_type == "cosypose":
             loader = CosyPoseLoader
-            loader_config = self._config.cosypose
+            self._params = params.cosypose
 
-        self._pose_estimator = loader.load_pose_estimator(loader_config, self._device)
+        self._pose_estimator = loader.load_pose_estimator(self._params, self._device)
 
     def __call__(self, observation: ObservationTensor) -> tuple:
+        kwargs = dict(self._params.inference.__dict__)
         preds, preds_extra = self._pose_estimator.run_inference_pipeline(
-            observation=observation, run_detector=True, **self._config["inference"]
+            observation=observation, run_detector=True, **kwargs
         )
         return preds, preds_extra

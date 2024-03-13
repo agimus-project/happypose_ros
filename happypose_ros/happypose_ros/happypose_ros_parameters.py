@@ -8,7 +8,7 @@ from rclpy.exceptions import InvalidParameterValueException
 from rclpy.time import Time
 import copy
 import rclpy
-from generate_parameter_library_py.python_validators import ParameterValidators
+from happypose_ros.python_validators import ParameterValidators
 
 import happypose_ros.custom_validators as custom_validators
 
@@ -72,6 +72,9 @@ class happypose_ros:
 
             class __MapNames:
                 compressed = False
+                image_topic = ""
+                info_topic = ""
+                k_matrix = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
             __map_type = __MapNames
 
@@ -112,7 +115,7 @@ class happypose_ros:
             # TODO remove any destroyed dynamic parameters
 
             # declare any new dynamic parameters
-            for value in updated_params.names:
+            for value in updated_params.cameras.names:
                 updated_params.cameras.add_entry(value)
                 entry = updated_params.cameras.get_entry(value)
                 param_name = f"{self.prefix_}cameras.{value}.compressed"
@@ -128,6 +131,73 @@ class happypose_ros:
                     param.name + ": " + param.type_.name + " = " + str(param.value)
                 )
                 entry.compressed = param.value
+            for value in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value)
+                entry = updated_params.cameras.get_entry(value)
+                param_name = f"{self.prefix_}cameras.{value}.image_topic"
+                if not self.node_.has_parameter(self.prefix_ + param_name):
+                    descriptor = ParameterDescriptor(
+                        description="Topic name to subscribe for images. If empty defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
+                        read_only=False,
+                    )
+                    parameter = entry.image_topic
+                    self.node_.declare_parameter(param_name, parameter, descriptor)
+                param = self.node_.get_parameter(param_name)
+                self.logger_.debug(
+                    param.name + ": " + param.type_.name + " = " + str(param.value)
+                )
+                entry.image_topic = param.value
+            for value in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value)
+                entry = updated_params.cameras.get_entry(value)
+                param_name = f"{self.prefix_}cameras.{value}.info_topic"
+                if not self.node_.has_parameter(self.prefix_ + param_name):
+                    descriptor = ParameterDescriptor(
+                        description="Topic name to subscribe for camera info. If empty defaults to '<camera_name>/info'.",
+                        read_only=False,
+                    )
+                    parameter = entry.info_topic
+                    self.node_.declare_parameter(param_name, parameter, descriptor)
+                param = self.node_.get_parameter(param_name)
+                self.logger_.debug(
+                    param.name + ": " + param.type_.name + " = " + str(param.value)
+                )
+                entry.info_topic = param.value
+            for value in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value)
+                entry = updated_params.cameras.get_entry(value)
+                param_name = f"{self.prefix_}cameras.{value}.k_matrix"
+                if not self.node_.has_parameter(self.prefix_ + param_name):
+                    descriptor = ParameterDescriptor(
+                        description="Camera intrinsic matrix. If not equal to all values of 0.0, orverwrites values from info ROS topic.",
+                        read_only=False,
+                    )
+                    descriptor.floating_point_range.append(FloatingPointRange())
+                    descriptor.floating_point_range[-1].from_value = 0.0
+                    descriptor.floating_point_range[-1].to_value = float("inf")
+                    parameter = entry.k_matrix
+                    self.node_.declare_parameter(param_name, parameter, descriptor)
+                param = self.node_.get_parameter(param_name)
+                self.logger_.debug(
+                    param.name + ": " + param.type_.name + " = " + str(param.value)
+                )
+                validation_result = ParameterValidators.fixed_size(param, 9)
+                if validation_result:
+                    raise InvalidParameterValueException(
+                        "cameras.__map_names.k_matrix",
+                        param.value,
+                        "Invalid value set during initialization for parameter cameras.__map_names.k_matrix: "
+                        + validation_result,
+                    )
+                validation_result = ParameterValidators.lower_element_bounds(param, 0.0)
+                if validation_result:
+                    raise InvalidParameterValueException(
+                        "cameras.__map_names.k_matrix",
+                        param.value,
+                        "Invalid value set during initialization for parameter cameras.__map_names.k_matrix: "
+                        + validation_result,
+                    )
+                entry.k_matrix = param.value
 
         def update(self, parameters):
             updated_params = self.get_params()
@@ -394,10 +464,60 @@ class happypose_ros:
 
             # update dynamic parameters
             for param in parameters:
-                for value in updated_params.names:
+                for value in updated_params.cameras.names:
                     param_name = f"{self.prefix_}cameras.{value}.compressed"
                     if param.name == param_name:
                         updated_params.cameras.names_map[value].compressed = param.value
+                        self.logger_.debug(
+                            param.name
+                            + ": "
+                            + param.type_.name
+                            + " = "
+                            + str(param.value)
+                        )
+
+                for value in updated_params.cameras.names:
+                    param_name = f"{self.prefix_}cameras.{value}.image_topic"
+                    if param.name == param_name:
+                        updated_params.cameras.names_map[
+                            value
+                        ].image_topic = param.value
+                        self.logger_.debug(
+                            param.name
+                            + ": "
+                            + param.type_.name
+                            + " = "
+                            + str(param.value)
+                        )
+
+                for value in updated_params.cameras.names:
+                    param_name = f"{self.prefix_}cameras.{value}.info_topic"
+                    if param.name == param_name:
+                        updated_params.cameras.names_map[value].info_topic = param.value
+                        self.logger_.debug(
+                            param.name
+                            + ": "
+                            + param.type_.name
+                            + " = "
+                            + str(param.value)
+                        )
+
+                for value in updated_params.cameras.names:
+                    param_name = f"{self.prefix_}cameras.{value}.k_matrix"
+                    if param.name == param_name:
+                        validation_result = ParameterValidators.fixed_size(param, 9)
+                        if validation_result:
+                            return SetParametersResult(
+                                successful=False, reason=validation_result
+                            )
+                        validation_result = ParameterValidators.lower_element_bounds(
+                            param, 0.0
+                        )
+                        if validation_result:
+                            return SetParametersResult(
+                                successful=False, reason=validation_result
+                            )
+                        updated_params.cameras.names_map[value].k_matrix = param.value
                         self.logger_.debug(
                             param.name
                             + ": "
@@ -992,5 +1112,72 @@ class happypose_ros:
                     param.name + ": " + param.type_.name + " = " + str(param.value)
                 )
                 entry.compressed = param.value
+            for value in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value)
+                entry = updated_params.cameras.get_entry(value)
+                param_name = f"{self.prefix_}cameras.{value}.image_topic"
+                if not self.node_.has_parameter(self.prefix_ + param_name):
+                    descriptor = ParameterDescriptor(
+                        description="Topic name to subscribe for images. If empty defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
+                        read_only=False,
+                    )
+                    parameter = entry.image_topic
+                    self.node_.declare_parameter(param_name, parameter, descriptor)
+                param = self.node_.get_parameter(param_name)
+                self.logger_.debug(
+                    param.name + ": " + param.type_.name + " = " + str(param.value)
+                )
+                entry.image_topic = param.value
+            for value in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value)
+                entry = updated_params.cameras.get_entry(value)
+                param_name = f"{self.prefix_}cameras.{value}.info_topic"
+                if not self.node_.has_parameter(self.prefix_ + param_name):
+                    descriptor = ParameterDescriptor(
+                        description="Topic name to subscribe for camera info. If empty defaults to '<camera_name>/info'.",
+                        read_only=False,
+                    )
+                    parameter = entry.info_topic
+                    self.node_.declare_parameter(param_name, parameter, descriptor)
+                param = self.node_.get_parameter(param_name)
+                self.logger_.debug(
+                    param.name + ": " + param.type_.name + " = " + str(param.value)
+                )
+                entry.info_topic = param.value
+            for value in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value)
+                entry = updated_params.cameras.get_entry(value)
+                param_name = f"{self.prefix_}cameras.{value}.k_matrix"
+                if not self.node_.has_parameter(self.prefix_ + param_name):
+                    descriptor = ParameterDescriptor(
+                        description="Camera intrinsic matrix. If not equal to all values of 0.0, orverwrites values from info ROS topic.",
+                        read_only=False,
+                    )
+                    descriptor.floating_point_range.append(FloatingPointRange())
+                    descriptor.floating_point_range[-1].from_value = 0.0
+                    descriptor.floating_point_range[-1].to_value = float("inf")
+                    parameter = entry.k_matrix
+                    self.node_.declare_parameter(param_name, parameter, descriptor)
+                param = self.node_.get_parameter(param_name)
+                self.logger_.debug(
+                    param.name + ": " + param.type_.name + " = " + str(param.value)
+                )
+                validation_result = ParameterValidators.fixed_size(param, 9)
+                if validation_result:
+                    raise InvalidParameterValueException(
+                        "cameras.__map_names.k_matrix",
+                        param.value,
+                        "Invalid value set during initialization for parameter cameras.__map_names.k_matrix: "
+                        + validation_result,
+                    )
+                validation_result = ParameterValidators.lower_element_bounds(param, 0.0)
+                if validation_result:
+                    raise InvalidParameterValueException(
+                        "cameras.__map_names.k_matrix",
+                        param.value,
+                        "Invalid value set during initialization for parameter cameras.__map_names.k_matrix: "
+                        + validation_result,
+                    )
+                entry.k_matrix = param.value
 
             self.update_internal_params(updated_params)

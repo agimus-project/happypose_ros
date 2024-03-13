@@ -1,4 +1,5 @@
 from ctypes import c_bool
+import numpy as np
 
 import torch
 import torch.multiprocessing as mp
@@ -37,39 +38,35 @@ class HappyposeWorker(mp.Process):
         self._pipeline = HappyposePipeline(params)
 
         # Notify parent that initialization has finished
-        with self._stop_worker.get_lock():
+        with self._worker_free.get_lock():
             self._worker_free.value = True
 
     def run(self) -> None:
-        while True:
-            # Stop the process if paren is stopped
-            with self._stop_worker.get_lock():
-                if self._stop_worker.value:
-                    break
+        try:
+            while True:
+                # Stop the process if paren is stopped
+                with self._stop_worker.get_lock():
+                    if self._stop_worker.value:
+                        break
 
-            # Notify parent that processing is ongoing
-            with self._stop_worker.get_lock():
-                self._worker_free.value = False
-
-            # Await any data on all the input queues
-            try:
+                # Await any data on all the input queues
                 rgb_tensor = self._image_queue.get(block=True, timeout=None)
                 # TODO implement depth
                 # depth_tensor = self._depth_queue.get(block=True, timeout=None)
                 K_tensor = self._k_queue.get(block=True, timeout=None)
-            except ValueError:
-                continue
 
-            observation = ObservationTensor.from_torch_batched(
-                rgb=rgb_tensor, K=K_tensor
-            ).to(self._device)
+                observation = ObservationTensor.from_torch_batched(
+                    rgb=rgb_tensor, depth=None, K=K_tensor
+                )
 
-            result = self._pipeline(observation)
-            self._output_queue.put(result)
+                result = self._pipeline(observation)
+                self._output_queue.put(result)
 
-            # Notify parent that processing finished
-            with self._stop_worker.get_lock():
-                self._worker_free.value = True
+                # Notify parent that processing finished
+                with self._worker_free.get_lock():
+                    self._worker_free.value = True
+        except Exception:
+            return
 
 
 class HappyposeNode(Node):
@@ -79,7 +76,10 @@ class HappyposeNode(Node):
         self._param_listener = happypose_ros.ParamListener(self)
         self._params = self._param_listener.get_params()
 
-        self._worker_free = mp.Value(c_bool, False)
+        self._device = self._params.device
+
+        # self._worker_free = mp.Value(c_bool, False)
+        self._worker_free = mp.Value(c_bool, True)
         self._stop_worker = mp.Value(c_bool, False)
         self._image_queue = mp.Queue(1)
         self._depth_queue = mp.Queue(1)
@@ -129,18 +129,18 @@ class HappyposeNode(Node):
         )
 
         now = self.get_clock().now()
-        if self._camera_timeout:
+        if self._params.cameras.timeout:
             processed_cameras = [
                 name
                 for name, cam in self._cameras.items()
-                if (now - cam.get_last_image_stamp()) > self._camera_timeout
+                if (now - cam.get_last_image_stamp()) > self._params.cameras.timeout
             ]
         else:
             processed_cameras = list(self._cameras.keys())
 
-        if len(processed_cameras) < self._camera_min_num:
+        if len(processed_cameras) < self._params.cameras.n_min_cameras:
             if self._last_pipeline_trigger and (now - self._last_pipeline_trigger) > (
-                5 * self._camera_timeout
+                5 * self._params.cameras.timeout
             ):
                 # TODO Consider more meaningfull message
                 self.get_logger().warn(
@@ -151,16 +151,19 @@ class HappyposeNode(Node):
 
         # TODO propperly implement multiview
         # TODO implement depth info
-        K, rgb = processed_cameras[0].get_camera_data()
-        rgb_tensor = torch.as_tensor(rgb).float() / 255.0
-        K_tensor = torch.as_tensor(K).float()
+        K, rgb = self._cameras[processed_cameras[0]].get_camera_data()
+        K_tensor = torch.as_tensor(np.array([K])).float()
+        rgb_tensor = torch.as_tensor(np.array([rgb]))
 
         # Move tensors to the device and then allow shared memory
         rgb_tensor.to(self._device).share_memory_()
         K_tensor.to(self._device).share_memory_()
+
         self._image_queue.put(rgb_tensor)
         self._k_queue.put(K_tensor)
 
+        with self._worker_free.get_lock():
+            self._worker_free.value = False
         self._last_pipeline_trigger = now
 
 

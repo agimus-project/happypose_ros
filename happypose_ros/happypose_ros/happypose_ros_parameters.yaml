@@ -169,3 +169,22 @@ happypose_ros:
         default_value: false,
         description: "Expect compressed messages from given camera.",
       }
+      image_topic: {
+        type: string,
+        default_value: "",
+        description: "Topic name to subscribe for images. If empty defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
+      }
+      info_topic: {
+        type: string,
+        default_value: "",
+        description: "Topic name to subscribe for camera info. If empty defaults to '<camera_name>/info'.",
+      }
+      k_matrix: {
+        type: double_array,
+        default_value: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        description: "Camera intrinsic matrix. If not equal to all values of 0.0, orverwrites values from info ROS topic.",
+        validation: {
+          fixed_size<>: [6],
+          lower_element_bounds<>: [0.0]
+        }
+      }
