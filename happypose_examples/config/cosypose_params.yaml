@@ -2,33 +2,21 @@
   ros__parameters:
     device: cpu
     pose_estimator_type: cosypose
+
+    renderer:
+      renderer_type: panda3d
+      n_workers: 8
+      gpu_renderer: False
+
     cosypose:
-      object_dataset:
-        label_format: ycbv-{label}
-        config_path: $(env HAPPYPOSE_DATA_DIR)/bop_datasets/ycbv/models_bop-compat
-
-      detector:
-        dataset_name: ycbv
-        config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/detector-bop-ycbv-pbr--970850
-
-      pose_estimator:
-        coarse:
-          config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/coarse-bop-ycbv-pbr--724183
-        refiner:
-          config_path: $(env HAPPYPOSE_DATA_DIR)/experiments/refiner-bop-ycbv-pbr--604090
-
-      renderer:
-        n_workers: 8
-        preload_cache: True
-        split_objects: False
-
+      dataset_name: tless
       inference:
         n_refiner_iterations: 1
         n_coarse_iterations: 1
         detection_th: 0.9
         mask_th: 0.8
-        labels_to_keep:
-          - "ycbv-obj_000014"
+        # labels_to_keep:
+        #   - "ycbv-obj_000014"
 
     cameras:
       timeout: 0.0

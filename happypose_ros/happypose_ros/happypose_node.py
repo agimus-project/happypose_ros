@@ -10,8 +10,12 @@ from rclpy.node import Node
 from happypose.toolbox.inference.types import ObservationTensor
 
 from happypose_ros.camera_wrapper import CameraWrapper
-from happypose_ros.pipeline import HappyposePipeline
+from happypose_ros.inference_pipeline import HappyposePipeline
 from happypose_ros.happypose_ros_parameters import happypose_ros
+
+from happypose.toolbox.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class HappyposeWorker(mp.Process):
@@ -42,31 +46,37 @@ class HappyposeWorker(mp.Process):
             self._worker_free.value = True
 
     def run(self) -> None:
-        try:
-            while True:
-                # Stop the process if paren is stopped
-                with self._stop_worker.get_lock():
-                    if self._stop_worker.value:
-                        break
+        # try:
+        while True:
+            # Stop the process if paren is stopped
+            with self._stop_worker.get_lock():
+                if self._stop_worker.value:
+                    logger.error("Worker finishing job")
+                    break
 
-                # Await any data on all the input queues
-                rgb_tensor = self._image_queue.get(block=True, timeout=None)
-                # TODO implement depth
-                # depth_tensor = self._depth_queue.get(block=True, timeout=None)
-                K_tensor = self._k_queue.get(block=True, timeout=None)
+            # Await any data on all the input queues
+            rgb_tensor = self._image_queue.get(block=True, timeout=None)
+            # TODO implement depth
+            # depth_tensor = self._depth_queue.get(block=True, timeout=None)
+            K_tensor = self._k_queue.get(block=True, timeout=None)
 
-                observation = ObservationTensor.from_torch_batched(
-                    rgb=rgb_tensor, depth=None, K=K_tensor
-                )
+            observation = ObservationTensor.from_torch_batched(
+                rgb=rgb_tensor, depth=None, K=K_tensor
+            )
 
-                result = self._pipeline(observation)
-                self._output_queue.put(result)
+            result = self._pipeline(observation)
+            self._output_queue.put(result)
 
-                # Notify parent that processing finished
-                with self._worker_free.get_lock():
-                    self._worker_free.value = True
-        except Exception:
-            return
+            logger.error("result in queue")
+
+            # Notify parent that processing finished
+            with self._worker_free.get_lock():
+                self._worker_free.value = True
+
+            logger.error("worker free")
+        # except Exception as e:
+        #     logger.error(f"Worker got exception: {str(e)}")
+        #     return
 
 
 class HappyposeNode(Node):
@@ -85,6 +95,7 @@ class HappyposeNode(Node):
         self._depth_queue = mp.Queue(1)
         self._k_queue = mp.Queue(1)
         self._result_queue = mp.Queue(1)
+
         self._happypose_worker = HappyposeWorker(
             self._params,
             self._worker_free,
@@ -152,8 +163,11 @@ class HappyposeNode(Node):
         # TODO propperly implement multiview
         # TODO implement depth info
         K, rgb = self._cameras[processed_cameras[0]].get_camera_data()
-        K_tensor = torch.as_tensor(np.array([K])).float()
+
+        K_tensor = torch.as_tensor(np.array([K.reshape((3, 3))])).float()
         rgb_tensor = torch.as_tensor(np.array([rgb]))
+        if rgb_tensor.shape[-1] == 3:
+            rgb_tensor = rgb_tensor.permute(0, 3, 1, 2)
 
         # Move tensors to the device and then allow shared memory
         rgb_tensor.to(self._device).share_memory_()

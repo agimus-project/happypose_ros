@@ -10,8 +10,6 @@ import copy
 import rclpy
 from happypose_ros.python_validators import ParameterValidators
 
-import happypose_ros.custom_validators as custom_validators
-
 
 class happypose_ros:
     class Params:
@@ -21,45 +19,22 @@ class happypose_ros:
         pose_estimator_type = "cosypose"
         device = "cpu"
 
+        class __Renderer:
+            renderer_type = "panda3d"
+            n_workers = 8
+            gpu_renderer = True
+
+        renderer = __Renderer()
+
         class __Cosypose:
-            class __ObjectDataset:
-                config_path = ""
-                label_format = ""
-
-            object_dataset = __ObjectDataset()
-
-            class __Detector:
-                dataset_name = ""
-                config_path = ""
-
-            detector = __Detector()
-
-            class __PoseEstimator:
-                class __Renderer:
-                    n_workers = 1
-                    preload_cache = True
-                    split_objects = False
-
-                renderer = __Renderer()
-
-                class __Coarse:
-                    config_path = ""
-
-                coarse = __Coarse()
-
-                class __Refiner:
-                    config_path = ""
-
-                refiner = __Refiner()
-
-            pose_estimator = __PoseEstimator()
+            dataset_name = ""
 
             class __Inference:
                 n_refiner_iterations = 1
                 n_coarse_iterations = 1
                 detection_th = 0.7
                 mask_th = 0.8
-                labels_to_keep = None
+                labels_to_keep = []
 
             inference = __Inference()
 
@@ -227,138 +202,45 @@ class happypose_ros:
                         param.name + ": " + param.type_.name + " = " + str(param.value)
                     )
 
-                if param.name == self.prefix_ + "cosypose.object_dataset.config_path":
-                    validation_result = ParameterValidators.size_gt(param, 0)
-                    if validation_result:
-                        return SetParametersResult(
-                            successful=False, reason=validation_result
-                        )
-                    validation_result = custom_validators.validate_path_folder(param)
-                    if validation_result:
-                        return SetParametersResult(
-                            successful=False, reason=validation_result
-                        )
-                    updated_params.cosypose.object_dataset.config_path = param.value
-                    self.logger_.debug(
-                        param.name + ": " + param.type_.name + " = " + str(param.value)
-                    )
-
-                if param.name == self.prefix_ + "cosypose.object_dataset.label_format":
+                if param.name == self.prefix_ + "renderer.renderer_type":
                     validation_result = ParameterValidators.one_of(
-                        param, ["ycbv-{label}"]
+                        param, ["panda3d", "bullet"]
                     )
                     if validation_result:
                         return SetParametersResult(
                             successful=False, reason=validation_result
                         )
-                    updated_params.cosypose.object_dataset.label_format = param.value
+                    updated_params.renderer.renderer_type = param.value
                     self.logger_.debug(
                         param.name + ": " + param.type_.name + " = " + str(param.value)
                     )
 
-                if param.name == self.prefix_ + "cosypose.detector.dataset_name":
-                    validation_result = ParameterValidators.one_of(param, ["ycbv"])
-                    if validation_result:
-                        return SetParametersResult(
-                            successful=False, reason=validation_result
-                        )
-                    updated_params.cosypose.detector.dataset_name = param.value
-                    self.logger_.debug(
-                        param.name + ": " + param.type_.name + " = " + str(param.value)
-                    )
-
-                if param.name == self.prefix_ + "cosypose.detector.config_path":
-                    validation_result = ParameterValidators.size_gt(param, 0)
-                    if validation_result:
-                        return SetParametersResult(
-                            successful=False, reason=validation_result
-                        )
-                    validation_result = custom_validators.validate_path_folder(param)
-                    if validation_result:
-                        return SetParametersResult(
-                            successful=False, reason=validation_result
-                        )
-                    updated_params.cosypose.detector.config_path = param.value
-                    self.logger_.debug(
-                        param.name + ": " + param.type_.name + " = " + str(param.value)
-                    )
-
-                if (
-                    param.name
-                    == self.prefix_ + "cosypose.pose_estimator.renderer.n_workers"
-                ):
+                if param.name == self.prefix_ + "renderer.n_workers":
                     validation_result = ParameterValidators.gt_eq(param, 1)
                     if validation_result:
                         return SetParametersResult(
                             successful=False, reason=validation_result
                         )
-                    updated_params.cosypose.pose_estimator.renderer.n_workers = (
-                        param.value
-                    )
+                    updated_params.renderer.n_workers = param.value
                     self.logger_.debug(
                         param.name + ": " + param.type_.name + " = " + str(param.value)
                     )
 
-                if (
-                    param.name
-                    == self.prefix_ + "cosypose.pose_estimator.renderer.preload_cache"
-                ):
-                    updated_params.cosypose.pose_estimator.renderer.preload_cache = (
-                        param.value
-                    )
+                if param.name == self.prefix_ + "renderer.gpu_renderer":
+                    updated_params.renderer.gpu_renderer = param.value
                     self.logger_.debug(
                         param.name + ": " + param.type_.name + " = " + str(param.value)
                     )
 
-                if (
-                    param.name
-                    == self.prefix_ + "cosypose.pose_estimator.renderer.split_objects"
-                ):
-                    updated_params.cosypose.pose_estimator.renderer.split_objects = (
-                        param.value
+                if param.name == self.prefix_ + "cosypose.dataset_name":
+                    validation_result = ParameterValidators.one_of(
+                        param, ["hope", "tless", "ycbv"]
                     )
-                    self.logger_.debug(
-                        param.name + ": " + param.type_.name + " = " + str(param.value)
-                    )
-
-                if (
-                    param.name
-                    == self.prefix_ + "cosypose.pose_estimator.coarse.config_path"
-                ):
-                    validation_result = ParameterValidators.size_gt(param, 0)
                     if validation_result:
                         return SetParametersResult(
                             successful=False, reason=validation_result
                         )
-                    validation_result = custom_validators.validate_path_folder(param)
-                    if validation_result:
-                        return SetParametersResult(
-                            successful=False, reason=validation_result
-                        )
-                    updated_params.cosypose.pose_estimator.coarse.config_path = (
-                        param.value
-                    )
-                    self.logger_.debug(
-                        param.name + ": " + param.type_.name + " = " + str(param.value)
-                    )
-
-                if (
-                    param.name
-                    == self.prefix_ + "cosypose.pose_estimator.refiner.config_path"
-                ):
-                    validation_result = ParameterValidators.size_gt(param, 0)
-                    if validation_result:
-                        return SetParametersResult(
-                            successful=False, reason=validation_result
-                        )
-                    validation_result = custom_validators.validate_path_folder(param)
-                    if validation_result:
-                        return SetParametersResult(
-                            successful=False, reason=validation_result
-                        )
-                    updated_params.cosypose.pose_estimator.refiner.config_path = (
-                        param.value
-                    )
+                    updated_params.cosypose.dataset_name = param.value
                     self.logger_.debug(
                         param.name + ": " + param.type_.name + " = " + str(param.value)
                     )
@@ -556,63 +438,17 @@ class happypose_ros:
                     self.prefix_ + "device", parameter, descriptor
                 )
 
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.object_dataset.config_path"
-            ):
+            if not self.node_.has_parameter(self.prefix_ + "renderer.renderer_type"):
                 descriptor = ParameterDescriptor(
-                    description="Path to a folder containing 3D meshes of objects and their renders. The path accespts '$(env MY_ENV)' and 'pacakge://' syntax.",
+                    description="Specyfies which renderer to use in the pipeline.",
                     read_only=False,
                 )
-                parameter = updated_params.cosypose.object_dataset.config_path
+                parameter = updated_params.renderer.renderer_type
                 self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.object_dataset.config_path",
-                    parameter,
-                    descriptor,
+                    self.prefix_ + "renderer.renderer_type", parameter, descriptor
                 )
 
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.object_dataset.label_format"
-            ):
-                descriptor = ParameterDescriptor(
-                    description="Format of the labels used.", read_only=False
-                )
-                parameter = updated_params.cosypose.object_dataset.label_format
-                self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.object_dataset.label_format",
-                    parameter,
-                    descriptor,
-                )
-
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.detector.dataset_name"
-            ):
-                descriptor = ParameterDescriptor(
-                    description="Dataset name.", read_only=False
-                )
-                parameter = updated_params.cosypose.detector.dataset_name
-                self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.detector.dataset_name",
-                    parameter,
-                    descriptor,
-                )
-
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.detector.config_path"
-            ):
-                descriptor = ParameterDescriptor(
-                    description="Path to a folder containing config.yaml and checkpoint.pth.tar files for the detector. The path accespts '$(env MY_ENV)' and 'pacakge://' syntax.",
-                    read_only=False,
-                )
-                parameter = updated_params.cosypose.detector.config_path
-                self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.detector.config_path",
-                    parameter,
-                    descriptor,
-                )
-
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.pose_estimator.renderer.n_workers"
-            ):
+            if not self.node_.has_parameter(self.prefix_ + "renderer.n_workers"):
                 descriptor = ParameterDescriptor(
                     description="Number of CPU cores to use during rendering.",
                     read_only=False,
@@ -620,67 +456,28 @@ class happypose_ros:
                 descriptor.integer_range.append(IntegerRange())
                 descriptor.integer_range[-1].from_value = 1
                 descriptor.integer_range[-1].to_value = 2**31 - 1
-                parameter = updated_params.cosypose.pose_estimator.renderer.n_workers
+                parameter = updated_params.renderer.n_workers
                 self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.pose_estimator.renderer.n_workers",
-                    parameter,
-                    descriptor,
+                    self.prefix_ + "renderer.n_workers", parameter, descriptor
                 )
 
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.pose_estimator.renderer.preload_cache"
-            ):
+            if not self.node_.has_parameter(self.prefix_ + "renderer.gpu_renderer"):
                 descriptor = ParameterDescriptor(
-                    description="Set if cache has to be preloded.", read_only=False
+                    description="Render objects with a GPU", read_only=False
                 )
-                parameter = (
-                    updated_params.cosypose.pose_estimator.renderer.preload_cache
-                )
+                parameter = updated_params.renderer.gpu_renderer
                 self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.pose_estimator.renderer.preload_cache",
-                    parameter,
-                    descriptor,
+                    self.prefix_ + "renderer.gpu_renderer", parameter, descriptor
                 )
 
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.pose_estimator.renderer.split_objects"
-            ):
-                descriptor = ParameterDescriptor(description="?", read_only=False)
-                parameter = (
-                    updated_params.cosypose.pose_estimator.renderer.split_objects
-                )
-                self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.pose_estimator.renderer.split_objects",
-                    parameter,
-                    descriptor,
-                )
-
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.pose_estimator.coarse.config_path"
-            ):
+            if not self.node_.has_parameter(self.prefix_ + "cosypose.dataset_name"):
                 descriptor = ParameterDescriptor(
-                    description="Path to a folder containing config.yaml and checkpoint.pth.tar for coarse pose estimator. The path accespts '$(env MY_ENV)' and 'pacakge://' syntax.",
+                    description="Name of a dataset used during training.",
                     read_only=False,
                 )
-                parameter = updated_params.cosypose.pose_estimator.coarse.config_path
+                parameter = updated_params.cosypose.dataset_name
                 self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.pose_estimator.coarse.config_path",
-                    parameter,
-                    descriptor,
-                )
-
-            if not self.node_.has_parameter(
-                self.prefix_ + "cosypose.pose_estimator.refiner.config_path"
-            ):
-                descriptor = ParameterDescriptor(
-                    description="Path to a folder containing config.yaml and checkpoint.pth.tar for refiner pose estimator. The path accespts '$(env MY_ENV)' and 'pacakge://' syntax.",
-                    read_only=False,
-                )
-                parameter = updated_params.cosypose.pose_estimator.refiner.config_path
-                self.node_.declare_parameter(
-                    self.prefix_ + "cosypose.pose_estimator.refiner.config_path",
-                    parameter,
-                    descriptor,
+                    self.prefix_ + "cosypose.dataset_name", parameter, descriptor
                 )
 
             if not self.node_.has_parameter(
@@ -751,7 +548,7 @@ class happypose_ros:
                 descriptor = ParameterDescriptor(
                     description="Lables of detected objects to keep.", read_only=False
                 )
-                parameter = rclpy.Parameter.Type.STRING_ARRAY
+                parameter = updated_params.cosypose.inference.labels_to_keep
                 self.node_.declare_parameter(
                     self.prefix_ + "cosypose.inference.labels_to_keep",
                     parameter,
@@ -821,157 +618,52 @@ class happypose_ros:
                     + validation_result,
                 )
             updated_params.device = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.object_dataset.config_path"
-            )
+            param = self.node_.get_parameter(self.prefix_ + "renderer.renderer_type")
             self.logger_.debug(
                 param.name + ": " + param.type_.name + " = " + str(param.value)
             )
-            validation_result = ParameterValidators.size_gt(param, 0)
+            validation_result = ParameterValidators.one_of(param, ["panda3d", "bullet"])
             if validation_result:
                 raise InvalidParameterValueException(
-                    "cosypose.object_dataset.config_path",
+                    "renderer.renderer_type",
                     param.value,
-                    "Invalid value set during initialization for parameter cosypose.object_dataset.config_path: "
+                    "Invalid value set during initialization for parameter renderer.renderer_type: "
                     + validation_result,
                 )
-            validation_result = custom_validators.validate_path_folder(param)
-            if validation_result:
-                raise InvalidParameterValueException(
-                    "cosypose.object_dataset.config_path",
-                    param.value,
-                    "Invalid value set during initialization for parameter cosypose.object_dataset.config_path: "
-                    + validation_result,
-                )
-            updated_params.cosypose.object_dataset.config_path = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.object_dataset.label_format"
-            )
-            self.logger_.debug(
-                param.name + ": " + param.type_.name + " = " + str(param.value)
-            )
-            validation_result = ParameterValidators.one_of(param, ["ycbv-{label}"])
-            if validation_result:
-                raise InvalidParameterValueException(
-                    "cosypose.object_dataset.label_format",
-                    param.value,
-                    "Invalid value set during initialization for parameter cosypose.object_dataset.label_format: "
-                    + validation_result,
-                )
-            updated_params.cosypose.object_dataset.label_format = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.detector.dataset_name"
-            )
-            self.logger_.debug(
-                param.name + ": " + param.type_.name + " = " + str(param.value)
-            )
-            validation_result = ParameterValidators.one_of(param, ["ycbv"])
-            if validation_result:
-                raise InvalidParameterValueException(
-                    "cosypose.detector.dataset_name",
-                    param.value,
-                    "Invalid value set during initialization for parameter cosypose.detector.dataset_name: "
-                    + validation_result,
-                )
-            updated_params.cosypose.detector.dataset_name = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.detector.config_path"
-            )
-            self.logger_.debug(
-                param.name + ": " + param.type_.name + " = " + str(param.value)
-            )
-            validation_result = ParameterValidators.size_gt(param, 0)
-            if validation_result:
-                raise InvalidParameterValueException(
-                    "cosypose.detector.config_path",
-                    param.value,
-                    "Invalid value set during initialization for parameter cosypose.detector.config_path: "
-                    + validation_result,
-                )
-            validation_result = custom_validators.validate_path_folder(param)
-            if validation_result:
-                raise InvalidParameterValueException(
-                    "cosypose.detector.config_path",
-                    param.value,
-                    "Invalid value set during initialization for parameter cosypose.detector.config_path: "
-                    + validation_result,
-                )
-            updated_params.cosypose.detector.config_path = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.pose_estimator.renderer.n_workers"
-            )
+            updated_params.renderer.renderer_type = param.value
+            param = self.node_.get_parameter(self.prefix_ + "renderer.n_workers")
             self.logger_.debug(
                 param.name + ": " + param.type_.name + " = " + str(param.value)
             )
             validation_result = ParameterValidators.gt_eq(param, 1)
             if validation_result:
                 raise InvalidParameterValueException(
-                    "cosypose.pose_estimator.renderer.n_workers",
+                    "renderer.n_workers",
                     param.value,
-                    "Invalid value set during initialization for parameter cosypose.pose_estimator.renderer.n_workers: "
+                    "Invalid value set during initialization for parameter renderer.n_workers: "
                     + validation_result,
                 )
-            updated_params.cosypose.pose_estimator.renderer.n_workers = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.pose_estimator.renderer.preload_cache"
-            )
+            updated_params.renderer.n_workers = param.value
+            param = self.node_.get_parameter(self.prefix_ + "renderer.gpu_renderer")
             self.logger_.debug(
                 param.name + ": " + param.type_.name + " = " + str(param.value)
             )
-            updated_params.cosypose.pose_estimator.renderer.preload_cache = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.pose_estimator.renderer.split_objects"
-            )
+            updated_params.renderer.gpu_renderer = param.value
+            param = self.node_.get_parameter(self.prefix_ + "cosypose.dataset_name")
             self.logger_.debug(
                 param.name + ": " + param.type_.name + " = " + str(param.value)
             )
-            updated_params.cosypose.pose_estimator.renderer.split_objects = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.pose_estimator.coarse.config_path"
+            validation_result = ParameterValidators.one_of(
+                param, ["hope", "tless", "ycbv"]
             )
-            self.logger_.debug(
-                param.name + ": " + param.type_.name + " = " + str(param.value)
-            )
-            validation_result = ParameterValidators.size_gt(param, 0)
             if validation_result:
                 raise InvalidParameterValueException(
-                    "cosypose.pose_estimator.coarse.config_path",
+                    "cosypose.dataset_name",
                     param.value,
-                    "Invalid value set during initialization for parameter cosypose.pose_estimator.coarse.config_path: "
+                    "Invalid value set during initialization for parameter cosypose.dataset_name: "
                     + validation_result,
                 )
-            validation_result = custom_validators.validate_path_folder(param)
-            if validation_result:
-                raise InvalidParameterValueException(
-                    "cosypose.pose_estimator.coarse.config_path",
-                    param.value,
-                    "Invalid value set during initialization for parameter cosypose.pose_estimator.coarse.config_path: "
-                    + validation_result,
-                )
-            updated_params.cosypose.pose_estimator.coarse.config_path = param.value
-            param = self.node_.get_parameter(
-                self.prefix_ + "cosypose.pose_estimator.refiner.config_path"
-            )
-            self.logger_.debug(
-                param.name + ": " + param.type_.name + " = " + str(param.value)
-            )
-            validation_result = ParameterValidators.size_gt(param, 0)
-            if validation_result:
-                raise InvalidParameterValueException(
-                    "cosypose.pose_estimator.refiner.config_path",
-                    param.value,
-                    "Invalid value set during initialization for parameter cosypose.pose_estimator.refiner.config_path: "
-                    + validation_result,
-                )
-            validation_result = custom_validators.validate_path_folder(param)
-            if validation_result:
-                raise InvalidParameterValueException(
-                    "cosypose.pose_estimator.refiner.config_path",
-                    param.value,
-                    "Invalid value set during initialization for parameter cosypose.pose_estimator.refiner.config_path: "
-                    + validation_result,
-                )
-            updated_params.cosypose.pose_estimator.refiner.config_path = param.value
+            updated_params.cosypose.dataset_name = param.value
             param = self.node_.get_parameter(
                 self.prefix_ + "cosypose.inference.n_refiner_iterations"
             )

@@ -13,13 +13,13 @@ def generate_launch_description():
         ]
     )
 
-    webcam_params_path = PathJoinSubstitution(
-        [
-            FindPackageShare("happypose_examples"),
-            "config",
-            "webcam_params.yaml",
-        ]
-    )
+    # webcam_params_path = PathJoinSubstitution(
+    #     [
+    #         FindPackageShare("happypose_examples"),
+    #         "config",
+    #         "webcam_params.yaml",
+    #     ]
+    # )
 
     happypose_node = Node(
         package="happypose_ros",
@@ -28,12 +28,12 @@ def generate_launch_description():
         parameters=[happypose_params_path],
     )
 
-    webcam_node = Node(
-        package="usb_cam",
-        executable="usb_cam_node_exe",
-        output="screen",
-        name="usb_cam_node",
-        parameters=[webcam_params_path],
-    )
+    # webcam_node = Node(
+    #     package="usb_cam",
+    #     executable="usb_cam_node_exe",
+    #     output="screen",
+    #     name="usb_cam_node",
+    #     parameters=[webcam_params_path],
+    # )
 
-    return LaunchDescription([happypose_node, webcam_node])
+    return LaunchDescription([happypose_node])
