@@ -13,7 +13,7 @@ from happypose.toolbox.inference.types import ObservationTensor
 from happypose_ros.camera_wrapper import CameraWrapper
 from happypose_ros.inference_pipeline import HappyposePipeline
 from happypose_ros.happypose_ros_parameters import happypose_ros
-from happypose_ros.utils import pose2marker
+from happypose_ros.utils import params2dict, pose2marker
 
 from std_msgs.msg import Header
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
@@ -100,7 +100,7 @@ class HappyposeNode(Node):
         self._result_queue = mp.Queue(1)
 
         self._happypose_worker = HappyposeWorker(
-            self._params.to_dict(),
+            params2dict(self._params),
             self._worker_free,
             self._stop_worker,
             self._image_queue,

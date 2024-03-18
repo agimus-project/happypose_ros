@@ -10,8 +10,6 @@ import copy
 import rclpy
 from generate_parameter_library_py.python_validators import ParameterValidators
 
-import numbers
-
 
 class happypose_ros:
     class Params:
@@ -63,34 +61,6 @@ class happypose_ros:
                 return getattr(self, name)
 
         cameras = __Cameras()
-
-        def to_dict(self):
-            out = {}
-
-            def to_dict_internal(instance, name, base_dict):
-                if isinstance(instance, (str, numbers.Number, list)):
-                    base_dict.update({name: instance})
-                else:
-                    if name != "":
-                        base_dict.update({name: {}})
-                    data = [
-                        attr
-                        for attr in dir(instance)
-                        if (
-                            not callable(getattr(instance, attr))
-                            and not attr.startswith("__")
-                            and attr != "stamp_"
-                        )
-                    ]
-                    for attr in data:
-                        to_dict_internal(
-                            getattr(instance, attr),
-                            attr,
-                            base_dict[name] if name != "" else base_dict,
-                        )
-
-            to_dict_internal(self, "", out)
-            return out
 
     class ParamListener:
         def __init__(self, node, prefix=""):
