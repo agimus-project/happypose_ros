@@ -1,9 +1,8 @@
 from ctypes import c_bool
 import numpy as np
+import pinocchio as pin
 import torch
 import torch.multiprocessing as mp
-
-import pinocchio as pin
 
 import rclpy
 from rclpy.node import Node
