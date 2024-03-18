@@ -1,11 +1,11 @@
 from ctypes import c_bool
 import numpy as np
-
 import torch
 import torch.multiprocessing as mp
 
 import rclpy
 from rclpy.node import Node
+from rclpy.executors import MultiThreadedExecutor
 
 from happypose.toolbox.inference.types import ObservationTensor
 
@@ -30,7 +30,7 @@ class HappyposeWorker(mp.Process):
         result_queue: mp.Queue,
     ) -> None:
         super().__init__()
-        self._device = params.device
+        # self._device = params.device
         self._worker_free = worker_flag
         self._stop_worker = stop_worker
         self._image_queue = image_queue
@@ -48,6 +48,7 @@ class HappyposeWorker(mp.Process):
     def run(self) -> None:
         # try:
         while True:
+            torch.set_num_threads(1)
             # Stop the process if paren is stopped
             with self._stop_worker.get_lock():
                 if self._stop_worker.value:
@@ -64,10 +65,11 @@ class HappyposeWorker(mp.Process):
                 rgb=rgb_tensor, depth=None, K=K_tensor
             )
 
+            logger.error("starting")
             result = self._pipeline(observation)
-            self._output_queue.put(result)
+            logger.error(f"{result}")
 
-            logger.error("result in queue")
+            self._result_queue.put(result)
 
             # Notify parent that processing finished
             with self._worker_free.get_lock():
@@ -88,8 +90,7 @@ class HappyposeNode(Node):
 
         self._device = self._params.device
 
-        # self._worker_free = mp.Value(c_bool, False)
-        self._worker_free = mp.Value(c_bool, True)
+        self._worker_free = mp.Value(c_bool, False)
         self._stop_worker = mp.Value(c_bool, False)
         self._image_queue = mp.Queue(1)
         self._depth_queue = mp.Queue(1)
@@ -97,7 +98,7 @@ class HappyposeNode(Node):
         self._result_queue = mp.Queue(1)
 
         self._happypose_worker = HappyposeWorker(
-            self._params,
+            self._params.to_dict(),
             self._worker_free,
             self._stop_worker,
             self._image_queue,
@@ -106,6 +107,8 @@ class HappyposeNode(Node):
             self._result_queue,
         )
         self._happypose_worker.start()
+
+        self._await_results_task = None
 
         # Each camera registers it's topics and fires synchronisation callback on new image
         self._cameras = {
@@ -123,13 +126,18 @@ class HappyposeNode(Node):
         with self._stop_worker.get_lock():
             self._stop_worker.value = True
         self._image_queue.close()
-        self._depth_queue_queue.close()
+        self._depth_queue.close()
         self._k_queue.close()
+        self._result_queue.close()
         self._happypose_worker.join()
         super().destroy_node()
 
     def _on_image_cb(self) -> None:
-        # Skipp if executor is not initialized
+        # Skipp if task was initialized and is still running
+        if self._await_results_task and not self._await_results_task.done():
+            return
+
+        # Skipp if worker is still processing the data
         with self._worker_free.get_lock():
             if not self._worker_free.value:
                 return
@@ -137,6 +145,14 @@ class HappyposeNode(Node):
         # Print this log message only once in the beginnging
         self.get_logger().info(
             "Happypose initialized. Starting to process incomming images.", once=True
+        )
+
+        self._trigger_pipeline()
+
+    def _trigger_pipeline(self):
+        self.get_logger().info(
+            "First inference might take longer, as the pipeline is still loading.",
+            once=True,
         )
 
         now = self.get_clock().now()
@@ -180,14 +196,38 @@ class HappyposeNode(Node):
             self._worker_free.value = False
         self._last_pipeline_trigger = now
 
+        # Skipp if task was initialized and it is still running
+        if self._await_results_task and not self._await_results_task.done():
+            raise RuntimeError(
+                "Pose estimate task hasn't finishet yet! Can't spawn new task!"
+            )
+
+        # Spawn task to await resulting data
+        self._await_results_task = self.executor.create_task(self._await_results)
+
+    def _await_results(self):
+        # Await any data on all the input queues
+        results = self._result_queue.get(block=True, timeout=None)
+        self.get_logger().warn(f"{results}")
+
 
 def main() -> None:
     rclpy.init()
     happypose_node = HappyposeNode()
-    rclpy.spin(happypose_node)
-    happypose_node.destroy_node()
+
+    executor = MultiThreadedExecutor()
+    executor.add_node(happypose_node)
+
+    try:
+        executor.spin()
+    finally:
+        executor.shutdown()
+        happypose_node.destroy_node()
     rclpy.shutdown()
 
 
 if __name__ == "__main__":
+    # mp.freeze_support()
+    torch.set_num_threads(1)
+    mp.set_start_method("spawn", force=True)
     main()

@@ -1,7 +1,5 @@
 from happypose.toolbox.inference.types import ObservationTensor
 
-from happypose_ros.happypose_ros_parameters import happypose_ros
-
 
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
     CosyPoseWrapper,
@@ -9,18 +7,18 @@ from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
 
 
 class HappyposePipeline:
-    def __init__(self, params: happypose_ros.Params) -> None:
+    def __init__(self, params: dict) -> None:
         super().__init__()
         self._params = params
-        self._device = self._params.device
+        self._device = self._params["device"]
 
         # Currently only cosypose is supported
         self._wrapper = CosyPoseWrapper(
-            dataset_name=self._params.cosypose.dataset_name,
-            **self._params.renderer.__dict__,
+            dataset_name=self._params["cosypose"]["dataset_name"],
+            **self._params["renderer"],
         )
 
-        self._inference_args = self._params.cosypose.inference.__dict__
+        self._inference_args = self._params["cosypose"]["inference"]
         self._inference_args["labels_to_keep"] = (
             self._inference_args["labels_to_keep"]
             if self._inference_args["labels_to_keep"]
@@ -35,4 +33,4 @@ class HappyposePipeline:
             data_TCO_init=None,
             **self._inference_args,
         )
-        return self._wrapper(final_preds)
+        return final_preds

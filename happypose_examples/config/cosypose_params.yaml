@@ -9,7 +9,7 @@
       gpu_renderer: False
 
     cosypose:
-      dataset_name: tless
+      dataset_name: ycbv
       inference:
         n_refiner_iterations: 1
         n_coarse_iterations: 1
