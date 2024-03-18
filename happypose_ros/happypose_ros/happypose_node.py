@@ -231,9 +231,10 @@ class HappyposeNode(Node):
                     orientation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
                 ),
             )
-            markers.append(pose2marker(pose, results.infos.loc[i, "label"]))
+            markers.append(
+                pose2marker(pose, results.infos.loc[i, "label"].lstrip("ycbv-"), i)
+            )
 
-        self.get_logger().warn(f"{markers}")
         self._marker_publisher.publish(MarkerArray(markers=markers))
 
 

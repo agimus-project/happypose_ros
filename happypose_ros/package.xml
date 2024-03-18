@@ -15,7 +15,7 @@
   <build_depend>generate_parameter_library</build_depend>
   <build_depend>generate_parameter_library_py</build_depend>
 
-  <depend>pinocchio</depend>
+  <!-- <depend>pinocchio</depend> -->
 
   <test_depend>ament_copyright</test_depend>
   <test_depend>ament_flake8</test_depend>
