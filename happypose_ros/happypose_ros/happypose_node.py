@@ -3,6 +3,8 @@ import numpy as np
 import torch
 import torch.multiprocessing as mp
 
+import pinocchio as pin
+
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
@@ -12,6 +14,11 @@ from happypose.toolbox.inference.types import ObservationTensor
 from happypose_ros.camera_wrapper import CameraWrapper
 from happypose_ros.inference_pipeline import HappyposePipeline
 from happypose_ros.happypose_ros_parameters import happypose_ros
+from happypose_ros.utils import pose2marker
+
+from std_msgs.msg import Header
+from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
+from visualization_msgs.msg import MarkerArray
 
 from happypose.toolbox.utils.logging import get_logger
 
@@ -46,39 +53,35 @@ class HappyposeWorker(mp.Process):
             self._worker_free.value = True
 
     def run(self) -> None:
-        # try:
-        while True:
-            torch.set_num_threads(1)
-            # Stop the process if paren is stopped
-            with self._stop_worker.get_lock():
-                if self._stop_worker.value:
-                    logger.error("Worker finishing job")
-                    break
+        try:
+            while True:
+                torch.set_num_threads(1)
+                # Stop the process if paren is stopped
+                with self._stop_worker.get_lock():
+                    if self._stop_worker.value:
+                        logger.debug("Worker finishing job")
+                        break
 
-            # Await any data on all the input queues
-            rgb_tensor = self._image_queue.get(block=True, timeout=None)
-            # TODO implement depth
-            # depth_tensor = self._depth_queue.get(block=True, timeout=None)
-            K_tensor = self._k_queue.get(block=True, timeout=None)
+                # Await any data on all the input queues
+                rgb_tensor = self._image_queue.get(block=True, timeout=None)
+                # TODO implement depth
+                # depth_tensor = self._depth_queue.get(block=True, timeout=None)
+                K_tensor = self._k_queue.get(block=True, timeout=None)
 
-            observation = ObservationTensor.from_torch_batched(
-                rgb=rgb_tensor, depth=None, K=K_tensor
-            )
+                observation = ObservationTensor.from_torch_batched(
+                    rgb=rgb_tensor, depth=None, K=K_tensor
+                )
 
-            logger.error("starting")
-            result = self._pipeline(observation)
-            logger.error(f"{result}")
+                result = self._pipeline(observation)
+                self._result_queue.put(result)
 
-            self._result_queue.put(result)
+                # Notify parent that processing finished
+                with self._worker_free.get_lock():
+                    self._worker_free.value = True
 
-            # Notify parent that processing finished
-            with self._worker_free.get_lock():
-                self._worker_free.value = True
-
-            logger.error("worker free")
-        # except Exception as e:
-        #     logger.error(f"Worker got exception: {str(e)}")
-        #     return
+        except Exception as e:
+            logger.error(f"Worker got exception: {str(e)}")
+            return
 
 
 class HappyposeNode(Node):
@@ -120,6 +123,11 @@ class HappyposeNode(Node):
 
         self.get_logger().info(
             "Node initialized. Waiting for Happypose to initialized...",
+        )
+
+        # Create debug publisher
+        self._marker_publisher = self.create_publisher(
+            MarkerArray, "happypose/markers", 10
         )
 
     def destroy_node(self) -> None:
@@ -207,8 +215,26 @@ class HappyposeNode(Node):
 
     def _await_results(self):
         # Await any data on all the input queues
-        results = self._result_queue.get(block=True, timeout=None)
-        self.get_logger().warn(f"{results}")
+        self.get_logger().info("Awaiting results...")
+        results = self._result_queue.get(block=True, timeout=None).cpu()
+        self.get_logger().info("New results recieved")
+        markers = []
+        now = self.get_clock().now()
+        header = Header(frame_id="world", stamp=now.to_msg())
+        for i in range(len(results.infos)):
+            # Convert SE3 tensor to [x, y, z, qx, qy, qz, qw] pose representations
+            pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results.poses[i].numpy()))
+            pose = PoseStamped(
+                header=header,
+                pose=Pose(
+                    position=Point(**dict(zip("xyz", pose_vec[:3]))),
+                    orientation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
+                ),
+            )
+            markers.append(pose2marker(pose, results.infos.loc[i, "label"]))
+
+        self.get_logger().warn(f"{markers}")
+        self._marker_publisher.publish(MarkerArray(markers=markers))
 
 
 def main() -> None:
