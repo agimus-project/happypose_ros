@@ -1,4 +1,5 @@
 from happypose.toolbox.inference.types import ObservationTensor
+from happypose.toolbox.utils.tensor_collection import TensorCollection
 
 
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
@@ -25,7 +26,7 @@ class HappyposePipeline:
             else None
         )
 
-    def __call__(self, observation: ObservationTensor) -> tuple:
+    def __call__(self, observation: ObservationTensor) -> TensorCollection:
         final_preds, _ = self._wrapper.pose_predictor.run_inference_pipeline(
             observation,
             detections=None,
