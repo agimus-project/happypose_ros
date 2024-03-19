@@ -1,3 +1,5 @@
+# flake8: noqa
+
 # auto-generated DO NOT EDIT
 
 from rcl_interfaces.msg import ParameterDescriptor
@@ -16,7 +18,7 @@ class happypose_ros:
         # for detecting if the parameter struct has been updated
         stamp_ = Time()
 
-        pose_estimator_type: str = "cosypose"
+        pose_estimator_type = "cosypose"
         device = "cpu"
 
         class __Renderer:
@@ -56,6 +58,7 @@ class happypose_ros:
             def add_entry(self, name):
                 if not hasattr(self, name):
                     setattr(self, name, self.__map_type())
+                return getattr(self, name)
 
             def get_entry(self, name):
                 return getattr(self, name)
@@ -90,10 +93,11 @@ class happypose_ros:
             # TODO remove any destroyed dynamic parameters
 
             # declare any new dynamic parameters
-            for value in updated_params.cameras.names:
-                updated_params.cameras.add_entry(value)
-                entry = updated_params.cameras.get_entry(value)
-                param_name = f"{self.prefix_}cameras.{value}.compressed"
+
+            for value_1 in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value_1)
+                entry = updated_params.cameras.get_entry(value_1)
+                param_name = f"{self.prefix_}cameras.{value_1}.compressed"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
                         description="Expect compressed messages from given camera.",
@@ -106,10 +110,11 @@ class happypose_ros:
                     param.name + ": " + param.type_.name + " = " + str(param.value)
                 )
                 entry.compressed = param.value
-            for value in updated_params.cameras.names:
-                updated_params.cameras.add_entry(value)
-                entry = updated_params.cameras.get_entry(value)
-                param_name = f"{self.prefix_}cameras.{value}.image_topic"
+
+            for value_1 in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value_1)
+                entry = updated_params.cameras.get_entry(value_1)
+                param_name = f"{self.prefix_}cameras.{value_1}.image_topic"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
                         description="Topic name to subscribe for images. If empty defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
@@ -122,10 +127,11 @@ class happypose_ros:
                     param.name + ": " + param.type_.name + " = " + str(param.value)
                 )
                 entry.image_topic = param.value
-            for value in updated_params.cameras.names:
-                updated_params.cameras.add_entry(value)
-                entry = updated_params.cameras.get_entry(value)
-                param_name = f"{self.prefix_}cameras.{value}.info_topic"
+
+            for value_1 in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value_1)
+                entry = updated_params.cameras.get_entry(value_1)
+                param_name = f"{self.prefix_}cameras.{value_1}.info_topic"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
                         description="Topic name to subscribe for camera info. If empty defaults to '<camera_name>/info'.",
@@ -138,10 +144,11 @@ class happypose_ros:
                     param.name + ": " + param.type_.name + " = " + str(param.value)
                 )
                 entry.info_topic = param.value
-            for value in updated_params.cameras.names:
-                updated_params.cameras.add_entry(value)
-                entry = updated_params.cameras.get_entry(value)
-                param_name = f"{self.prefix_}cameras.{value}.k_matrix"
+
+            for value_1 in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value_1)
+                entry = updated_params.cameras.get_entry(value_1)
+                param_name = f"{self.prefix_}cameras.{value_1}.k_matrix"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
                         description="Camera intrinsic matrix. If not equal to all values of 0.0, orverwrites values from info ROS topic.",
@@ -346,10 +353,12 @@ class happypose_ros:
 
             # update dynamic parameters
             for param in parameters:
-                for value in updated_params.cameras.names:
-                    param_name = f"{self.prefix_}cameras.{value}.compressed"
+                for value_1 in updated_params.cameras.names:
+                    param_name = f"{self.prefix_}cameras.{value_1}.compressed"
                     if param.name == param_name:
-                        updated_params.cameras.names_map[value].compressed = param.value
+                        updated_params.cameras.get_entry(
+                            value_1
+                        ).compressed = param.value
                         self.logger_.debug(
                             param.name
                             + ": "
@@ -358,12 +367,12 @@ class happypose_ros:
                             + str(param.value)
                         )
 
-                for value in updated_params.cameras.names:
-                    param_name = f"{self.prefix_}cameras.{value}.image_topic"
+                for value_1 in updated_params.cameras.names:
+                    param_name = f"{self.prefix_}cameras.{value_1}.image_topic"
                     if param.name == param_name:
-                        updated_params.cameras.names_map[
-                            value
-                        ].image_topic = param.value
+                        updated_params.cameras.get_entry(
+                            value_1
+                        ).image_topic = param.value
                         self.logger_.debug(
                             param.name
                             + ": "
@@ -372,10 +381,12 @@ class happypose_ros:
                             + str(param.value)
                         )
 
-                for value in updated_params.cameras.names:
-                    param_name = f"{self.prefix_}cameras.{value}.info_topic"
+                for value_1 in updated_params.cameras.names:
+                    param_name = f"{self.prefix_}cameras.{value_1}.info_topic"
                     if param.name == param_name:
-                        updated_params.cameras.names_map[value].info_topic = param.value
+                        updated_params.cameras.get_entry(
+                            value_1
+                        ).info_topic = param.value
                         self.logger_.debug(
                             param.name
                             + ": "
@@ -384,8 +395,8 @@ class happypose_ros:
                             + str(param.value)
                         )
 
-                for value in updated_params.cameras.names:
-                    param_name = f"{self.prefix_}cameras.{value}.k_matrix"
+                for value_1 in updated_params.cameras.names:
+                    param_name = f"{self.prefix_}cameras.{value_1}.k_matrix"
                     if param.name == param_name:
                         validation_result = ParameterValidators.fixed_size(param, 9)
                         if validation_result:
@@ -399,7 +410,7 @@ class happypose_ros:
                             return SetParametersResult(
                                 successful=False, reason=validation_result
                             )
-                        updated_params.cameras.names_map[value].k_matrix = param.value
+                        updated_params.cameras.get_entry(value_1).k_matrix = param.value
                         self.logger_.debug(
                             param.name
                             + ": "
@@ -788,10 +799,11 @@ class happypose_ros:
             updated_params.cameras.names = param.value
 
             # declare and set all dynamic parameters
-            for value in updated_params.cameras.names:
-                updated_params.cameras.add_entry(value)
-                entry = updated_params.cameras.get_entry(value)
-                param_name = f"{self.prefix_}cameras.{value}.compressed"
+
+            for value_1 in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value_1)
+                entry = updated_params.cameras.get_entry(value_1)
+                param_name = f"{self.prefix_}cameras.{value_1}.compressed"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
                         description="Expect compressed messages from given camera.",
@@ -804,10 +816,11 @@ class happypose_ros:
                     param.name + ": " + param.type_.name + " = " + str(param.value)
                 )
                 entry.compressed = param.value
-            for value in updated_params.cameras.names:
-                updated_params.cameras.add_entry(value)
-                entry = updated_params.cameras.get_entry(value)
-                param_name = f"{self.prefix_}cameras.{value}.image_topic"
+
+            for value_1 in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value_1)
+                entry = updated_params.cameras.get_entry(value_1)
+                param_name = f"{self.prefix_}cameras.{value_1}.image_topic"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
                         description="Topic name to subscribe for images. If empty defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
@@ -820,10 +833,11 @@ class happypose_ros:
                     param.name + ": " + param.type_.name + " = " + str(param.value)
                 )
                 entry.image_topic = param.value
-            for value in updated_params.cameras.names:
-                updated_params.cameras.add_entry(value)
-                entry = updated_params.cameras.get_entry(value)
-                param_name = f"{self.prefix_}cameras.{value}.info_topic"
+
+            for value_1 in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value_1)
+                entry = updated_params.cameras.get_entry(value_1)
+                param_name = f"{self.prefix_}cameras.{value_1}.info_topic"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
                         description="Topic name to subscribe for camera info. If empty defaults to '<camera_name>/info'.",
@@ -836,10 +850,11 @@ class happypose_ros:
                     param.name + ": " + param.type_.name + " = " + str(param.value)
                 )
                 entry.info_topic = param.value
-            for value in updated_params.cameras.names:
-                updated_params.cameras.add_entry(value)
-                entry = updated_params.cameras.get_entry(value)
-                param_name = f"{self.prefix_}cameras.{value}.k_matrix"
+
+            for value_1 in updated_params.cameras.names:
+                updated_params.cameras.add_entry(value_1)
+                entry = updated_params.cameras.get_entry(value_1)
+                param_name = f"{self.prefix_}cameras.{value_1}.k_matrix"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
                         description="Camera intrinsic matrix. If not equal to all values of 0.0, orverwrites values from info ROS topic.",

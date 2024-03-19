@@ -5,23 +5,24 @@ import torch
 import torch.multiprocessing as mp
 
 import rclpy
-from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
+from rclpy.node import Node
 
-from happypose.toolbox.inference.types import ObservationTensor
-
-from happypose_ros.camera_wrapper import CameraWrapper
-from happypose_ros.inference_pipeline import HappyposePipeline
-from happypose_ros.happypose_ros_parameters import happypose_ros
-from happypose_ros.utils import params2dict, pose2marker
-
-from std_msgs.msg import Header
 from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
+from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray
 
+from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
+from happypose_ros.camera_wrapper import CameraWrapper  # noqa: E402
+from happypose_ros.inference_pipeline import HappyposePipeline  # noqa: E402
+from happypose_ros.utils import params2dict, pose2marker  # noqa: E402
+
+# Automatically generated file
+from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
 
 class HappyposeWorker(mp.Process):
@@ -36,7 +37,6 @@ class HappyposeWorker(mp.Process):
         result_queue: mp.Queue,
     ) -> None:
         super().__init__()
-        # self._device = params.device
         self._worker_free = worker_flag
         self._stop_worker = stop_worker
         self._image_queue = image_queue
@@ -55,7 +55,7 @@ class HappyposeWorker(mp.Process):
         try:
             while True:
                 torch.set_num_threads(1)
-                # Stop the process if paren is stopped
+                # Stop the process if parent is stopped
                 with self._stop_worker.get_lock():
                     if self._stop_worker.value:
                         logger.debug("Worker finishing job")
@@ -99,6 +99,7 @@ class HappyposeNode(Node):
         self._k_queue = mp.Queue(1)
         self._result_queue = mp.Queue(1)
 
+        # TODO check efficiency of a single queue of ObservationTensors
         self._happypose_worker = HappyposeWorker(
             params2dict(self._params),
             self._worker_free,
@@ -112,7 +113,7 @@ class HappyposeNode(Node):
 
         self._await_results_task = None
 
-        # Each camera registers it's topics and fires synchronisation callback on new image
+        # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
             name: CameraWrapper(self, self._params.cameras, name, self._on_image_cb)
             for name in self._params.cameras.names
@@ -149,9 +150,9 @@ class HappyposeNode(Node):
             if not self._worker_free.value:
                 return
 
-        # Print this log message only once in the beginnging
+        # Print this log message only once in the beginning
         self.get_logger().info(
-            "Happypose initialized. Starting to process incomming images.", once=True
+            "Happypose initialized. Starting to process incoming images.", once=True
         )
 
         self._trigger_pipeline()
@@ -176,14 +177,14 @@ class HappyposeNode(Node):
             if self._last_pipeline_trigger and (now - self._last_pipeline_trigger) > (
                 5 * self._params.cameras.timeout
             ):
-                # TODO Consider more meaningfull message
+                # TODO Consider more meaningful message
                 self.get_logger().warn(
                     "Unable to start pipeline! Not enough camera views before timeout reached!",
                     throttle_duration_sec=5.0,
                 )
             return
 
-        # TODO propperly implement multiview
+        # TODO properly implement multiview
         # TODO implement depth info
         K, rgb = self._cameras[processed_cameras[0]].get_camera_data()
 
@@ -203,10 +204,10 @@ class HappyposeNode(Node):
             self._worker_free.value = False
         self._last_pipeline_trigger = now
 
-        # Skipp if task was initialized and it is still running
+        # Skip if task was initialized and it is still running
         if self._await_results_task and not self._await_results_task.done():
             raise RuntimeError(
-                "Pose estimate task hasn't finishet yet! Can't spawn new task!"
+                "Pose estimate task hasn't finished yet! Can't spawn new task!"
             )
 
         # Spawn task to await resulting data
@@ -216,7 +217,7 @@ class HappyposeNode(Node):
         # Await any data on all the input queues
         self.get_logger().info("Awaiting results...")
         results = self._result_queue.get(block=True, timeout=None).cpu()
-        self.get_logger().info("New results recieved")
+        self.get_logger().info("New results received")
         markers = []
         now = self.get_clock().now()
         header = Header(frame_id="world", stamp=now.to_msg())

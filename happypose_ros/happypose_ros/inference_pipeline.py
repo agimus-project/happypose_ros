@@ -1,7 +1,6 @@
 from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.utils.tensor_collection import TensorCollection
 
-
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
     CosyPoseWrapper,
 )

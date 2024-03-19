@@ -1,0 +1,7 @@
+repositories:
+  # Awaits merge of https://github.com/PickNikRobotics/generate_parameter_library/pull/183
+  # And later release of the binaries
+  generate_parameter_library:
+    type: git
+    url: https://github.com/Kotochleb/generate_parameter_library
+    version: bugfix/parameter-maps-python

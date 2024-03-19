@@ -1,31 +1,32 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution
+from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 
 
-def generate_launch_description():
-    # happypose_params_path = PathJoinSubstitution(
-    #     [
-    #         FindPackageShare("happypose_examples"),
-    #         "config",
-    #         "cosypose_params.yaml",
-    #     ]
-    # )
-    # happypose_node = Node(
-    #     package="happypose_ros",
-    #     executable="happypose_node",
-    #     name="happypose_node",
-    #     parameters=[happypose_params_path],
-    # )
+def launch_setup(context, *args, **kwargs):
+    # Obtain argument value for image path
+    image_file_path = LaunchConfiguration("image_file_path")
 
-    image_file_path = PathJoinSubstitution(
+    # Evaluate path of the cosypose parameters
+    happypose_params_path = PathJoinSubstitution(
         [
             FindPackageShare("happypose_examples"),
-            "resource",
-            "000071.png",
+            "config",
+            "cosypose_params.yaml",
         ]
     )
+
+    # Start ROS node of happypose
+    happypose_node = Node(
+        package="happypose_ros",
+        executable="happypose_node",
+        name="happypose_node",
+        parameters=[happypose_params_path],
+    )
+
+    # Start ROS node for image publishing
     image_publisher_node = Node(
         package="image_publisher",
         executable="image_publisher_node",
@@ -40,4 +41,14 @@ def generate_launch_description():
         ],
     )
 
-    return LaunchDescription([image_publisher_node])
+    return [happypose_node, image_publisher_node]
+
+
+def generate_launch_description():
+    declared_arguments = [
+        DeclareLaunchArgument("image_file_path", default_value=""),
+    ]
+
+    return LaunchDescription(
+        declared_arguments + [OpaqueFunction(function=launch_setup)]
+    )

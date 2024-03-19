@@ -2,7 +2,7 @@ happypose_ros:
   pose_estimator_type: {
     type: string,
     default_value: "cosypose",
-    description: "Specyfies which pose estimator to use in the pipeline.",
+    description: "Specifies which pose estimator to use in the pipeline.",
     validation: {
       one_of<>: [[ "cosypose" ]],
     }
@@ -19,7 +19,7 @@ happypose_ros:
     renderer_type: {
       type: string,
       default_value: "panda3d",
-      description: "Specyfies which renderer to use in the pipeline.",
+      description: "Specifies which renderer to use in the pipeline.",
       validation: {
         one_of<>: [[ "panda3d", "bullet" ]],
       }
@@ -84,7 +84,7 @@ happypose_ros:
       labels_to_keep: {
         type: string_array,
         default_value: [],
-        description: "Lables of detected objects to keep.",
+        description: "Labels of detected objects to keep.",
         validation: {
           unique<>: null,
         }
@@ -93,7 +93,7 @@ happypose_ros:
     timeout: {
       type: double,
       default_value: 0.0,
-      description: "Timeout after which frame from a camera is considered too old. Value '0.0' disables timeout.",
+      description: "Timeout, after which frame from a camera is considered too old. Value '0.0' disables timeout.",
       validation: {
         gt_eq<>: [0.0],
       }
@@ -124,7 +124,7 @@ happypose_ros:
       image_topic: {
         type: string,
         default_value: "",
-        description: "Topic name to subscribe for images. If empty defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
+        description: "Topic name to subscribe for images. If empty, defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
       }
       info_topic: {
         type: string,
@@ -134,7 +134,7 @@ happypose_ros:
       k_matrix: {
         type: double_array,
         default_value: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        description: "Camera intrinsic matrix. If not equal to all values of 0.0, orverwrites values from info ROS topic.",
+        description: "Camera intrinsic matrix. If not equal to all values of 0.0, overwrites values from info ROS topic.",
         validation: {
           fixed_size<>: [9],
           lower_element_bounds<>: [0.0]

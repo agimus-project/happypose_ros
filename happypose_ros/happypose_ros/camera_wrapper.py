@@ -40,7 +40,7 @@ class CameraWrapper:
             self._info_topic = f"{self._camera_name}/info"
 
         self._camera_k = None
-        # If param with K matrix is correct assume it is fixed
+        # If param with K matrix is correct, assume it is fixed
         param_k_matrix = np.array(params.get_entry(self._camera_name).k_matrix)
         self._fixed_k = self._validate_k_matrix(param_k_matrix)
         if self._fixed_k:
@@ -63,7 +63,7 @@ class CameraWrapper:
             )
 
     def _validate_k_matrix(self, k_arr: npt.NDArray[np.float64]) -> bool:
-        # Check if paramters expected to be non zero are in fact non zero or constant
+        # Check if parameters expected to be non-zero are in fact non-zero or constant
         keep_vals = [True, False, True, False, True, True, False, False, True]
         return np.all(k_arr[keep_vals] > 0.0) and math.isclose(k_arr[-1], 1.0)
 
