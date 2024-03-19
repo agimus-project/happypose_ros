@@ -7,9 +7,9 @@ from std_msgs.msg import ColorRGBA
 from visualization_msgs.msg import Marker
 from geometry_msgs.msg import PoseStamped
 
-
 from happypose.pose_estimators.cosypose.cosypose.config import LOCAL_DATA_DIR
 
+# Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros
 
 
