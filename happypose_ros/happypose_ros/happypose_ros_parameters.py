@@ -117,7 +117,7 @@ class happypose_ros:
                 param_name = f"{self.prefix_}cameras.{value_1}.image_topic"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
-                        description="Topic name to subscribe for images. If empty defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
+                        description="Topic name to subscribe for images. If empty, defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
                         read_only=False,
                     )
                     parameter = entry.image_topic
@@ -151,7 +151,7 @@ class happypose_ros:
                 param_name = f"{self.prefix_}cameras.{value_1}.k_matrix"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
-                        description="Camera intrinsic matrix. If not equal to all values of 0.0, orverwrites values from info ROS topic.",
+                        description="Camera intrinsic matrix. If not equal to all values of 0.0, overwrites values from info ROS topic.",
                         read_only=False,
                     )
                     descriptor.floating_point_range.append(FloatingPointRange())
@@ -431,7 +431,7 @@ class happypose_ros:
             # declare all parameters and give default values to non-required ones
             if not self.node_.has_parameter(self.prefix_ + "pose_estimator_type"):
                 descriptor = ParameterDescriptor(
-                    description="Specyfies which pose estimator to use in the pipeline.",
+                    description="Specifies which pose estimator to use in the pipeline.",
                     read_only=False,
                 )
                 parameter = updated_params.pose_estimator_type
@@ -451,7 +451,7 @@ class happypose_ros:
 
             if not self.node_.has_parameter(self.prefix_ + "renderer.renderer_type"):
                 descriptor = ParameterDescriptor(
-                    description="Specyfies which renderer to use in the pipeline.",
+                    description="Specifies which renderer to use in the pipeline.",
                     read_only=False,
                 )
                 parameter = updated_params.renderer.renderer_type
@@ -557,7 +557,7 @@ class happypose_ros:
                 self.prefix_ + "cosypose.inference.labels_to_keep"
             ):
                 descriptor = ParameterDescriptor(
-                    description="Lables of detected objects to keep.", read_only=False
+                    description="Labels of detected objects to keep.", read_only=False
                 )
                 parameter = updated_params.cosypose.inference.labels_to_keep
                 self.node_.declare_parameter(
@@ -568,7 +568,7 @@ class happypose_ros:
 
             if not self.node_.has_parameter(self.prefix_ + "cameras.timeout"):
                 descriptor = ParameterDescriptor(
-                    description="Timeout after which frame from a camera is considered too old. Value '0.0' disables timeout.",
+                    description="Timeout, after which frame from a camera is considered too old. Value '0.0' disables timeout.",
                     read_only=False,
                 )
                 descriptor.floating_point_range.append(FloatingPointRange())
@@ -823,7 +823,7 @@ class happypose_ros:
                 param_name = f"{self.prefix_}cameras.{value_1}.image_topic"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
-                        description="Topic name to subscribe for images. If empty defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
+                        description="Topic name to subscribe for images. If empty, defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
                         read_only=False,
                     )
                     parameter = entry.image_topic
@@ -857,7 +857,7 @@ class happypose_ros:
                 param_name = f"{self.prefix_}cameras.{value_1}.k_matrix"
                 if not self.node_.has_parameter(self.prefix_ + param_name):
                     descriptor = ParameterDescriptor(
-                        description="Camera intrinsic matrix. If not equal to all values of 0.0, orverwrites values from info ROS topic.",
+                        description="Camera intrinsic matrix. If not equal to all values of 0.0, overwrites values from info ROS topic.",
                         read_only=False,
                     )
                     descriptor.floating_point_range.append(FloatingPointRange())

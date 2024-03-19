@@ -1,6 +1,5 @@
 from ctypes import c_bool
 import numpy as np
-import pinocchio as pin
 import torch
 import torch.multiprocessing as mp
 
@@ -8,8 +7,6 @@ import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
-from geometry_msgs.msg import Point, Pose, PoseStamped, Quaternion
-from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray
 
 from happypose.toolbox.inference.types import ObservationTensor
@@ -19,7 +16,7 @@ logger = get_logger(__name__)
 
 from happypose_ros.camera_wrapper import CameraWrapper  # noqa: E402
 from happypose_ros.inference_pipeline import HappyposePipeline  # noqa: E402
-from happypose_ros.utils import params2dict, pose2marker  # noqa: E402
+from happypose_ros.utils import params2dict  # noqa: E402
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
@@ -218,24 +215,25 @@ class HappyposeNode(Node):
         self.get_logger().info("Awaiting results...")
         results = self._result_queue.get(block=True, timeout=None).cpu()
         self.get_logger().info("New results received")
-        markers = []
-        now = self.get_clock().now()
-        header = Header(frame_id="world", stamp=now.to_msg())
-        for i in range(len(results.infos)):
-            # Convert SE3 tensor to [x, y, z, qx, qy, qz, qw] pose representations
-            pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results.poses[i].numpy()))
-            pose = PoseStamped(
-                header=header,
-                pose=Pose(
-                    position=Point(**dict(zip("xyz", pose_vec[:3]))),
-                    orientation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
-                ),
-            )
-            markers.append(
-                pose2marker(pose, results.infos.loc[i, "label"].lstrip("ycbv-"), i)
-            )
+        self.get_logger().error(f"{results}")
+        # markers = []
+        # now = self.get_clock().now()
+        # header = Header(frame_id="world", stamp=now.to_msg())
+        # for i in range(len(results.infos)):
+        #     # Convert SE3 tensor to [x, y, z, qx, qy, qz, qw] pose representations
+        #     pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results.poses[i].numpy()))
+        #     pose = PoseStamped(
+        #         header=header,
+        #         pose=Pose(
+        #             position=Point(**dict(zip("xyz", pose_vec[:3]))),
+        #             orientation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
+        #         ),
+        #     )
+        #     markers.append(
+        #         pose2marker(pose, results.infos.loc[i, "label"].lstrip("ycbv-"), i)
+        #     )
 
-        self._marker_publisher.publish(MarkerArray(markers=markers))
+        # self._marker_publisher.publish(MarkerArray(markers=markers))
 
 
 def main() -> None:
