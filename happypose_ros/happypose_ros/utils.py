@@ -1,4 +1,5 @@
 import numbers
+from typing import Any
 
 from rclpy.duration import Duration
 
@@ -16,7 +17,7 @@ from happypose_ros.happypose_ros_parameters import happypose_ros
 def params2dict(params: happypose_ros.Params) -> dict:
     out = {}
 
-    def to_dict_internal(instance, name, base_dict):
+    def to_dict_internal(instance: Any, name: str, base_dict: dict) -> None:
         if isinstance(instance, (str, numbers.Number, list)):
             base_dict.update({name: instance})
         else:
