@@ -1,11 +1,15 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.launch_context import LaunchContext
+from launch.launch_description_entity import LaunchDescriptionEntity
+from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 
 
-def launch_setup(context, *args, **kwargs):
+def launch_setup(
+    context: LaunchContext, *args, **kwargs
+) -> list[LaunchDescriptionEntity]:
     # Obtain argument value for image path
     image_file_path = LaunchConfiguration("image_file_path")
 
@@ -46,7 +50,10 @@ def launch_setup(context, *args, **kwargs):
 
 def generate_launch_description():
     declared_arguments = [
-        DeclareLaunchArgument("image_file_path", default_value=""),
+        DeclareLaunchArgument(
+            "image_file_path",
+            description="Path to image to be published as an input for happypose_ros node.",
+        ),
     ]
 
     return LaunchDescription(
