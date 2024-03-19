@@ -20,7 +20,7 @@ catkin build --symlink-install
 
 ## Launch
 
-:information: Intrinsic parameters of the camera are approximate in the demos and may cause inaccurate results! You can change them by modifying [camera_info.yaml](./happypose_examples/config/camera_info.yaml) file.
+:warning: Intrinsic parameters of the camera are approximate in the demos and may cause inaccurate results! You can change them by modifying [camera_info.yaml](./happypose_examples/config/camera_info.yaml) file.
 
 To launch with webcam preview run:
 ```bash
