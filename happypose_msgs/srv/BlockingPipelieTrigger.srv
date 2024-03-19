@@ -1,0 +1,9 @@
+# Number of views to use when processing the pipeline
+uint16 num_views
+---
+# Wether both request and operation suceeded
+bool success
+# Message informing about final state
+string message
+# List of detections
+vision_msgs/Detection2DArray detections
