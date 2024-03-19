@@ -1,11 +1,15 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.launch_context import LaunchContext
+from launch.launch_description_entity import LaunchDescriptionEntity
+from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 
 
-def launch_setup(context, *args, **kwargs):
+def launch_setup(
+    context: LaunchContext, *args, **kwargs
+) -> list[LaunchDescriptionEntity]:
     # Obtain agument value for video device
     video_device = LaunchConfiguration("video_device")
 
@@ -51,7 +55,12 @@ def launch_setup(context, *args, **kwargs):
 
 def generate_launch_description():
     declared_arguments = [
-        DeclareLaunchArgument("video_device", default_value="/dev/video0"),
+        DeclareLaunchArgument(
+            "video_device",
+            default_value="/dev/video0",
+            description="Device name of a video device to publish "
+            + "as a camera feed for happypose_ros node",
+        ),
     ]
 
     return LaunchDescription(
