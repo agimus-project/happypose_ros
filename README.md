@@ -11,7 +11,7 @@ ROS 2 wrapper for a 6D pose estimation library, [Happypose](https://github.com/a
 Currently, there is no automated build for happypose library itself built into the ROS node. Please follow the installation guide found in the [happypose README.md](https://github.com/agimus-project/happypose?tab=readme-ov-file#example-with-venv).
 
 ```bash
-vcs import --recursive < src/happypose_ros/happypose_ros.repos
+vcs import --recursive < src/happypose_ros/happypose_ros.repos src
 rosdep update --rosdistro $ROS_DISTRO
 rosdep install -y -i --from-paths src --rosdistro $ROS_DISTRO
 # paramter --symlink-install is optional
