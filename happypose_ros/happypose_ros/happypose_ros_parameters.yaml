@@ -15,28 +15,19 @@ happypose_ros:
       one_of<>: [[ "cpu", "cuda:0" ]],
     }
   }
-  renderer:
-    renderer_type: {
-      type: string,
-      default_value: "panda3d",
-      description: "Specifies which renderer to use in the pipeline.",
-      validation: {
-        one_of<>: [[ "panda3d", "bullet" ]],
-      }
+  frame_id: {
+    type: string,
+    default_value: "world",
+    description: "Frame ID to which final detections should be converted.",
+    validation: {
+      not_empty<>: [ ],
     }
-    n_workers: {
-      type: int,
-      default_value: 8,
-      description: "Number of CPU cores to use during rendering.",
-      validation: {
-        gt_eq<>: 1,
-      }
-    }
-    gpu_renderer: {
-      type: bool,
-      default_value: true,
-      description: "Render objects with a GPU",
-    }
+  }
+  publish_markers: {
+    type: bool,
+    default_value: false,
+    description: "Publish detected objects as markers to visualize detections in RViz.",
+  }
 
   cosypose:
     dataset_name: {
@@ -47,6 +38,28 @@ happypose_ros:
         one_of<>: [[ "hope", "tless", "ycbv" ]],
       }
     }
+    renderer:
+      renderer_type: {
+        type: string,
+        default_value: "panda3d",
+        description: "Specifies which renderer to use in the pipeline.",
+        validation: {
+          one_of<>: [[ "panda3d", "bullet" ]],
+        }
+      }
+      n_workers: {
+        type: int,
+        default_value: 8,
+        description: "Number of CPU cores to use during rendering.",
+        validation: {
+          gt_eq<>: 1,
+        }
+      }
+      gpu_renderer: {
+        type: bool,
+        default_value: true,
+        description: "Render objects with a GPU",
+      }
     inference:
       n_refiner_iterations: {
         type: int,

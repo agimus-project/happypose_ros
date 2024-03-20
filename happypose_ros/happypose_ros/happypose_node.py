@@ -7,8 +7,11 @@ import rclpy
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
+from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray
+from vision_msgs.msg import Detection2DArray, VisionInfo
 
+from happypose.pose_estimators.cosypose.cosypose.config import LOCAL_DATA_DIR
 from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.utils.logging import get_logger
 
@@ -16,7 +19,11 @@ logger = get_logger(__name__)
 
 from happypose_ros.camera_wrapper import CameraWrapper  # noqa: E402
 from happypose_ros.inference_pipeline import HappyposePipeline  # noqa: E402
-from happypose_ros.utils import params2dict  # noqa: E402
+from happypose_ros.utils import (  # noqa: E402
+    params_to_dict,
+    tensor_collection_to_detection2darray_msg,
+    detection2darray_msg_to_marker_array_msg,
+)
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
@@ -99,7 +106,7 @@ class HappyposeNode(Node):
 
         # TODO check efficiency of a single queue of ObservationTensors
         self._happypose_worker = HappyposeWorker(
-            params2dict(self._params),
+            params_to_dict(self._params),
             self._worker_free,
             self._stop_worker,
             self._image_queue,
@@ -110,6 +117,14 @@ class HappyposeNode(Node):
         self._happypose_worker.start()
 
         self._await_results_task = None
+        # TODO once Megapose is available initialization
+        # should be handled better
+        self._vision_info_msg = VisionInfo(
+            method=self._params.pose_estimator_type,
+            # TODO set this paramter to something more meaningful
+            database_location=self._params.cosypose.dataset_name,
+            database_version=0,
+        )
 
         # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
@@ -117,16 +132,25 @@ class HappyposeNode(Node):
             for name in self._params.cameras.names
         }
         self._processed_cameras = []
+        self._camera_inference_data = {}
         self._last_pipeline_trigger = None
 
         self.get_logger().info(
             "Node initialized. Waiting for Happypose to initialized...",
         )
 
-        # Create debug publisher
-        self._marker_publisher = self.create_publisher(
-            MarkerArray, "happypose/markers", 10
+        self._detections_publisher = self.create_publisher(
+            Detection2DArray, "happypose/detections", 10
         )
+        self._vision_info_publisher = self.create_publisher(
+            VisionInfo, "happypose/vision_info", 10
+        )
+
+        # Create debug publisher
+        if self._params.publish_markers:
+            self._marker_publisher = self.create_publisher(
+                MarkerArray, "happypose/markers", 10
+            )
 
     def destroy_node(self) -> None:
         with self._stop_worker.get_lock():
@@ -177,10 +201,21 @@ class HappyposeNode(Node):
             ):
                 # TODO Consider more meaningful message
                 self.get_logger().warn(
-                    "Unable to start pipeline! Not enough camera views before timeout reached!",
+                    "Unable to start pipeline! Not enough camera "
+                    + "views before timeout reached!",
                     throttle_duration_sec=5.0,
                 )
             return
+
+        # As of python 3.7 dict is insertion ordered
+        # so this can be used to unwrap tensors later
+        self._camera_inference_data = {
+            cam: {
+                "frame_id": self._cameras[cam].get_last_iamge_frame_id(),
+                "stamp": self._cameras[cam].get_last_image_stamp(),
+            }
+            for cam in processed_cameras
+        }
 
         # TODO properly implement multiview
         # TODO implement depth info
@@ -215,26 +250,42 @@ class HappyposeNode(Node):
         # Await any data on all the input queues
         self.get_logger().info("Awaiting results...")
         results = self._result_queue.get(block=True, timeout=None).cpu()
-        self.get_logger().info("New results received")
-        self.get_logger().error(f"{results}")
-        # markers = []
-        # now = self.get_clock().now()
-        # header = Header(frame_id="world", stamp=now.to_msg())
-        # for i in range(len(results.infos)):
-        #     # Convert SE3 tensor to [x, y, z, qx, qy, qz, qw] pose representations
-        #     pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results.poses[i].numpy()))
-        #     pose = PoseStamped(
-        #         header=header,
-        #         pose=Pose(
-        #             position=Point(**dict(zip("xyz", pose_vec[:3]))),
-        #             orientation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
-        #         ),
-        #     )
-        #     markers.append(
-        #         pose2marker(pose, results.infos.loc[i, "label"].lstrip("ycbv-"), i)
-        #     )
 
-        # self._marker_publisher.publish(MarkerArray(markers=markers))
+        if not len(results):
+            self.get_logger().info("No objects detected.")
+            return
+
+        self.get_logger().info(f"Detected {len(results)} objects.")
+
+        cam_data = self._camera_inference_data
+        header = Header(
+            # Use camera frame_id if single view
+            frame_id=(
+                list(cam_data.values())[0]["frame_id"]
+                if len(cam_data) == 1
+                else self._params.frame_id
+            ),
+            # Use oldest camera image time stamp
+            stamp=min(cam_data.values(), key=lambda x: x["stamp"])["stamp"].to_msg(),
+        )
+
+        detections = tensor_collection_to_detection2darray_msg(results, header)
+        self._detections_publisher.publish(detections)
+
+        self._vision_info_msg.header = header
+        self._vision_info_publisher.publish(self._vision_info_msg)
+
+        if self._params.publish_markers:
+            # TODO better path handling
+            markers = detection2darray_msg_to_marker_array_msg(
+                detections,
+                f"file://{LOCAL_DATA_DIR.as_posix()}"
+                + "/bop_datasets/"
+                + f"{self._vision_info_msg.database_location}/models",
+                label_to_strip=self._vision_info_msg.database_location + "-",
+                dynamic_opacity=True,
+            )
+            self._marker_publisher.publish(markers)
 
 
 def main() -> None:

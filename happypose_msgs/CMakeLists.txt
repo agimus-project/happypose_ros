@@ -16,7 +16,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   DEPENDENCIES vision_msgs
 )
 
-ament_python_install_package(utils)
 ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()

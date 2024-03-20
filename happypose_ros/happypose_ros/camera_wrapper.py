@@ -83,11 +83,17 @@ class CameraWrapper:
                 throttle_duration_sec=5.0,
             )
 
+    def get_last_iamge_frame_id(self) -> str:
+        if not self._image:
+            msg = f"No images received yet by camera: '{self._camera_name}'!"
+            raise ValueError(msg)
+        return self._image.header.frame_id
+
     def get_last_image_stamp(self) -> Time:
         if not self._image:
             msg = f"No images received yet by camera: '{self._camera_name}'!"
             raise ValueError(msg)
-        return self._image.header.stamp
+        return Time.from_msg(self._image.header.stamp)
 
     def get_camera_data(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.uint8]]:
         if not self._image:

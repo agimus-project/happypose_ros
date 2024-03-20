@@ -1,5 +1,5 @@
 from happypose.toolbox.inference.types import ObservationTensor
-from happypose.toolbox.utils.tensor_collection import TensorCollection
+from happypose.toolbox.utils.tensor_collection import PandasTensorCollection
 
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
     CosyPoseWrapper,
@@ -15,7 +15,7 @@ class HappyposePipeline:
         # Currently only cosypose is supported
         self._wrapper = CosyPoseWrapper(
             dataset_name=self._params["cosypose"]["dataset_name"],
-            **self._params["renderer"],
+            **self._params["cosypose"]["renderer"],
         )
 
         self._inference_args = self._params["cosypose"]["inference"]
@@ -25,7 +25,7 @@ class HappyposePipeline:
             else None
         )
 
-    def __call__(self, observation: ObservationTensor) -> TensorCollection:
+    def __call__(self, observation: ObservationTensor) -> PandasTensorCollection:
         final_preds, _ = self._wrapper.pose_predictor.run_inference_pipeline(
             observation,
             detections=None,
