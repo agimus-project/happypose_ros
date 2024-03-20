@@ -44,6 +44,8 @@ class HappyposeWorker(mp.Process):
         self._k_queue = k_queue
         self._result_queue = result_queue
 
+        torch.set_num_threads(1)
+
         # Initialize the pipeline
         self._pipeline = HappyposePipeline(params)
 
@@ -54,7 +56,6 @@ class HappyposeWorker(mp.Process):
     def run(self) -> None:
         try:
             while True:
-                torch.set_num_threads(1)
                 # Stop the process if parent is stopped
                 with self._stop_worker.get_lock():
                     if self._stop_worker.value:
@@ -254,7 +255,6 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    # mp.freeze_support()
     torch.set_num_threads(1)
     mp.set_start_method("spawn", force=True)
     main()
