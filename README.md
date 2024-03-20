@@ -31,5 +31,5 @@ This will subscribe to `/dev/video0` input and feed this image to the **happypos
 
 Another option it to stream static image from a file:
 ```bash
-ros2 launch happypose_examples file_image.launch.launch.py image_file_path:=<path to the image>
+ros2 launch happypose_examples file_image.launch.py image_file_path:=<path to the image>
 ```
