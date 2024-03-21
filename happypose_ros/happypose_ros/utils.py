@@ -80,9 +80,9 @@ def get_detection_array_msg(results: dict, header: Header) -> Detection2DArray:
             # Happypose supports only one result per detection, so the array
             # contains only single object
             results=[ObjectHypothesisWithPose()],
-            # ID used for consistency across multiple detection messages.
+            # ID is used for consistency across multiple detection messages.
             # Happypose does not differenciate between detected objects,
-            # Hence emty string is used
+            # Hence empty string is used.
             id="",
         )
         detection.results[0].hypothesis = ObjectHypothesis(
