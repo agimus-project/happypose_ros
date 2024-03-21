@@ -90,23 +90,27 @@ class CameraWrapper:
 
     def get_last_iamge_frame_id(self) -> str:
         if not self._image:
-            msg = f"No images received yet by camera: '{self._camera_name}'!"
-            raise ValueError(msg)
+            raise ValueError(
+                f"No images received yet by camera: '{self._camera_name}'!"
+            )
         return self._image.header.frame_id
 
     def get_last_image_stamp(self) -> Time:
         if not self._image:
-            msg = f"No images received yet by camera: '{self._camera_name}'!"
-            raise ValueError(msg)
+            raise ValueError(
+                f"No images received yet by camera: '{self._camera_name}'!"
+            )
         return Time.from_msg(self._image.header.stamp)
 
     def get_camera_data(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.uint8]]:
         if not self._image:
-            msg = f"No images received yet by camera: '{self._camera_name}'!"
-            raise ValueError(msg)
+            raise ValueError(
+                f"No images received yet by camera: '{self._camera_name}'!"
+            )
         if self._camera_k is None:
-            msg = f"Camera info was not received yet for camera: '{self._camera_name}'!"
-            raise ValueError(msg)
+            raise ValueError(
+                f"Camera info was not received yet for camera: '{self._camera_name}'!"
+            )
 
         encoder = (
             self._cvb.imgmsg_to_cv2
