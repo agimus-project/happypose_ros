@@ -1,10 +1,8 @@
 from ctypes import c_bool
-import numpy as np
-import torch
+from threading import Thread
 import torch.multiprocessing as mp
 
 import rclpy
-from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 
 from std_msgs.msg import Header
@@ -29,63 +27,37 @@ from happypose_ros.utils import (  # noqa: E402
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
 
-class HappyposeWorker(mp.Process):
-    def __init__(
-        self,
-        params: happypose_ros.Params,
-        worker_flag: mp.Value,
-        stop_worker: mp.Value,
-        image_queue: mp.Queue,
-        depth_queue: mp.Queue,
-        k_queue: mp.Queue,
-        result_queue: mp.Queue,
-    ) -> None:
-        super().__init__()
-        self._worker_free = worker_flag
-        self._stop_worker = stop_worker
-        self._image_queue = image_queue
-        self._depth_queue = depth_queue
-        self._k_queue = k_queue
-        self._result_queue = result_queue
+def happypose_worker_proc(
+    params: happypose_ros.Params,
+    worker_free: mp.Value,
+    observation_tensor_queue: mp.Queue,
+    result_queue: mp.Queue,
+) -> None:
+    # Initialize the pipeline
+    pipeline = HappyposePipeline(params)
 
-        torch.set_num_threads(1)
+    # Notify parent that initialization has finished
+    with worker_free.get_lock():
+        worker_free.value = True
 
-        # Initialize the pipeline
-        self._pipeline = HappyposePipeline(params)
+    try:
+        while True:
+            # Await any data on all the input queues
+            observation = observation_tensor_queue.get(block=True, timeout=None)
 
-        # Notify parent that initialization has finished
-        with self._worker_free.get_lock():
-            self._worker_free.value = True
+            result = pipeline(observation)
+            result_queue.put(result)
 
-    def run(self) -> None:
-        try:
-            while True:
-                # Stop the process if parent is stopped
-                with self._stop_worker.get_lock():
-                    if self._stop_worker.value:
-                        logger.debug("Worker finishing job")
-                        break
+            # Notify parent that processing finished
+            with worker_free.get_lock():
+                worker_free.value = True
+    # Queues are closed or SIGINT received
+    except (ValueError, KeyboardInterrupt):
+        pass
+    except Exception as e:
+        logger.error(f"Worker got exception: {str(e)}. Exception type: {type(e)}.")
 
-                # Await any data on all the input queues
-                rgb_tensor = self._image_queue.get(block=True, timeout=None)
-                # TODO implement depth
-                # depth_tensor = self._depth_queue.get(block=True, timeout=None)
-                K_tensor = self._k_queue.get(block=True, timeout=None)
-
-                observation = ObservationTensor.from_torch_batched(
-                    rgb=rgb_tensor, depth=None, K=K_tensor
-                )
-
-                result = self._pipeline(observation)
-                self._result_queue.put(result)
-
-                # Notify parent that processing finished
-                with self._worker_free.get_lock():
-                    self._worker_free.value = True
-
-        except Exception as e:
-            logger.error(f"Worker got exception: {str(e)}")
-            return
+    logger.info("HappyposeWorker finished job.")
 
 
 class HappyposeNode(Node):
@@ -97,22 +69,21 @@ class HappyposeNode(Node):
 
         self._device = self._params.device
 
-        self._worker_free = mp.Value(c_bool, False)
-        self._stop_worker = mp.Value(c_bool, False)
-        self._image_queue = mp.Queue(1)
-        self._depth_queue = mp.Queue(1)
-        self._k_queue = mp.Queue(1)
-        self._result_queue = mp.Queue(1)
+        ctx = mp.get_context("spawn")
+        self._worker_free = ctx.Value(c_bool, False)
+        self._observation_tensor_queue = ctx.Queue(1)
+        self._result_queue = ctx.Queue(1)
 
         # TODO check efficiency of a single queue of ObservationTensors
-        self._happypose_worker = HappyposeWorker(
-            params_to_dict(self._params),
-            self._worker_free,
-            self._stop_worker,
-            self._image_queue,
-            self._depth_queue,
-            self._k_queue,
-            self._result_queue,
+        self._happypose_worker = ctx.Process(
+            target=happypose_worker_proc,
+            name="happypose_worker",
+            args=(
+                params_to_dict(self._params),
+                self._worker_free,
+                self._observation_tensor_queue,
+                self._result_queue,
+            ),
         )
         self._happypose_worker.start()
 
@@ -134,12 +105,7 @@ class HappyposeNode(Node):
             for name in self._params.cameras.names
         }
         self._processed_cameras = []
-        self._camera_inference_data = {}
         self._last_pipeline_trigger = None
-
-        self.get_logger().info(
-            "Node initialized. Waiting for Happypose to initialized...",
-        )
 
         self._detections_publisher = self.create_publisher(
             Detection2DArray, "happypose/detections", 10
@@ -154,19 +120,25 @@ class HappyposeNode(Node):
                 MarkerArray, "happypose/markers", 10
             )
 
+        self.get_logger().info(
+            "Node initialized. Waiting for Happypose to initialized...",
+        )
+
     def destroy_node(self) -> None:
-        with self._stop_worker.get_lock():
-            self._stop_worker.value = True
-        self._image_queue.close()
-        self._depth_queue.close()
-        self._k_queue.close()
-        self._result_queue.close()
-        self._happypose_worker.join()
+        if self._observation_tensor_queue is not None:
+            self._observation_tensor_queue.close()
+        if self._result_queue is not None:
+            self._result_queue.close()
+        if self._await_results_task is not None:
+            self._await_results_task.join()
+        if self._happypose_worker is not None:
+            self._happypose_worker.join()
+            self._happypose_worker.terminate()
         super().destroy_node()
 
     def _on_image_cb(self) -> None:
         # Skip if task was initialized and is still running
-        if self._await_results_task and not self._await_results_task.done():
+        if self._await_results_task and self._await_results_task.is_alive():
             return
 
         # Skip if worker is still processing the data
@@ -181,7 +153,7 @@ class HappyposeNode(Node):
 
         self._trigger_pipeline()
 
-    def _trigger_pipeline(self):
+    def _trigger_pipeline(self) -> None:
         self.get_logger().info(
             "First inference might take longer, as the pipeline is still loading.",
             once=True,
@@ -209,9 +181,23 @@ class HappyposeNode(Node):
                 )
             return
 
+        # TODO properly implement multi-view
+        # TODO implement depth info
+        K, rgb = self._cameras[processed_cameras[0]].get_camera_data()
+        observation = ObservationTensor.from_numpy(
+            rgb=rgb, depth=None, K=K.reshape((3, 3))
+        )
+        observation.to(self._device)
+        self._observation_tensor_queue.put(observation)
+
+        with self._worker_free.get_lock():
+            self._worker_free.value = False
+        self._last_pipeline_trigger = now
+
         # As of python 3.7 dict is insertion ordered
         # so this can be used to unwrap tensors later
-        self._camera_inference_data = {
+        # when using multi-view
+        camera_inference_data = {
             cam: {
                 "frame_id": self._cameras[cam].get_last_iamge_frame_id(),
                 "stamp": self._cameras[cam].get_last_image_stamp(),
@@ -219,48 +205,27 @@ class HappyposeNode(Node):
             for cam in processed_cameras
         }
 
-        # TODO properly implement multi-view
-        # TODO implement depth info
-        K, rgb = self._cameras[processed_cameras[0]].get_camera_data()
+        self._await_results_task = Thread(
+            target=self._await_results, args=(camera_inference_data,)
+        )
+        self._await_results_task.start()
 
-        K_tensor = torch.as_tensor(np.array([K.reshape((3, 3))])).float()
-        rgb_tensor = torch.as_tensor(np.array([rgb]))
-        if rgb_tensor.shape[-1] == 3:
-            rgb_tensor = rgb_tensor.permute(0, 3, 1, 2)
-
-        # Move tensors to the device and then allow shared memory
-        rgb_tensor.to(self._device).share_memory_()
-        K_tensor.to(self._device).share_memory_()
-
-        self._image_queue.put(rgb_tensor)
-        self._k_queue.put(K_tensor)
-
-        with self._worker_free.get_lock():
-            self._worker_free.value = False
-        self._last_pipeline_trigger = now
-
-        # Skip if task was initialized and it is still running
-        if self._await_results_task and not self._await_results_task.done():
-            raise RuntimeError(
-                "Pose estimate task hasn't finished yet! Can't spawn new task!"
-            )
-
-        # Spawn task to await resulting data
-        self._await_results_task = self.executor.create_task(self._await_results)
-
-    def _await_results(self):
+    def _await_results(self, cam_data: dict) -> None:
         try:
             # Await any data on all the input queues
-            self.get_logger().info("Awaiting results...")
+            if self._params.verbose_info_logs:
+                self.get_logger().info("Awaiting results...")
+
             results = self._result_queue.get(block=True, timeout=None)
 
-            if not results:
-                self.get_logger().info("No objects detected.")
+            if results is None:
+                if self._params.verbose_info_logs:
+                    self.get_logger().info("No objects detected.")
                 return
 
-            self.get_logger().info(f"Detected {len(results['infos'])} objects.")
+            if self._params.verbose_info_logs:
+                self.get_logger().info(f"Detected {len(results['infos'])} objects.")
 
-            cam_data = self._camera_inference_data
             header = Header(
                 # Use camera frame_id if single view
                 frame_id=(
@@ -279,7 +244,7 @@ class HappyposeNode(Node):
             self._vision_info_publisher.publish(self._vision_info_msg)
 
             if self._params.publish_markers:
-                # TODO better path handling
+                # TODO consider better path handling
                 markers = get_marker_array_msg(
                     detections,
                     f"file://{self._vision_info_msg.database_location}",
@@ -287,6 +252,10 @@ class HappyposeNode(Node):
                     dynamic_opacity=True,
                 )
                 self._marker_publisher.publish(markers)
+        # Queue was closed
+        except ValueError:
+            self.get_logger().error("queue closed")
+            return
         except Exception as e:
             self.get_logger().error(f"Publishing data failed. Reason: {str(e)}")
 
@@ -294,19 +263,13 @@ class HappyposeNode(Node):
 def main() -> None:
     rclpy.init()
     happypose_node = HappyposeNode()
-
-    executor = MultiThreadedExecutor()
-    executor.add_node(happypose_node)
-
     try:
-        executor.spin()
-    finally:
-        executor.shutdown()
-        happypose_node.destroy_node()
-    rclpy.shutdown()
+        rclpy.spin(happypose_node)
+    except KeyboardInterrupt:
+        pass
+    happypose_node.destroy_node()
+    rclpy.try_shutdown()
 
 
 if __name__ == "__main__":
-    torch.set_num_threads(1)
-    mp.set_start_method("spawn", force=True)
     main()

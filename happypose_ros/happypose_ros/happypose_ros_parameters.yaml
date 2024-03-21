@@ -28,6 +28,11 @@ happypose_ros:
     default_value: false,
     description: "Publish detected objects as markers to visualize detections in RViz.",
   }
+  verbose_info_logs: {
+    type: bool,
+    default_value: false,
+    description: "Extended verbosity on info logs.",
+  }
 
   cosypose:
     dataset_name: {
