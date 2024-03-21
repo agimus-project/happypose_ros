@@ -15,28 +15,24 @@ happypose_ros:
       one_of<>: [[ "cpu", "cuda:0" ]],
     }
   }
-  renderer:
-    renderer_type: {
-      type: string,
-      default_value: "panda3d",
-      description: "Specifies which renderer to use in the pipeline.",
-      validation: {
-        one_of<>: [[ "panda3d", "bullet" ]],
-      }
+  frame_id: {
+    type: string,
+    default_value: "world",
+    description: "Frame ID to which final detections should be converted.",
+    validation: {
+      not_empty<>: [ ],
     }
-    n_workers: {
-      type: int,
-      default_value: 8,
-      description: "Number of CPU cores to use during rendering.",
-      validation: {
-        gt_eq<>: 1,
-      }
-    }
-    gpu_renderer: {
-      type: bool,
-      default_value: true,
-      description: "Render objects with a GPU",
-    }
+  }
+  publish_markers: {
+    type: bool,
+    default_value: false,
+    description: "Publish detected objects as markers to visualize detections in RViz.",
+  }
+  verbose_info_logs: {
+    type: bool,
+    default_value: false,
+    description: "Extended verbosity on info logs.",
+  }
 
   cosypose:
     dataset_name: {
@@ -47,44 +43,70 @@ happypose_ros:
         one_of<>: [[ "hope", "tless", "ycbv" ]],
       }
     }
+    renderer:
+      renderer_type: {
+        type: string,
+        default_value: "panda3d",
+        description: "Specifies which renderer to use in the pipeline.",
+        validation: {
+          one_of<>: [[ "panda3d", "bullet" ]],
+        }
+      }
+      n_workers: {
+        type: int,
+        default_value: 8,
+        description: "Number of CPU cores to use during rendering.",
+        validation: {
+          gt_eq<>: 1,
+        }
+      }
+      gpu_renderer: {
+        type: bool,
+        default_value: true,
+        description: "Render objects with a GPU",
+      }
+
     inference:
-      n_refiner_iterations: {
-        type: int,
-        default_value: 1,
-        description: "Number of iterations for the refiner.",
-        validation: {
-          gt_eq<>: [ 1 ],
+      detector:
+        detection_th: {
+          type: double,
+          default_value: 0.7,
+          description: "Detection threshold of an object used by detector.",
+          validation: {
+            bounds<>: [0.0, 1.0],
+          }
         }
-      }
-      n_coarse_iterations: {
-        type: int,
-        default_value: 1,
-        description: "Number of iterations for the coarse estimate.",
-        validation: {
-          gt_eq<>: [ 1] ,
+        mask_th: {
+          type: double,
+          default_value: 0.8,
+          # TODO any description
+          description: "?",
+          validation: {
+            bounds<>: [0.0, 1.0],
+          }
         }
-      }
-      detection_th: {
-        type: double,
-        default_value: 0.7,
-        description: "Detection threshold of an object used by detector.",
-        validation: {
-          bounds<>: [0.0, 1.0],
+      pose_estimator:
+        n_refiner_iterations: {
+          type: int,
+          default_value: 1,
+          description: "Number of iterations for the refiner.",
+          validation: {
+            gt_eq<>: [ 1 ],
+          }
         }
-      }
-      mask_th: {
-        type: double,
-        default_value: 0.8,
-        # TODO any description
-        description: "?",
-        validation: {
-          bounds<>: [0.0, 1.0],
+        n_coarse_iterations: {
+          type: int,
+          default_value: 1,
+          description: "Number of iterations for the coarse estimate.",
+          validation: {
+            gt_eq<>: [ 1] ,
+          }
         }
-      }
+      # Not working. Requires bugfix in generate_parameter_library
       labels_to_keep: {
         type: string_array,
-        default_value: [],
         description: "Labels of detected objects to keep.",
+        default_value: [],
         validation: {
           unique<>: null,
         }
@@ -93,7 +115,7 @@ happypose_ros:
     timeout: {
       type: double,
       default_value: 0.0,
-      description: "Timeout, after which frame from a camera is considered too old. Value '0.0' disables timeout.",
+      description: "Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout.",
       validation: {
         gt_eq<>: [0.0],
       }

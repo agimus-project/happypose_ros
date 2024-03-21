@@ -1,5 +1,5 @@
 from happypose.toolbox.inference.types import ObservationTensor
-from happypose.toolbox.utils.tensor_collection import TensorCollection
+from happypose.toolbox.inference.utils import filter_detections
 
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
     CosyPoseWrapper,
@@ -15,7 +15,7 @@ class HappyposePipeline:
         # Currently only cosypose is supported
         self._wrapper = CosyPoseWrapper(
             dataset_name=self._params["cosypose"]["dataset_name"],
-            **self._params["renderer"],
+            **self._params["cosypose"]["renderer"],
         )
 
         self._inference_args = self._params["cosypose"]["inference"]
@@ -25,12 +25,30 @@ class HappyposePipeline:
             else None
         )
 
-    def __call__(self, observation: ObservationTensor) -> TensorCollection:
+    def __call__(self, observation: ObservationTensor) -> dict:
+        detections = self._wrapper.pose_predictor.detector_model.get_detections(
+            observation,
+            output_masks=False,
+            **self._inference_args["detector"],
+        )
+        detections = filter_detections(
+            detections, self._inference_args["labels_to_keep"]
+        )
+
+        if len(detections.infos) == 0:
+            return None
+
         final_preds, _ = self._wrapper.pose_predictor.run_inference_pipeline(
             observation,
-            detections=None,
-            run_detector=True,
+            detections=detections,
+            run_detector=False,
             data_TCO_init=None,
-            **self._inference_args,
+            **self._inference_args["pose_estimator"],
         )
-        return final_preds
+
+        final_preds.cpu()
+        return {
+            "infos": final_preds.infos,
+            "poses": final_preds.poses,
+            "bboxes": detections.tensors["bboxes"].int().cpu(),
+        }

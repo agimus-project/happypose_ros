@@ -49,6 +49,11 @@ class CameraWrapper:
                 f"Camera '{self._camera_name}' uses fixed K matrix."
                 + f" Topic '{self._info_topic}' is not subscribed."
             )
+        if not self._fixed_k and np.any(np.nonzero(param_k_matrix)):
+            self._node.get_logger().warn(
+                f"K matrix for '{self._camera_name}' is incorrect."
+                + f" Expecting data on topic '{self._info_topic}'."
+            )
 
         self._image = None
         self._cvb = CvBridge()
@@ -83,19 +88,29 @@ class CameraWrapper:
                 throttle_duration_sec=5.0,
             )
 
+    def get_last_iamge_frame_id(self) -> str:
+        if not self._image:
+            raise ValueError(
+                f"No images received yet by camera: '{self._camera_name}'!"
+            )
+        return self._image.header.frame_id
+
     def get_last_image_stamp(self) -> Time:
         if not self._image:
-            msg = f"No images received yet by camera: '{self._camera_name}'!"
-            raise ValueError(msg)
-        return self._image.header.stamp
+            raise ValueError(
+                f"No images received yet by camera: '{self._camera_name}'!"
+            )
+        return Time.from_msg(self._image.header.stamp)
 
     def get_camera_data(self) -> tuple[npt.NDArray[np.float64], npt.NDArray[np.uint8]]:
         if not self._image:
-            msg = f"No images received yet by camera: '{self._camera_name}'!"
-            raise ValueError(msg)
+            raise ValueError(
+                f"No images received yet by camera: '{self._camera_name}'!"
+            )
         if self._camera_k is None:
-            msg = f"Camera info was not received yet for camera: '{self._camera_name}'!"
-            raise ValueError(msg)
+            raise ValueError(
+                f"Camera info was not received yet for camera: '{self._camera_name}'!"
+            )
 
         encoder = (
             self._cvb.imgmsg_to_cv2

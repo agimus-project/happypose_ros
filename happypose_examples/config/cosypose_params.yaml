@@ -1,22 +1,24 @@
 /**:
   ros__parameters:
     device: cpu
+    publish_markers: true
+    verbose_info_logs: true
+
     pose_estimator_type: cosypose
-
-    renderer:
-      renderer_type: panda3d
-      n_workers: 8
-      gpu_renderer: False
-
     cosypose:
       dataset_name: ycbv
+      renderer:
+        renderer_type: panda3d
+        n_workers: 8
+        gpu_renderer: False
       inference:
         n_refiner_iterations: 1
         n_coarse_iterations: 3
         detection_th: 0.9
         mask_th: 0.8
+        # Not working. Requires bug fix in generate_parameter_library
         # labels_to_keep:
-        #   - "ycbv-obj_000014"
+        #   - "ycbv-obj_000001"
 
     cameras:
       timeout: 0.0
@@ -26,3 +28,7 @@
         compressed: false
         image_topic: /image_raw
         info_topic: /camera_info
+        # K matrix should be obtained from /camera_info.
+        # Currently hard-coded due to bug in image_publisher_node
+        # Do not use hard-coded K matrix unless needed!
+        k_matrix: [615.2, 0.0, 324.0, 0.0, 615.2, 237.0, 0.0, 0.0, 1.0]
