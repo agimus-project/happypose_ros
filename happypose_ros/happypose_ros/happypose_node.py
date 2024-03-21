@@ -121,7 +121,7 @@ class HappyposeNode(Node):
         # should be handled better
         self._vision_info_msg = VisionInfo(
             method=self._params.pose_estimator_type,
-            # TODO set this paramter to something more meaningful
+            # TODO set this parameter to something more meaningful
             database_location=make_object_dataset(
                 self._params.cosypose.dataset_name
             ).ds_dir.as_posix(),
@@ -165,11 +165,11 @@ class HappyposeNode(Node):
         super().destroy_node()
 
     def _on_image_cb(self) -> None:
-        # Skipp if task was initialized and is still running
+        # Skip if task was initialized and is still running
         if self._await_results_task and not self._await_results_task.done():
             return
 
-        # Skipp if worker is still processing the data
+        # Skip if worker is still processing the data
         with self._worker_free.get_lock():
             if not self._worker_free.value:
                 return
@@ -219,7 +219,7 @@ class HappyposeNode(Node):
             for cam in processed_cameras
         }
 
-        # TODO properly implement multiview
+        # TODO properly implement multi-view
         # TODO implement depth info
         K, rgb = self._cameras[processed_cameras[0]].get_camera_data()
 
@@ -268,7 +268,7 @@ class HappyposeNode(Node):
                     if len(cam_data) == 1
                     else self._params.frame_id
                 ),
-                # Use oldest camera image time stamp
+                # Use the oldest camera image time stamp
                 stamp=min([cam["stamp"] for cam in cam_data.values()]).to_msg(),
             )
 

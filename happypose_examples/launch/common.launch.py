@@ -11,7 +11,7 @@ from launch_ros.substitutions import FindPackageShare
 def launch_setup(
     context: LaunchContext, *args, **kwargs
 ) -> list[LaunchDescriptionEntity]:
-    # Obtain argument specyfying if RViz should be launched
+    # Obtain argument specifying if RViz should be launched
     use_rviz = LaunchConfiguration("use_rviz")
 
     # Evaluate path of the cosypose parameters
@@ -50,7 +50,7 @@ def launch_setup(
     )
 
     # Start static TF publisher to transform
-    # camera frame coordinates to ROS cordinates
+    # camera frame coordinates to ROS coordinates
     static_transform_publisher_node = Node(
         condition=IfCondition(use_rviz),
         package="tf2_ros",

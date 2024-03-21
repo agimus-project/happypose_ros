@@ -29,7 +29,7 @@ def launch_setup(
                 "use_sim_time": False,
                 "publish_rate": 10.0,
                 # Ignored by the node, fixed by https://github.com/ros-perception/image_pipeline/pull/861
-                # Currently no bugfix for humble, requires backport
+                # Currently no bug fix for humble, requires back port
                 "camera_info_url": "package://happypose_examples/config/camera_info.yaml",
             }
         ],

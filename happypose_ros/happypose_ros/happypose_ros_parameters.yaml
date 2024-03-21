@@ -110,7 +110,7 @@ happypose_ros:
     timeout: {
       type: double,
       default_value: 0.0,
-      description: "Timeout, after which frame from a camera is considered too old. Value '0.0' disables timeout.",
+      description: "Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout.",
       validation: {
         gt_eq<>: [0.0],
       }

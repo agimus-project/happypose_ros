@@ -1,7 +1,7 @@
 # Number of views to use when processing the pipeline
 uint16 num_views
 ---
-# Wether both request and operation suceeded
+# Whether both request and operation succeeded
 bool success
 # Message informing about final state
 string message
