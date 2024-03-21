@@ -2,6 +2,7 @@
   ros__parameters:
     device: cpu
     publish_markers: true
+    verbose_info_logs: true
 
     pose_estimator_type: cosypose
     cosypose:

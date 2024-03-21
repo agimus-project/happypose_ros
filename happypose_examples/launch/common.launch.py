@@ -57,8 +57,6 @@ def launch_setup(
         executable="static_transform_publisher",
         name="static_transform_publisher",
         arguments=[
-            "--z",
-            "0.2",
             "--roll",
             "-1.57",
             "--yaw",
