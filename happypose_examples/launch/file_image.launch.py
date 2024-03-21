@@ -1,7 +1,12 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
 from launch.launch_context import LaunchContext
 from launch.launch_description_entity import LaunchDescriptionEntity
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -13,23 +18,6 @@ def launch_setup(
     # Obtain argument value for image path
     image_file_path = LaunchConfiguration("image_file_path")
 
-    # Evaluate path of the cosypose parameters
-    happypose_params_path = PathJoinSubstitution(
-        [
-            FindPackageShare("happypose_examples"),
-            "config",
-            "cosypose_params.yaml",
-        ]
-    )
-
-    # Start ROS node of happypose
-    happypose_node = Node(
-        package="happypose_ros",
-        executable="happypose_node",
-        name="happypose_node",
-        parameters=[happypose_params_path],
-    )
-
     # Start ROS node for image publishing
     image_publisher_node = Node(
         package="image_publisher",
@@ -40,12 +28,32 @@ def launch_setup(
             {
                 "use_sim_time": False,
                 "publish_rate": 10.0,
+                # Ignored by the node, fixed by https://github.com/ros-perception/image_pipeline/pull/861
+                # Currently no bugfix for humble, requires backport
                 "camera_info_url": "package://happypose_examples/config/camera_info.yaml",
             }
         ],
     )
 
-    return [happypose_node, image_publisher_node]
+    # Include common part of the demo launch files
+    happypose_example_common_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            [
+                PathJoinSubstitution(
+                    [
+                        FindPackageShare("happypose_examples"),
+                        "launch",
+                        "common.launch.py",
+                    ]
+                )
+            ]
+        ),
+        launch_arguments={
+            "use_rviz": LaunchConfiguration("use_rviz"),
+        }.items(),
+    )
+
+    return [happypose_example_common_launch, image_publisher_node]
 
 
 def generate_launch_description():
@@ -53,6 +61,11 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "image_file_path",
             description="Path to image to be published as an input for happypose_ros node.",
+        ),
+        DeclareLaunchArgument(
+            "use_rviz",
+            default_value="false",
+            description="Launch RViz with default view.",
         ),
     ]
 

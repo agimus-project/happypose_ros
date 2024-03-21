@@ -49,6 +49,11 @@ class CameraWrapper:
                 f"Camera '{self._camera_name}' uses fixed K matrix."
                 + f" Topic '{self._info_topic}' is not subscribed."
             )
+        if not self._fixed_k and np.any(np.nonzero(param_k_matrix)):
+            self._node.get_logger().warn(
+                f"K matrix for '{self._camera_name}' is incorrect."
+                + f" Expecting data on topic '{self._info_topic}'."
+            )
 
         self._image = None
         self._cvb = CvBridge()

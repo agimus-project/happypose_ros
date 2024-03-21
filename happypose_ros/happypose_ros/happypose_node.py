@@ -11,7 +11,7 @@ from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray
 from vision_msgs.msg import Detection2DArray, VisionInfo
 
-from happypose.pose_estimators.cosypose.cosypose.config import LOCAL_DATA_DIR
+from happypose.toolbox.datasets.datasets_cfg import make_object_dataset
 from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.utils.logging import get_logger
 
@@ -21,8 +21,8 @@ from happypose_ros.camera_wrapper import CameraWrapper  # noqa: E402
 from happypose_ros.inference_pipeline import HappyposePipeline  # noqa: E402
 from happypose_ros.utils import (  # noqa: E402
     params_to_dict,
-    tensor_collection_to_detection2darray_msg,
-    detection2darray_msg_to_marker_array_msg,
+    get_detection_array_msg,
+    get_marker_array_msg,
 )
 
 # Automatically generated file
@@ -122,7 +122,9 @@ class HappyposeNode(Node):
         self._vision_info_msg = VisionInfo(
             method=self._params.pose_estimator_type,
             # TODO set this paramter to something more meaningful
-            database_location=self._params.cosypose.dataset_name,
+            database_location=make_object_dataset(
+                self._params.cosypose.dataset_name
+            ).ds_dir.as_posix(),
             database_version=0,
         )
 
@@ -247,45 +249,46 @@ class HappyposeNode(Node):
         self._await_results_task = self.executor.create_task(self._await_results)
 
     def _await_results(self):
-        # Await any data on all the input queues
-        self.get_logger().info("Awaiting results...")
-        results = self._result_queue.get(block=True, timeout=None).cpu()
+        try:
+            # Await any data on all the input queues
+            self.get_logger().info("Awaiting results...")
+            results = self._result_queue.get(block=True, timeout=None)
 
-        if not len(results):
-            self.get_logger().info("No objects detected.")
-            return
+            if not results:
+                self.get_logger().info("No objects detected.")
+                return
 
-        self.get_logger().info(f"Detected {len(results)} objects.")
+            self.get_logger().info(f"Detected {len(results['infos'])} objects.")
 
-        cam_data = self._camera_inference_data
-        header = Header(
-            # Use camera frame_id if single view
-            frame_id=(
-                list(cam_data.values())[0]["frame_id"]
-                if len(cam_data) == 1
-                else self._params.frame_id
-            ),
-            # Use oldest camera image time stamp
-            stamp=min(cam_data.values(), key=lambda x: x["stamp"])["stamp"].to_msg(),
-        )
-
-        detections = tensor_collection_to_detection2darray_msg(results, header)
-        self._detections_publisher.publish(detections)
-
-        self._vision_info_msg.header = header
-        self._vision_info_publisher.publish(self._vision_info_msg)
-
-        if self._params.publish_markers:
-            # TODO better path handling
-            markers = detection2darray_msg_to_marker_array_msg(
-                detections,
-                f"file://{LOCAL_DATA_DIR.as_posix()}"
-                + "/bop_datasets/"
-                + f"{self._vision_info_msg.database_location}/models",
-                label_to_strip=self._vision_info_msg.database_location + "-",
-                dynamic_opacity=True,
+            cam_data = self._camera_inference_data
+            header = Header(
+                # Use camera frame_id if single view
+                frame_id=(
+                    list(cam_data.values())[0]["frame_id"]
+                    if len(cam_data) == 1
+                    else self._params.frame_id
+                ),
+                # Use oldest camera image time stamp
+                stamp=min([cam["stamp"] for cam in cam_data.values()]).to_msg(),
             )
-            self._marker_publisher.publish(markers)
+
+            detections = get_detection_array_msg(results, header)
+            self._detections_publisher.publish(detections)
+
+            self._vision_info_msg.header = header
+            self._vision_info_publisher.publish(self._vision_info_msg)
+
+            if self._params.publish_markers:
+                # TODO better path handling
+                markers = get_marker_array_msg(
+                    detections,
+                    f"file://{self._vision_info_msg.database_location}",
+                    label_to_strip=self._params.cosypose.dataset_name + "-",
+                    dynamic_opacity=True,
+                )
+                self._marker_publisher.publish(markers)
+        except Exception as e:
+            self.get_logger().error(f"Publishing data failed. Reason: {str(e)}")
 
 
 def main() -> None:

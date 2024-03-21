@@ -1,7 +1,12 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+    OpaqueFunction,
+)
 from launch.launch_context import LaunchContext
 from launch.launch_description_entity import LaunchDescriptionEntity
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -12,23 +17,6 @@ def launch_setup(
 ) -> list[LaunchDescriptionEntity]:
     # Obtain agument value for video device
     video_device = LaunchConfiguration("video_device")
-
-    # Evaluate path of the cosypose paramteres
-    happypose_params_path = PathJoinSubstitution(
-        [
-            FindPackageShare("happypose_examples"),
-            "config",
-            "cosypose_params.yaml",
-        ]
-    )
-
-    # Start ROS node of happypose
-    happypose_node = Node(
-        package="happypose_ros",
-        executable="happypose_node",
-        name="happypose_node",
-        parameters=[happypose_params_path],
-    )
 
     # Start ROS node for webcam feed
     webcam_node = Node(
@@ -41,7 +29,7 @@ def launch_setup(
                 "video_device": video_device,
                 "framerate": 30.0,
                 "io_method": "mmap",
-                "frame_id": "webcam",
+                "frame_id": "camera",
                 "image_width": 640,
                 "image_height": 480,
                 "camera_name": "webcam",
@@ -50,7 +38,25 @@ def launch_setup(
         ],
     )
 
-    return [happypose_node, webcam_node]
+    # Include common part of the demo launch files
+    happypose_example_common_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            [
+                PathJoinSubstitution(
+                    [
+                        FindPackageShare("happypose_examples"),
+                        "launch",
+                        "common.launch.py",
+                    ]
+                )
+            ]
+        ),
+        launch_arguments={
+            "use_rviz": LaunchConfiguration("use_rviz"),
+        }.items(),
+    )
+
+    return [happypose_example_common_launch, webcam_node]
 
 
 def generate_launch_description():
@@ -60,6 +66,11 @@ def generate_launch_description():
             default_value="/dev/video0",
             description="Device name of a video device to publish "
             + "as a camera feed for happypose_ros node",
+        ),
+        DeclareLaunchArgument(
+            "use_rviz",
+            default_value="false",
+            description="Launch RViz with default view.",
         ),
     ]
 

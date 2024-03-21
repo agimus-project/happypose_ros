@@ -60,44 +60,48 @@ happypose_ros:
         default_value: true,
         description: "Render objects with a GPU",
       }
+
     inference:
-      n_refiner_iterations: {
-        type: int,
-        default_value: 1,
-        description: "Number of iterations for the refiner.",
-        validation: {
-          gt_eq<>: [ 1 ],
+      detector:
+        detection_th: {
+          type: double,
+          default_value: 0.7,
+          description: "Detection threshold of an object used by detector.",
+          validation: {
+            bounds<>: [0.0, 1.0],
+          }
         }
-      }
-      n_coarse_iterations: {
-        type: int,
-        default_value: 1,
-        description: "Number of iterations for the coarse estimate.",
-        validation: {
-          gt_eq<>: [ 1] ,
+        mask_th: {
+          type: double,
+          default_value: 0.8,
+          # TODO any description
+          description: "?",
+          validation: {
+            bounds<>: [0.0, 1.0],
+          }
         }
-      }
-      detection_th: {
-        type: double,
-        default_value: 0.7,
-        description: "Detection threshold of an object used by detector.",
-        validation: {
-          bounds<>: [0.0, 1.0],
+      pose_estimator:
+        n_refiner_iterations: {
+          type: int,
+          default_value: 1,
+          description: "Number of iterations for the refiner.",
+          validation: {
+            gt_eq<>: [ 1 ],
+          }
         }
-      }
-      mask_th: {
-        type: double,
-        default_value: 0.8,
-        # TODO any description
-        description: "?",
-        validation: {
-          bounds<>: [0.0, 1.0],
+        n_coarse_iterations: {
+          type: int,
+          default_value: 1,
+          description: "Number of iterations for the coarse estimate.",
+          validation: {
+            gt_eq<>: [ 1] ,
+          }
         }
-      }
+      # Not working. Requires bugfix in generate_parameter_library
       labels_to_keep: {
         type: string_array,
-        default_value: [],
         description: "Labels of detected objects to keep.",
+        default_value: [],
         validation: {
           unique<>: null,
         }

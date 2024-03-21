@@ -24,12 +24,12 @@ catkin build --symlink-install
 
 To launch with webcam preview run:
 ```bash
-ros2 launch happypose_examples webcam.launch.py video_device:="/dev/video0"
+ros2 launch happypose_examples webcam.launch.py use_rviz:=true video_device:="/dev/video0"
 ```
 This will subscribe to `/dev/video0` input and feed this image to the **happypose_ros** node.
 
 
 Another option it to stream static image from a file:
 ```bash
-ros2 launch happypose_examples file_image.launch.py image_file_path:=<path to the image>
+ros2 launch happypose_examples file_image.launch.py use_rviz:=true image_file_path:=<path to the image>
 ```

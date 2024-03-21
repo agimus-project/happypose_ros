@@ -9,12 +9,6 @@ from rclpy.duration import Duration
 from geometry_msgs.msg import Point, PoseWithCovariance, Pose, Quaternion, Vector3
 from std_msgs.msg import ColorRGBA, Header
 from visualization_msgs.msg import Marker, MarkerArray
-
-from happypose.toolbox.utils.tensor_collection import PandasTensorCollection
-
-# Automatically generated file
-from happypose_ros.happypose_ros_parameters import happypose_ros
-
 from vision_msgs.msg import (
     BoundingBox2D,
     Detection2D,
@@ -23,9 +17,8 @@ from vision_msgs.msg import (
     ObjectHypothesisWithPose,
 )
 
-from happypose.toolbox.utils.logging import get_logger
-
-logger = get_logger(__name__)
+# Automatically generated file
+from happypose_ros.happypose_ros_parameters import happypose_ros
 
 
 def params_to_dict(params: happypose_ros.Params) -> dict:
@@ -77,15 +70,13 @@ def create_bounding_box_msg(
     return bbox
 
 
-def tensor_collection_to_detection2darray_msg(
-    results: PandasTensorCollection, header: Header
-) -> Detection2DArray:
+def get_detection_array_msg(results: dict, header: Header) -> Detection2DArray:
     def generate_detection_msg(i: int) -> Detection2D:
         # Convert SE3 tensor to [x, y, z, qx, qy, qz, qw] pose representations
-        pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results.poses[i].numpy()))
+        pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results["poses"][i].numpy()))
         detection = Detection2D(
             header=header,
-            bbox=create_bounding_box_msg(results.boxes_crop[i].numpy()),
+            bbox=create_bounding_box_msg(results["bboxes"][i].numpy()),
             # Happypose supports only one result per detection, so the array
             # contains only single object
             results=[ObjectHypothesisWithPose()],
@@ -94,9 +85,8 @@ def tensor_collection_to_detection2darray_msg(
             # Hence emty string is used
             id="",
         )
-        # logger.error(type(results.infos[i].label))
         detection.results[0].hypothesis = ObjectHypothesis(
-            class_id=results.infos.label[i], score=results.infos.score[i]
+            class_id=results["infos"].label[i], score=results["infos"].score[i]
         )
         detection.results[0].pose = PoseWithCovariance(
             pose=Pose(
@@ -111,11 +101,11 @@ def tensor_collection_to_detection2darray_msg(
 
     return Detection2DArray(
         header=header,
-        detections=[generate_detection_msg(i) for i in range(len(results))],
+        detections=[generate_detection_msg(i) for i in range(len(results["infos"]))],
     )
 
 
-def detection2darray_msg_to_marker_array_msg(
+def get_marker_array_msg(
     detections: Detection2DArray,
     mesh_folder_url: str,
     mesh_file_extension: str = "ply",
