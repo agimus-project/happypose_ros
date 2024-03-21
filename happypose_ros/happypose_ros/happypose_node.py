@@ -51,7 +51,7 @@ def happypose_worker_proc(
             # Notify parent that processing finished
             with worker_free.get_lock():
                 worker_free.value = True
-    # Queues are closed or SIGINT recieved
+    # Queues are closed or SIGINT received
     except (ValueError, KeyboardInterrupt):
         pass
     except Exception as e:
