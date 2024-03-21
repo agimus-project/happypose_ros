@@ -57,7 +57,7 @@ def happypose_worker_proc(
     except Exception as e:
         logger.error(f"Worker got exception: {str(e)}. Exception type: {type(e)}.")
 
-    logger.error("HappyposeWorker finished job.")
+    logger.info("HappyposeWorker finished job.")
 
 
 class HappyposeNode(Node):
@@ -124,7 +124,7 @@ class HappyposeNode(Node):
             "Node initialized. Waiting for Happypose to initialized...",
         )
 
-    def destroy_node(self):
+    def destroy_node(self) -> None:
         if self._observation_tensor_queue is not None:
             self._observation_tensor_queue.close()
         if self._result_queue is not None:
@@ -153,7 +153,7 @@ class HappyposeNode(Node):
 
         self._trigger_pipeline()
 
-    def _trigger_pipeline(self):
+    def _trigger_pipeline(self) -> None:
         self.get_logger().info(
             "First inference might take longer, as the pipeline is still loading.",
             once=True,
