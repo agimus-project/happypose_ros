@@ -33,6 +33,14 @@ happypose_ros:
     default_value: false,
     description: "Extended verbosity on info logs.",
   }
+  time_stamp_strategy: {
+    type: string,
+    default_value: "oldest",
+    description: "Which image time stamp to use when using multi-view.",
+    validation: {
+      one_of<>: [[ "average", "newest", "oldest" ]],
+    }
+  }
 
   cosypose:
     dataset_name: {

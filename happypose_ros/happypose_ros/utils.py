@@ -95,7 +95,7 @@ def get_detection_array_msg(results: dict, header: Header) -> Detection2DArray:
             ),
             # Happypose does not provide covariance, hence
             # it is hardcoded to identity matrix
-            covariance=np.identity(6).reshape(-1).tolist(),
+            covariance=[1.0 if (i % 7) == 0 else 0.0 for i in range(36)],
         )
         return detection
 
