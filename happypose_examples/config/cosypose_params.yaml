@@ -12,17 +12,19 @@
         n_workers: 8
         gpu_renderer: False
       inference:
-        n_refiner_iterations: 1
-        n_coarse_iterations: 3
-        detection_th: 0.9
-        mask_th: 0.8
+        detector:
+          detection_th: 0.9
+          mask_th: 0.8
+        pose_estimator:
+          n_refiner_iterations: 1
+          n_coarse_iterations: 3
         # Not working. Requires bug fix in generate_parameter_library
         # labels_to_keep:
         #   - "ycbv-obj_000001"
 
     cameras:
       timeout: 0.0
-      min_num: 1
+      n_min_cameras: 1
       names: ["cam_1"]
       cam_1:
         compressed: false
