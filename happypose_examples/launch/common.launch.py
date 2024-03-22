@@ -78,11 +78,6 @@ def launch_setup(
 def generate_launch_description():
     declared_arguments = [
         DeclareLaunchArgument(
-            "dataset",
-            default_value="ycbv",
-            description="Dataset to use during detection.",
-        ),
-        DeclareLaunchArgument(
             "use_rviz",
             default_value="false",
             description="Launch RViz with default view.",
