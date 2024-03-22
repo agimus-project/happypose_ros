@@ -96,7 +96,7 @@ happypose_ros:
       pose_estimator:
         n_refiner_iterations: {
           type: int,
-          default_value: 1,
+          default_value: 3,
           description: "Number of iterations for the refiner.",
           validation: {
             gt_eq<>: [ 1 ],

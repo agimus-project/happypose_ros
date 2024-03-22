@@ -10,14 +10,14 @@
       renderer:
         renderer_type: panda3d
         n_workers: 8
-        gpu_renderer: False
+        gpu_renderer: false
       inference:
         detector:
-          detection_th: 0.9
+          detection_th: 0.7
           mask_th: 0.8
         pose_estimator:
-          n_refiner_iterations: 1
-          n_coarse_iterations: 3
+          n_coarse_iterations: 1
+          n_refiner_iterations: 3
         # Not working. Requires bug fix in generate_parameter_library
         # labels_to_keep:
         #   - "ycbv-obj_000001"
