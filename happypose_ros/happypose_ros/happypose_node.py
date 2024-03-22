@@ -226,6 +226,7 @@ class HappyposeNode(Node):
             if self._params.verbose_info_logs:
                 self.get_logger().info(f"Detected {len(results['infos'])} objects.")
 
+            sort_fun = min if self._params.time_stamp_strategy == "oldest" else max
             header = Header(
                 # Use camera frame_id if single view
                 frame_id=(
@@ -234,7 +235,7 @@ class HappyposeNode(Node):
                     else self._params.frame_id
                 ),
                 # Use the oldest camera image time stamp
-                stamp=min([cam["stamp"] for cam in cam_data.values()]).to_msg(),
+                stamp=sort_fun([cam["stamp"] for cam in cam_data.values()]).to_msg(),
             )
 
             detections = get_detection_array_msg(results, header)
