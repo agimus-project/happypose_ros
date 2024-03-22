@@ -38,7 +38,7 @@ happypose_ros:
     default_value: "oldest",
     description: "Which image time stamp to use when using multi-view.",
     validation: {
-      one_of<>: [[ "newest", "oldest" ]],
+      one_of<>: [[ "average", "newest", "oldest" ]],
     }
   }
 

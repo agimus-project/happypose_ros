@@ -1,9 +1,11 @@
 from ctypes import c_bool
+from statistics import mean
 from threading import Thread
 import torch.multiprocessing as mp
 
 import rclpy
 from rclpy.node import Node
+from rclpy.time import Time
 
 from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray
@@ -98,6 +100,10 @@ class HappyposeNode(Node):
             ).ds_dir.as_posix(),
             database_version=0,
         )
+
+        self._stmap_sort_strategy = {"newest": max, "oldest": min, "average": mean}[
+            self._params.time_stamp_strategy
+        ]
 
         # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
@@ -226,7 +232,6 @@ class HappyposeNode(Node):
             if self._params.verbose_info_logs:
                 self.get_logger().info(f"Detected {len(results['infos'])} objects.")
 
-            sort_fun = min if self._params.time_stamp_strategy == "oldest" else max
             header = Header(
                 # Use camera frame_id if single view
                 frame_id=(
@@ -235,7 +240,11 @@ class HappyposeNode(Node):
                     else self._params.frame_id
                 ),
                 # Use the oldest camera image time stamp
-                stamp=sort_fun([cam["stamp"] for cam in cam_data.values()]).to_msg(),
+                stamp=Time(
+                    nanoseconds=self._stmap_sort_strategy(
+                        [cam["stamp"].nanoseconds for cam in cam_data.values()]
+                    )
+                ).to_msg(),
             )
 
             detections = get_detection_array_msg(results, header)
