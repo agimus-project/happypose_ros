@@ -154,12 +154,12 @@ happypose_ros:
       image_topic: {
         type: string,
         default_value: "",
-        description: "Topic name to subscribe for images. If empty, defaults to '<camera_name>_raw' for not compressed image and '<camera_name>/compressed' for compressed images.",
+        description: "Topic name to subscribe for images. If empty, defaults to '<camera_name>/image' for not compressed image and '<camera_name>/image/compressed' for compressed images.",
       }
       info_topic: {
         type: string,
         default_value: "",
-        description: "Topic name to subscribe for camera info. If empty defaults to '<camera_name>/info'.",
+        description: "Topic name to subscribe for camera info. If empty defaults to '<camera_name>/camera_info'.",
       }
       k_matrix: {
         type: double_array,

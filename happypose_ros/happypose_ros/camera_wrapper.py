@@ -22,10 +22,10 @@ class CameraWrapper:
 
         if params.get_entry(self._camera_name).compressed:
             img_msg_type = CompressedImage
-            topic_postfix = "/compressed"
+            topic_postfix = "/image/compressed"
         else:
             img_msg_type = Image
-            topic_postfix = "_raw"
+            topic_postfix = "/image"
 
         # Define name of the topic
         if params.get_entry(self._camera_name).image_topic:
@@ -37,7 +37,7 @@ class CameraWrapper:
         if params.get_entry(self._camera_name).info_topic:
             self._info_topic = params.get_entry(self._camera_name).info_topic
         else:
-            self._info_topic = f"{self._camera_name}/info"
+            self._info_topic = f"{self._camera_name}/camera_info"
 
         self._camera_k = None
         # If param with K matrix is correct, assume it is fixed
