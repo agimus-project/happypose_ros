@@ -108,7 +108,7 @@ class HappyposeNode(Node):
         # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
             name: CameraWrapper(self, self._params.cameras, name, self._on_image_cb)
-            for name in self._params.cameras.names
+            for name in self._params.camera_names
         }
         self._processed_cameras = []
         self._last_pipeline_trigger = None

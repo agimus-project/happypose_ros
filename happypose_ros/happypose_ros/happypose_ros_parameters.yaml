@@ -119,6 +119,15 @@ happypose_ros:
           unique<>: null,
         }
       }
+  camera_names: {
+    type: string_array,
+    description: "List of names of cameras to subscribe.",
+    read_only: true,
+    validation: {
+      size_gt<>: [0],
+      unique<>: null,
+    }
+  }
   cameras:
     timeout: {
       type: double,
@@ -136,16 +145,7 @@ happypose_ros:
         gt_eq<>: [1],
       }
     }
-    names: {
-      type: string_array,
-      description: "List of names of cameras to subscribe.",
-      read_only: true,
-      validation: {
-        size_gt<>: [0],
-        unique<>: null,
-      }
-    }
-    __map_names:
+    __map_camera_names:
       compressed: {
         type: bool,
         default_value: false,

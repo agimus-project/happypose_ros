@@ -22,10 +22,10 @@
         # labels_to_keep:
         #   - "ycbv-obj_000001"
 
+    camera_names: ["cam_1"]
     cameras:
       timeout: 0.0
       n_min_cameras: 1
-      names: ["cam_1"]
       cam_1:
         compressed: false
         image_topic: /image_raw
