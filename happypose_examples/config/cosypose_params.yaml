@@ -1,33 +1,56 @@
 /**:
   ros__parameters:
+    # Load all Torch model onto the CPU
     device: cpu
+    # Publish markers for RViz
     publish_markers: true
+    # Provide extended logging
     verbose_info_logs: true
 
+    # Use CosyPose for pose estimation
     pose_estimator_type: cosypose
     cosypose:
+      # Load YCBV dataset
       dataset_name: ycbv
+      # Object renderer parameters
       renderer:
+        # Use Panda3D renderer
         renderer_type: panda3d
+        # Spawn 8 parallel workers
         n_workers: 8
+        # Do not render using GPU
         gpu_renderer: false
+      # Parameters expected on the runtime
       inference:
+        # 2D image detection parameters
         detector:
+          # Set detection threshold
           detection_th: 0.7
+          # Set mash threshold
           mask_th: 0.8
+        # 3D pose estimation parameters
         pose_estimator:
+          # Run single iteration of coarse estimation
           n_coarse_iterations: 1
+          # Run three iterations of refiner
           n_refiner_iterations: 3
         # Not working. Requires bug fix in generate_parameter_library
         # labels_to_keep:
         #   - "ycbv-obj_000001"
 
+    # List of camera names to subscribe to. Those names are internal to happypose_ros
+    # node and can be chosen arbitrarly as long as they can be used as YAML keys later on.
     camera_names: ["cam_1"]
     cameras:
+      # Timeout for the image to be discarded. 0.0 means no timeout
       timeout: 0.0
+      # Single image triggers pipeline
       n_min_cameras: 1
+      # Configure camera "cam_1" defined in "camera_names" param
       cam_1:
+        # The camera provides uncompressed images
         compressed: false
+        # Expect images and camera info on those topics
         image_topic: /image_raw
         info_topic: /camera_info
         # K matrix should be obtained from /camera_info.

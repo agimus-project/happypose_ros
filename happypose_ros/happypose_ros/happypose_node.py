@@ -29,7 +29,7 @@ from happypose_ros.utils import (  # noqa: E402
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
 
-def happypose_worker_proc(
+def _happypose_worker_proc(
     params: happypose_ros.Params,
     worker_free: mp.Value,
     observation_tensor_queue: mp.Queue,
@@ -78,7 +78,7 @@ class HappyposeNode(Node):
 
         # TODO check efficiency of a single queue of ObservationTensors
         self._happypose_worker = ctx.Process(
-            target=happypose_worker_proc,
+            target=_happypose_worker_proc,
             name="happypose_worker",
             args=(
                 params_to_dict(self._params),

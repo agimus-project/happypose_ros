@@ -50,7 +50,7 @@ def launch_setup(
     )
 
     # Start static TF publisher to transform
-    # camera frame coordinates to ROS coordinates
+    # camera optical frame and rotate it for better rviz preview
     static_transform_publisher_node = Node(
         condition=IfCondition(use_rviz),
         package="tf2_ros",

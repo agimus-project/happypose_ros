@@ -14,7 +14,7 @@ Currently, there is no automated build for happypose library itself built into t
 rosdep update --rosdistro $ROS_DISTRO
 rosdep install -y -i --from-paths src --rosdistro $ROS_DISTRO
 # paramter --symlink-install is optional
-catkin build --symlink-install
+colcon build --symlink-install
 ```
 
 ## Launch
