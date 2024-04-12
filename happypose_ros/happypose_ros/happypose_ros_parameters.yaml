@@ -31,7 +31,7 @@ happypose_ros:
   verbose_info_logs: {
     type: bool,
     default_value: false,
-    description: "Extended verbosity on info logs.",
+    description: "Extended verbosity on info logs. Show logs with number of detections and more.",
   }
   time_stamp_strategy: {
     type: string,
@@ -71,7 +71,7 @@ happypose_ros:
       gpu_renderer: {
         type: bool,
         default_value: true,
-        description: "Render objects with a GPU",
+        description: "Render objects on a GPU.",
       }
 
     inference:
@@ -140,7 +140,7 @@ happypose_ros:
     n_min_cameras: {
       type: int,
       default_value: 1,
-      description: "Minimum number of cameras to consider during single view.",
+      description: "Minimum number of valid camera views to start pose estimation pipeline.",
       validation: {
         gt_eq<>: [1],
       }
@@ -149,7 +149,7 @@ happypose_ros:
       compressed: {
         type: bool,
         default_value: false,
-        description: "Expect compressed messages from given camera.",
+        description: "Expect compressed image messages from given camera.",
       }
       image_topic: {
         type: string,
@@ -164,7 +164,7 @@ happypose_ros:
       k_matrix: {
         type: double_array,
         default_value: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-        description: "Camera intrinsic matrix. If not equal to all values of 0.0, overwrites values from info ROS topic.",
+        description: "Camera intrinsic matrix. If values are valid intrinsic matrix, overwrites values from info ROS topic.",
         validation: {
           fixed_size<>: [9],
           lower_element_bounds<>: [0.0]
