@@ -1,0 +1,172 @@
+happypose_ros:
+  pose_estimator_type: {
+    type: string,
+    default_value: "cosypose",
+    description: "Specifies which pose estimator to use in the pipeline.",
+    validation: {
+      one_of<>: [[ "cosypose" ]],
+    }
+  }
+  device: {
+    type: string,
+    default_value: "cpu",
+    description: "Device to which the models will be loaded.",
+    validation: {
+      one_of<>: [[ "cpu", "cuda:0" ]],
+    }
+  }
+  frame_id: {
+    type: string,
+    default_value: "world",
+    description: "Frame ID to which final detections should be converted.",
+    validation: {
+      not_empty<>: [ ],
+    }
+  }
+  publish_markers: {
+    type: bool,
+    default_value: false,
+    description: "Publish detected objects as markers to visualize detections in RViz.",
+  }
+  verbose_info_logs: {
+    type: bool,
+    default_value: false,
+    description: "Extended verbosity on info logs. Show logs with number of detections and more.",
+  }
+  time_stamp_strategy: {
+    type: string,
+    default_value: "oldest",
+    description: "Which image time stamp to use when using multi-view.",
+    validation: {
+      one_of<>: [[ "average", "newest", "oldest" ]],
+    }
+  }
+
+  cosypose:
+    dataset_name: {
+      type: string,
+      default_value: "",
+      description: "Name of a dataset used during training.",
+      validation: {
+        one_of<>: [[ "hope", "tless", "ycbv" ]],
+      }
+    }
+    renderer:
+      renderer_type: {
+        type: string,
+        default_value: "panda3d",
+        description: "Specifies which renderer to use in the pipeline.",
+        validation: {
+          one_of<>: [[ "panda3d", "bullet" ]],
+        }
+      }
+      n_workers: {
+        type: int,
+        default_value: 8,
+        description: "Number of CPU cores to use during rendering.",
+        validation: {
+          gt_eq<>: 1,
+        }
+      }
+      gpu_renderer: {
+        type: bool,
+        default_value: true,
+        description: "Render objects on a GPU.",
+      }
+
+    inference:
+      detector:
+        detection_th: {
+          type: double,
+          default_value: 0.7,
+          description: "Detection threshold of an object used by detector.",
+          validation: {
+            bounds<>: [0.0, 1.0],
+          }
+        }
+        mask_th: {
+          type: double,
+          default_value: 0.8,
+          # TODO any description
+          description: "?",
+          validation: {
+            bounds<>: [0.0, 1.0],
+          }
+        }
+      pose_estimator:
+        n_refiner_iterations: {
+          type: int,
+          default_value: 3,
+          description: "Number of iterations for the refiner.",
+          validation: {
+            gt_eq<>: [ 1 ],
+          }
+        }
+        n_coarse_iterations: {
+          type: int,
+          default_value: 1,
+          description: "Number of iterations for the coarse estimate.",
+          validation: {
+            gt_eq<>: [ 1] ,
+          }
+        }
+      # Not working. Requires bugfix in generate_parameter_library
+      labels_to_keep: {
+        type: string_array,
+        description: "Labels of detected objects to keep.",
+        default_value: [],
+        validation: {
+          unique<>: null,
+        }
+      }
+  camera_names: {
+    type: string_array,
+    description: "List of names of cameras to subscribe.",
+    read_only: true,
+    validation: {
+      size_gt<>: [0],
+      unique<>: null,
+    }
+  }
+  cameras:
+    timeout: {
+      type: double,
+      default_value: 0.0,
+      description: "Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout.",
+      validation: {
+        gt_eq<>: [0.0],
+      }
+    }
+    n_min_cameras: {
+      type: int,
+      default_value: 1,
+      description: "Minimum number of valid camera views to start pose estimation pipeline.",
+      validation: {
+        gt_eq<>: [1],
+      }
+    }
+    __map_camera_names:
+      compressed: {
+        type: bool,
+        default_value: false,
+        description: "Expect compressed image messages from given camera.",
+      }
+      image_topic: {
+        type: string,
+        default_value: "",
+        description: "Topic name to subscribe for images. If empty, defaults to '<camera_name>/image' for not compressed image and '<camera_name>/image/compressed' for compressed images.",
+      }
+      info_topic: {
+        type: string,
+        default_value: "",
+        description: "Topic name to subscribe for camera info. If empty defaults to '<camera_name>/camera_info'.",
+      }
+      k_matrix: {
+        type: double_array,
+        default_value: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        description: "Camera intrinsic matrix. If values are valid intrinsic matrix, overwrites values from info ROS topic.",
+        validation: {
+          fixed_size<>: [9],
+          lower_element_bounds<>: [0.0]
+        }
+      }

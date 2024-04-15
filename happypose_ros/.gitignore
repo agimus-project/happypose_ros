@@ -1,0 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Linter cache
+.ruff_cache
+
+# Colcon custom files
+COLCON_IGNORE
+AMENT_IGNORE
+
+# VS Code
+.vscode
+
+# Generated ROS parameters
+# The file has to be manually modified as the code generations has a bug in __map
+happypose_ros/happypose_ros_parameters.py

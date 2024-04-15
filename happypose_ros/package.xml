@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>happypose_ros</name>
+  <version>0.0.0</version>
+  <description>ROS 2 wrapper around Happypose python library for 6D pose estimation</description>
+  <author email="krzysztof.wojciechowski@laas.fr">Krzysztof Wojciechowski</author>
+  <maintainer email="guilhem.saurel@laas.fr">Guilhem Saurel</maintainer>
+  <license>BSD</license>
+
+  <url type="website">https://gitlab.laas.fr/kwojciecho/happypose_ros</url>
+  <url type="bugtracker">https://gitlab.laas.fr/kwojciecho/happypose_ros/-/issues</url>
+  <url type="repository">https://gitlab.laas.fr/kwojciecho/happypose_ros</url>
+
+  <build_depend>generate_parameter_library</build_depend>
+  <build_depend>generate_parameter_library_py</build_depend>
+
+  <!-- When the whole thing will be packages this will be required -->
+  <!-- <depend>pinocchio</depend> -->
+  <depend>vision_msgs</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

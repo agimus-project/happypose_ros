@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>happypose_examples</name>
+  <version>0.0.0</version>
+  <description>Examples for happypose_ros package</description>
+  <author email="krzysztof.wojciechowski@laas.fr">Krzysztof Wojciechowski</author>
+  <maintainer email="guilhem.saurel@laas.fr">Guilhem Saurel</maintainer>
+  <license>BSD</license>
+
+  <url type="website">https://gitlab.laas.fr/kwojciecho/happypose_ros</url>
+  <url type="bugtracker">https://gitlab.laas.fr/kwojciecho/happypose_ros/-/issues</url>
+  <url type="repository">https://gitlab.laas.fr/kwojciecho/happypose_ros</url>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>happypose_ros</exec_depend>
+  <exec_depend>image_publisher</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>usb_cam</exec_depend>
+  <exec_depend>ros2launch</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

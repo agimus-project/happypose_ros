@@ -1,0 +1,63 @@
+/**:
+  ros__parameters:
+    # Device to which the models will be loaded
+    device: cpu
+    # Publish detected objects as markers to visualize detections in RViz
+    publish_markers: true
+    # Extended verbosity on info logs. Show logs with number of detections and more
+    verbose_info_logs: true
+
+    # Specifies which pose estimator to use in the pipeline
+    pose_estimator_type: cosypose
+    cosypose:
+      # Name of a dataset used during training
+      dataset_name: ycbv
+      # Object renderer parameters
+      renderer:
+        # Specifies which renderer to use in the pipeline
+        renderer_type: panda3d
+        # Number of CPU cores to use during rendering
+        n_workers: 8
+        # Render objects on a GPU
+        gpu_renderer: false
+      # Parameters expected on the runtime
+      inference:
+        # 2D image detection parameters
+        detector:
+          # Detection threshold of an object used by detector
+          detection_th: 0.7
+          # TODO description
+          mask_th: 0.8
+        # 3D pose estimation parameters
+        pose_estimator:
+          # Number of iterations for the refiner
+          n_coarse_iterations: 1
+          # Number of iterations for the coarse estimate
+          n_refiner_iterations: 3
+        # Not working. Requires bug fix in generate_parameter_library
+        # labels_to_keep:
+        #   - "ycbv-obj_000001"
+
+    # List of camera names to subscribe to. Those names are internal to happypose_ros node
+    # and can be chosen arbitrarly as long as they are valid YAML keys to be used later
+    camera_names: ["cam_1"]
+    cameras:
+      # Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout
+      timeout: 0.0
+      # Minimum number of valid camera views to start pose estimation pipeline
+      n_min_cameras: 1
+      # Configuration of camera "cam_1" defined in "camera_names" param
+      cam_1:
+        # Expect compressed image messages from given camera
+        compressed: false
+        # Topic name to subscribe for images. If empty, defaults to '<camera_name>/image' for not
+        # compressed image and '<camera_name>/image/compressed' for compressed images
+        image_topic: /image_raw
+        # Topic name to subscribe for camera info. If empty defaults to '<camera_name>/camera_info'
+        info_topic: /camera_info
+        # Camera intrinsic matrix. If values are valid intrinsic matrix,
+        # overwrites values from info ROS topic.
+        # Normally K matrix should be obtained from /camera_info.
+        # Currently hard-coded due to bug in image_publisher_node
+        # Do not use hard-coded K matrix unless needed!
+        k_matrix: [615.2, 0.0, 324.0, 0.0, 615.2, 237.0, 0.0, 0.0, 1.0]
