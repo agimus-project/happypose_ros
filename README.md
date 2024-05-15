@@ -6,29 +6,30 @@ ROS 2 wrapper for a 6D pose estimation library, [Happypose](https://github.com/a
 
 :warning: Conda installation is not supported
 
-:warning: GPU is currently not supported!
-
 Currently, there is no automated build for happypose library itself built into the ROS node. Please follow the installation guide found in the [happypose README.md](https://github.com/agimus-project/happypose?tab=readme-ov-file#example-with-venv).
 
 ```bash
 rosdep update --rosdistro $ROS_DISTRO
 rosdep install -y -i --from-paths src --rosdistro $ROS_DISTRO
-# paramter --symlink-install is optional
+# parameter --symlink-install is optional
 colcon build --symlink-install
 ```
 
 ## Launch
 
-:warning: Intrinsic parameters of the camera are approximate in the demos and may cause inaccurate results! You can change them by modifying [camera_info.yaml](./happypose_examples/config/camera_info.yaml) file.
+:warning: Intrinsic parameters of the camera are approximate in the demos and may cause inaccurate results! You can change them by modifying the `k_matrix` param in [cosypose_params.yaml](./happypose_examples/config/cosypose_params.yaml) file.
 
-To launch with webcam preview run:
+To launch the demo run:
 ```bash
-ros2 launch happypose_examples webcam.launch.py use_rviz:=true video_device:="/dev/video0"
+ros2 launch happypose_examples single_view_demo.launch.py use_rviz:=true device:=cpu dataset_name:=ycbv \
+    image_path:=<path to the image>
 ```
-This will subscribe to `/dev/video0` input and feed this image to the **happypose_ros** node.
+The `<path to the image>` can either be a relative or global path to an image stored on the computer's drive or a path to a video device mapped to a webcam, e.g. `/dev/video0`.
 
-
-Another option it to stream static image from a file:
+To evaluate multiview capabilities try:
 ```bash
-ros2 launch happypose_examples file_image.launch.py use_rviz:=true image_file_path:=<path to the image>
+ros2 launch happypose_examples multi_view_demo.launch.py use_rviz:=true device:=cpu dataset_name:=ycbv \
+    image_1_path:=<path to the image> \
+    image_2_path:=<path to the image> \
+    image_3_path:=<path to the image>
 ```

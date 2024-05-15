@@ -2,10 +2,16 @@
   ros__parameters:
     # Device to which the models will be loaded. Supported options are 'cpu' and 'cuda:x' where 'x' is the GPU number.
     device: $(var device)
-    # Publish detected objects as markers to visualize detections in RViz
-    visualization.publish_markers: true
+    visualization:
+      # Publish detected objects as markers to visualize detections in RViz
+      publish_markers: true
+      markers:
+        # Timeout used for published markers. Useful when pipeline is very slow
+        timeout: 60.0
     # Extended verbosity on info logs. Show logs with number of detections and more
     verbose_info_logs: true
+    # Which image time stamp to use in final detection message
+    time_stamp_strategy: oldest
 
     # Specifies which pose estimator to use in the pipeline
     pose_estimator_type: cosypose
@@ -35,21 +41,29 @@
         # Labels of detected objects to keep. If not specyfied, all objects are kept
         # labels_to_keep:
         #   - "ycbv-obj_000001"
+        multiview:
+          # Number of ransac iterations when matching views
+          ransac_n_iter: 2000
+          # Threshold (in metter) on the symmetric distance (Mean Symmetry-Aware Surface Distance)
+          # used consider a tentative match as an inlier during RANSAC iterations
+          ransac_dist_threshold: 0.02
+          # Number of steps in the final bundle adjustment refinement
+          ba_n_iter: 100
 
     # List of camera names to subscribe to. Those names are internal to happypose_ros node
     # and can be chosen arbitrarily as long as they are valid YAML keys to be used later
-    camera_names: ["cam_1"]
+    camera_names: ["cam_1", "cam_2", "cam_3"]
     cameras:
       # Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout
       timeout: 0.0
       # Minimum number of valid camera views to start pose estimation pipeline
-      n_min_cameras: 1
+      n_min_cameras: 3
       # Configuration of camera "cam_1" defined in "camera_names" param
       cam_1:
         # Consider the camera to be leading. If a camera is leading, its frame_id is used as a reference.
-        # Only one camera can be leading, and it can't publish TF at the same time
+        # Only one camera can be leading, and it can't publish TF at the same time.
         leading: true
-        # Publish TF of a given camera relative to the leading camera
+        # Publish TF of a given camera relative to the leading camera.
         publish_tf: false
         # Expect compressed image messages from given camera
         compressed: false
@@ -58,4 +72,14 @@
         # Normally K matrix should be obtained from <camera_name>/camera_info.
         # Currently hard-coded due to bug in image_publisher_node
         # Do not use hard-coded K matrix unless needed!
+        k_matrix: [615.2, 0.0, 324.0, 0.0, 615.2, 237.0, 0.0, 0.0, 1.0]
+      cam_2:
+        leading: false
+        publish_tf: true
+        compressed: false
+        k_matrix: [615.2, 0.0, 324.0, 0.0, 615.2, 237.0, 0.0, 0.0, 1.0]
+      cam_3:
+        leading: false
+        publish_tf: true
+        compressed: false
         k_matrix: [615.2, 0.0, 324.0, 0.0, 615.2, 237.0, 0.0, 0.0, 1.0]

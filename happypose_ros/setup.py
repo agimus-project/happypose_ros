@@ -6,7 +6,8 @@ package_name = "happypose_ros"
 
 module_name = "happypose_ros_parameters"
 yaml_file = "happypose_ros/happypose_ros_parameters.yaml"
-generate_parameter_module(module_name, yaml_file)
+validation_module = "happypose_ros.custom_validation"
+generate_parameter_module(module_name, yaml_file, validation_module=validation_module)
 
 setup(
     name=package_name,
@@ -20,7 +21,7 @@ setup(
     zip_safe=True,
     maintainer="Guilhem Saurel",
     maintainer_email="guilhem.saurel@laas.fr",
-    description="ROS 2 wrapper around Happypose python library for 6D pose estimation",
+    description="ROS 2 wrapper around HappyPose python library for 6D pose estimation",
     license="BSD",
     tests_require=["pytest"],
     entry_points={

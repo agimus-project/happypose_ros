@@ -3,10 +3,19 @@ import numpy as np
 import numpy.typing as npt
 import pinocchio as pin
 from typing import Any, Union
+from torch import Tensor
 
 from rclpy.duration import Duration
 
-from geometry_msgs.msg import Point, PoseWithCovariance, Pose, Quaternion, Vector3
+from geometry_msgs.msg import (
+    Point,
+    PoseWithCovariance,
+    Pose,
+    Transform,
+    TransformStamped,
+    Quaternion,
+    Vector3,
+)
 from std_msgs.msg import ColorRGBA, Header
 from visualization_msgs.msg import Marker, MarkerArray
 from vision_msgs.msg import (
@@ -70,21 +79,24 @@ def create_bounding_box_msg(
     return bbox
 
 
-def get_detection_array_msg(results: dict, header: Header) -> Detection2DArray:
+def get_detection_array_msg(
+    results: dict, header: Header, has_bbox: bool = True
+) -> Detection2DArray:
     def generate_detection_msg(i: int) -> Detection2D:
         # Convert SE3 tensor to [x, y, z, qx, qy, qz, qw] pose representations
         pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results["poses"][i].numpy()))
         detection = Detection2D(
             header=header,
-            bbox=create_bounding_box_msg(results["bboxes"][i].numpy()),
-            # Happypose supports only one result per detection, so the array
+            # HappyPose supports only one result per detection, so the array
             # contains only single object
             results=[ObjectHypothesisWithPose()],
             # ID is used for consistency across multiple detection messages.
-            # Happypose does not differenciate between detected objects,
+            # HappyPose does not differentiate between detected objects,
             # Hence empty string is used.
             id="",
         )
+        if has_bbox:
+            detection.bbox = create_bounding_box_msg(results["bboxes"][i].numpy())
         detection.results[0].hypothesis = ObjectHypothesis(
             class_id=results["infos"].label[i], score=results["infos"].score[i]
         )
@@ -93,8 +105,8 @@ def get_detection_array_msg(results: dict, header: Header) -> Detection2DArray:
                 position=Point(**dict(zip("xyz", pose_vec[:3]))),
                 orientation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
             ),
-            # Happypose does not provide covariance, hence
-            # it is hardcoded to identity matrix
+            # HappyPose does not provide covariance, hence
+            # it is hard-coded to identity matrix
             covariance=[1.0 if (i % 7) == 0 else 0.0 for i in range(36)],
         )
         return detection
@@ -111,6 +123,7 @@ def get_marker_array_msg(
     mesh_file_extension: str = "ply",
     label_to_strip: str = "",
     dynamic_opacity: bool = False,
+    marker_timeout: float = 10.0,
 ) -> MarkerArray:
     def generate_marker_msg(i: int) -> Marker:
         detection = detections.detections[i]
@@ -130,10 +143,24 @@ def get_marker_array_msg(
                 **dict(zip("rgb", [1.0] * 3)),
                 a=detection.results[0].hypothesis.score if dynamic_opacity else 1.0,
             ),
-            lifetime=Duration(seconds=10.0).to_msg(),
+            lifetime=Duration(seconds=marker_timeout).to_msg(),
             pose=detection.results[0].pose.pose,
         )
 
     return MarkerArray(
         markers=[generate_marker_msg(i) for i in range(len(detections.detections))],
+    )
+
+
+def get_camera_transform(
+    camera_pose: Tensor, header: Header, child_frame_id: str
+) -> TransformStamped:
+    pose_vec = pin.SE3ToXYZQUAT(pin.SE3(camera_pose.numpy()))
+    return TransformStamped(
+        header=header,
+        child_frame_id=child_frame_id,
+        transform=Transform(
+            translation=Vector3(**dict(zip("xyz", pose_vec[:3]))),
+            rotation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
+        ),
     )
