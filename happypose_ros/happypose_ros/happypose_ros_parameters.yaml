@@ -1,4 +1,49 @@
 happypose_ros:
+  device: {
+    type: string,
+    default_value: "cpu",
+    description: "Device to which the models will be loaded. Supported options are 'cpu' and 'cuda:x' where 'x' is the GPU number.",
+    validation: {
+      "custom_validators::torch_check_device": null
+    }
+  }
+
+  verbose_info_logs: {
+    type: bool,
+    default_value: false,
+    description: "Extended verbosity on info logs. Show logs with number of detections and more.",
+  }
+
+  time_stamp_strategy: {
+    type: string,
+    default_value: "oldest",
+    description: "Which image time stamp to use in final detection message.",
+    validation: {
+      one_of<>: [[ "average", "newest", "oldest" ]],
+    }
+  }
+
+  visualization:
+    publish_markers: {
+      type: bool,
+      default_value: false,
+      description: "Publish detected objects as markers to visualize detections in RViz.",
+    }
+    markers:
+      dynamic_opacity: {
+        type: bool,
+        default_value: true,
+        description: "Change opacity of published markers based on their prediction score.",
+      }
+      timeout: {
+        type: double,
+        default_value: 10.0,
+        description: "Timeout used for published markers.",
+        validation: {
+          gt<>: [ 0.0 ],
+        }
+      }
+
   pose_estimator_type: {
     type: string,
     default_value: "cosypose",
@@ -7,41 +52,6 @@ happypose_ros:
       one_of<>: [[ "cosypose" ]],
     }
   }
-  device: {
-    type: string,
-    default_value: "cpu",
-    description: "Device to which the models will be loaded.",
-    validation: {
-      one_of<>: [[ "cpu", "cuda:0" ]],
-    }
-  }
-  frame_id: {
-    type: string,
-    default_value: "world",
-    description: "Frame ID to which final detections should be converted.",
-    validation: {
-      not_empty<>: [ ],
-    }
-  }
-  publish_markers: {
-    type: bool,
-    default_value: false,
-    description: "Publish detected objects as markers to visualize detections in RViz.",
-  }
-  verbose_info_logs: {
-    type: bool,
-    default_value: false,
-    description: "Extended verbosity on info logs. Show logs with number of detections and more.",
-  }
-  time_stamp_strategy: {
-    type: string,
-    default_value: "oldest",
-    description: "Which image time stamp to use when using multi-view.",
-    validation: {
-      one_of<>: [[ "average", "newest", "oldest" ]],
-    }
-  }
-
   cosypose:
     dataset_name: {
       type: string,
@@ -84,15 +94,6 @@ happypose_ros:
             bounds<>: [0.0, 1.0],
           }
         }
-        mask_th: {
-          type: double,
-          default_value: 0.8,
-          # TODO any description
-          description: "?",
-          validation: {
-            bounds<>: [0.0, 1.0],
-          }
-        }
       pose_estimator:
         n_refiner_iterations: {
           type: int,
@@ -107,14 +108,30 @@ happypose_ros:
           default_value: 1,
           description: "Number of iterations for the coarse estimate.",
           validation: {
-            gt_eq<>: [ 1] ,
+            gt_eq<>: [ 1 ] ,
           }
         }
-      # Not working. Requires bugfix in generate_parameter_library
+      multiview:
+        ransac_n_iter: {
+          type: int,
+          default_value: 2000,
+          description: "Number of ransac iterations when matching views.",
+        }
+        ransac_dist_threshold: {
+          type: double,
+          default_value: 0.2,
+          description: "Threshold (in metter) on the symmetric distance (Mean Symmetry-Aware Surface Distance) used consider a tentative match as an inlier during RANSAC iterations.",
+        }
+        ba_n_iter: {
+          type: int,
+          default_value: 100,
+          description: "Number of steps in the final bundle adjustment refinement.",
+        }
       labels_to_keep: {
         type: string_array,
-        description: "Labels of detected objects to keep.",
-        default_value: [],
+        description: "Labels of detected objects to keep. If not specyfied, all objects are kept.",
+        # Walkaround to obtain "empty" string array
+        default_value: [""],
         validation: {
           unique<>: null,
         }
@@ -151,15 +168,15 @@ happypose_ros:
         default_value: false,
         description: "Expect compressed image messages from given camera.",
       }
-      image_topic: {
-        type: string,
-        default_value: "",
-        description: "Topic name to subscribe for images. If empty, defaults to '<camera_name>/image' for not compressed image and '<camera_name>/image/compressed' for compressed images.",
+      leading: {
+        type: bool,
+        default_value: false,
+        description: "Consider the camera to be leading. If a camera is leading, its frame_id is used as a reference. Only one camera can be leading, and it can't publish TF at the same time.",
       }
-      info_topic: {
-        type: string,
-        default_value: "",
-        description: "Topic name to subscribe for camera info. If empty defaults to '<camera_name>/camera_info'.",
+      publish_tf: {
+        type: bool,
+        default_value: false,
+        description: "Publish TF of a given camera relative to the leading camera.",
       }
       k_matrix: {
         type: double_array,

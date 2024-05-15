@@ -1,11 +1,19 @@
 from ctypes import c_bool
+import math
+import numpy as np
 from statistics import mean
 from threading import Thread
+import torch
 import torch.multiprocessing as mp
 
 import rclpy
+from rclpy.duration import Duration
+from rclpy.exceptions import ParameterException
+import rclpy.logging
 from rclpy.node import Node
 from rclpy.time import Time
+
+from tf2_ros import TransformBroadcaster
 
 from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray
@@ -18,9 +26,10 @@ from happypose.toolbox.utils.logging import get_logger
 logger = get_logger(__name__)
 
 from happypose_ros.camera_wrapper import CameraWrapper  # noqa: E402
-from happypose_ros.inference_pipeline import HappyposePipeline  # noqa: E402
+from happypose_ros.inference_pipeline import HappyPosePipeline  # noqa: E402
 from happypose_ros.utils import (  # noqa: E402
     params_to_dict,
+    get_camera_transform,
     get_detection_array_msg,
     get_marker_array_msg,
 )
@@ -29,14 +38,14 @@ from happypose_ros.utils import (  # noqa: E402
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
 
-def _happypose_worker_proc(
-    params: happypose_ros.Params,
+def happypose_worker_proc(
+    params: dict,
     worker_free: mp.Value,
     observation_tensor_queue: mp.Queue,
     result_queue: mp.Queue,
 ) -> None:
     # Initialize the pipeline
-    pipeline = HappyposePipeline(params)
+    pipeline = HappyPosePipeline(params)
 
     # Notify parent that initialization has finished
     with worker_free.get_lock():
@@ -59,15 +68,19 @@ def _happypose_worker_proc(
     except Exception as e:
         logger.error(f"Worker got exception: {str(e)}. Exception type: {type(e)}.")
 
-    logger.info("HappyposeWorker finished job.")
+    logger.info("HappyPoseWorker finished job.")
 
 
-class HappyposeNode(Node):
+class HappyPoseNode(Node):
     def __init__(self) -> None:
         super().__init__("happypose_node")
 
-        self._param_listener = happypose_ros.ParamListener(self)
-        self._params = self._param_listener.get_params()
+        try:
+            self._param_listener = happypose_ros.ParamListener(self)
+            self._params = self._param_listener.get_params()
+        except Exception as e:
+            self.get_logger().error(str(e))
+            raise e
 
         self._device = self._params.device
 
@@ -78,7 +91,7 @@ class HappyposeNode(Node):
 
         # TODO check efficiency of a single queue of ObservationTensors
         self._happypose_worker = ctx.Process(
-            target=_happypose_worker_proc,
+            target=happypose_worker_proc,
             name="happypose_worker",
             args=(
                 params_to_dict(self._params),
@@ -87,9 +100,8 @@ class HappyposeNode(Node):
                 self._result_queue,
             ),
         )
-        self._happypose_worker.start()
-
         self._await_results_task = None
+
         # TODO once Megapose is available initialization
         # should be handled better
         self._vision_info_msg = VisionInfo(
@@ -110,8 +122,8 @@ class HappyposeNode(Node):
             name: CameraWrapper(self, self._params.cameras, name, self._on_image_cb)
             for name in self._params.camera_names
         }
-        self._processed_cameras = []
-        self._last_pipeline_trigger = None
+
+        self._last_pipeline_trigger = self.get_clock().now()
 
         self._detections_publisher = self.create_publisher(
             Detection2DArray, "happypose/detections", 10
@@ -120,14 +132,74 @@ class HappyposeNode(Node):
             VisionInfo, "happypose/vision_info", 10
         )
 
+        if self._params.cameras.n_min_cameras > len(self._cameras):
+            e = ParameterException(
+                "Minimum number of cameras to trigger the pipeline is"
+                " greater than the number of available cameras",
+                ("cameras.n_min_cameras", "cameras"),
+            )
+            self.get_logger().error(str(e))
+            raise e
+
+        leading_cams = sum([cam.leading for cam in self._cameras.values()])
+        if leading_cams == 0:
+            e = ParameterException(
+                "No leading cameras specified. Modify parameter",
+                ("cameras.<camera_name>.leading"),
+            )
+            self.get_logger().error(str(e))
+            raise e
+
+        elif leading_cams > 1:
+            e = ParameterException(
+                "HappyPose can use only single leading camera",
+                [
+                    f"cameras.{name}.leading"
+                    for name, cam in self._cameras.items()
+                    if cam.leading
+                ],
+            )
+            self.get_logger().error(str(e))
+            raise e
+
+        # Find leading camera name
+        self._leading_camera = next(
+            filter(lambda name: self._cameras[name].leading, self._cameras)
+        )
+
+        if self._cameras[self._leading_camera].publish_tf:
+            e = ParameterException(
+                "Leading camera can not publish TF",
+                (
+                    f"cameras.{self._leading_camera}.publish_tf",
+                    f"cameras.{self._leading_camera}.leading",
+                ),
+            )
+            self.get_logger().error(str(e))
+            raise e
+
+        self._multiview = len(self._cameras) > 1
+        if self._multiview:
+            self.get_logger().info(
+                "Node configured to run in multi-view mode."
+                " Minimum number of views expected: "
+                f"{self._params.cameras.n_min_cameras}."
+            )
+            # Broadcast TF if any camera needs it
+            if any([self._cameras[name].publish_tf for name in self._cameras]):
+                self._tf_broadcaster = TransformBroadcaster(self)
+
         # Create debug publisher
-        if self._params.publish_markers:
+        if self._params.visualization.publish_markers:
             self._marker_publisher = self.create_publisher(
                 MarkerArray, "happypose/markers", 10
             )
 
+        # Start the worker when all possible errors are handled
+        self._happypose_worker.start()
+
         self.get_logger().info(
-            "Node initialized. Waiting for Happypose to initialized...",
+            "Node initialized. Waiting for HappyPose worker to initialized...",
         )
 
     def destroy_node(self) -> None:
@@ -154,44 +226,66 @@ class HappyposeNode(Node):
 
         # Print this log message only once in the beginning
         self.get_logger().info(
-            "Happypose initialized. Starting to process incoming images.", once=True
+            "HappyPose initialized. Starting to process incoming images.", once=True
         )
 
         self._trigger_pipeline()
 
     def _trigger_pipeline(self) -> None:
-        self.get_logger().info(
-            "First inference might take longer, as the pipeline is still loading.",
-            once=True,
+        now = self.get_clock().now()
+        # If timeout at 0.0 accept all images
+        skipp_timeout = math.isclose(self._params.cameras.timeout, 0.0)
+        processed_cameras = dict(
+            filter(
+                lambda cam: (
+                    cam[1].ready()
+                    and (
+                        skipp_timeout
+                        # Fallback to checking the timestamp if not skipped
+                        or (now - cam[1].get_last_image_stamp())
+                        < Duration(seconds=self._params.cameras.timeout)
+                    )
+                ),
+                self._cameras.items(),
+            )
         )
 
-        now = self.get_clock().now()
-        if self._params.cameras.timeout:
-            processed_cameras = [
-                name
-                for name, cam in self._cameras.items()
-                if (now - cam.get_last_image_stamp()) > self._params.cameras.timeout
-            ]
-        else:
-            processed_cameras = list(self._cameras.keys())
-
         if len(processed_cameras) < self._params.cameras.n_min_cameras:
-            if self._last_pipeline_trigger and (now - self._last_pipeline_trigger) > (
-                5 * self._params.cameras.timeout
-            ):
-                # TODO Consider more meaningful message
+            # Throttle logs to either 5 times the timeout or 10 seconds
+            timeout = max(5 * self._params.cameras.timeout, 10.0)
+            if (now - self._last_pipeline_trigger) > (Duration(seconds=timeout)):
                 self.get_logger().warn(
-                    "Unable to start pipeline! Not enough camera "
-                    + "views before timeout reached!",
-                    throttle_duration_sec=5.0,
+                    "Unable to start pipeline! Not enough camera"
+                    " views before timeout reached!",
+                    throttle_duration_sec=timeout,
                 )
             return
 
-        # TODO properly implement multi-view
+        if self._leading_camera not in processed_cameras.keys():
+            if (now - self._last_pipeline_trigger) > Duration(seconds=20):
+                self.get_logger().warn(
+                    "Failed to include leading camera in"
+                    " the pipeline for past 20 seconds.",
+                    throttle_duration_sec=20.0,
+                )
+            return
+
         # TODO implement depth info
-        K, rgb = self._cameras[processed_cameras[0]].get_camera_data()
-        observation = ObservationTensor.from_numpy(
-            rgb=rgb, depth=None, K=K.reshape((3, 3))
+        rgb_tensor = torch.as_tensor(
+            np.stack([cam.get_last_rgb_image() for cam in processed_cameras.values()])
+        )
+        K_tensor = torch.as_tensor(
+            np.stack([cam.get_last_k_matrix() for cam in processed_cameras.values()])
+        )
+        if rgb_tensor.shape[-1] == 3:
+            rgb_tensor = rgb_tensor.permute(0, 3, 1, 2)
+
+        # Enable shared memory to increase performance
+        rgb_tensor.to(self._device).share_memory_()
+        K_tensor.to(self._device).share_memory_()
+
+        observation = ObservationTensor.from_torch_batched(
+            rgb=rgb_tensor, depth=None, K=K_tensor
         )
         observation.to(self._device)
         self._observation_tensor_queue.put(observation)
@@ -200,20 +294,22 @@ class HappyposeNode(Node):
             self._worker_free.value = False
         self._last_pipeline_trigger = now
 
-        # As of python 3.7 dict is insertion ordered
-        # so this can be used to unwrap tensors later
-        # when using multi-view
-        camera_inference_data = {
-            cam: {
-                "frame_id": self._cameras[cam].get_last_iamge_frame_id(),
-                "stamp": self._cameras[cam].get_last_image_stamp(),
+        # As of python 3.7 dict is insertion ordered so this can be
+        # used to unwrap tensors later when using multi-view
+        cam_data = {
+            name: {
+                "frame_id": cam.get_last_image_frame_id(),
+                "stamp": cam.get_last_image_stamp(),
             }
-            for cam in processed_cameras
+            for name, cam in processed_cameras.items()
         }
 
-        self._await_results_task = Thread(
-            target=self._await_results, args=(camera_inference_data,)
+        self.get_logger().info(
+            "First inference might take longer, as the pipeline is still loading.",
+            once=True,
         )
+
+        self._await_results_task = Thread(target=self._await_results, args=(cam_data,))
         self._await_results_task.start()
 
     def _await_results(self, cam_data: dict) -> None:
@@ -232,14 +328,45 @@ class HappyposeNode(Node):
             if self._params.verbose_info_logs:
                 self.get_logger().info(f"Detected {len(results['infos'])} objects.")
 
+            missing_cameras = len(cam_data) - len(results["camera_poses"])
+            if missing_cameras > 0:
+                # Keep only the cameras that were not discarded in multiview
+                cam_data = {
+                    name: cam
+                    for i, (name, cam) in enumerate(cam_data.items())
+                    if i in results["camera_infos"].view_id
+                }
+
+                if self._leading_camera not in cam_data.keys():
+                    self.get_logger().error(
+                        f"Leading camera '{self._leading_camera}'"
+                        " was discarded when performing multi-view!"
+                    )
+                    return
+
+                if self._params.verbose_info_logs:
+                    self.get_logger().warn(
+                        f"{missing_cameras} camera views were discarded in multi-view."
+                    )
+
+            if self._multiview and len(results["camera_poses"]) > 1:
+                lead_cam_idx = list(cam_data.keys()).index(self._leading_camera)
+                # Transform objects into leading camera's reference frame
+                leading_cam_pose_inv = results["camera_poses"][lead_cam_idx].inverse()
+                # Transform detected objects' poses
+                results["poses"] = leading_cam_pose_inv @ results["poses"]
+                # Create mask of cameras that expect to have TF published
+                cams_to_tf = [
+                    self._cameras[name].publish_tf for name in cam_data.keys()
+                ]
+                # Transform cameras' poses
+                results["camera_poses"][cams_to_tf] = (
+                    leading_cam_pose_inv @ results["camera_poses"][cams_to_tf]
+                )
+
             header = Header(
-                # Use camera frame_id if single view
-                frame_id=(
-                    list(cam_data.values())[0]["frame_id"]
-                    if len(cam_data) == 1
-                    else self._params.frame_id
-                ),
-                # Use the oldest camera image time stamp
+                frame_id=cam_data[self._leading_camera]["frame_id"],
+                # Choose sorted time stamp
                 stamp=Time(
                     nanoseconds=self._stmap_sort_strategy(
                         [cam["stamp"].nanoseconds for cam in cam_data.values()]
@@ -247,24 +374,38 @@ class HappyposeNode(Node):
                 ).to_msg(),
             )
 
-            detections = get_detection_array_msg(results, header)
+            # In case of multi-view, do not use bounding boxes
+            detections = get_detection_array_msg(
+                results, header, has_bbox=not self._multiview
+            )
             self._detections_publisher.publish(detections)
 
             self._vision_info_msg.header = header
             self._vision_info_publisher.publish(self._vision_info_msg)
 
-            if self._params.publish_markers:
+            if self._params.visualization.publish_markers:
                 # TODO consider better path handling
                 markers = get_marker_array_msg(
                     detections,
                     f"file://{self._vision_info_msg.database_location}",
                     label_to_strip=self._params.cosypose.dataset_name + "-",
-                    dynamic_opacity=True,
+                    dynamic_opacity=self._params.visualization.markers.dynamic_opacity,
+                    marker_timeout=self._params.visualization.markers.timeout,
                 )
                 self._marker_publisher.publish(markers)
+
+            if self._multiview:
+                # Assume HappyPose is already returning cameras in the same order it received them
+                for pose, (name, cam) in zip(results["camera_poses"], cam_data.items()):
+                    if (
+                        not self._cameras[name].leading
+                        and self._cameras[name].publish_tf
+                    ):
+                        self._tf_broadcaster.sendTransform(
+                            get_camera_transform(pose, header, cam["frame_id"])
+                        )
         # Queue was closed
         except ValueError:
-            self.get_logger().error("queue closed")
             return
         except Exception as e:
             self.get_logger().error(f"Publishing data failed. Reason: {str(e)}")
@@ -272,12 +413,12 @@ class HappyposeNode(Node):
 
 def main() -> None:
     rclpy.init()
-    happypose_node = HappyposeNode()
     try:
+        happypose_node = HappyPoseNode()
         rclpy.spin(happypose_node)
-    except KeyboardInterrupt:
+        happypose_node.destroy_node()
+    except (KeyboardInterrupt, ParameterException):
         pass
-    happypose_node.destroy_node()
     rclpy.try_shutdown()
 
 

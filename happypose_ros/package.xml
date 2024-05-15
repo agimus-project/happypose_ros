@@ -3,7 +3,7 @@
 <package format="3">
   <name>happypose_ros</name>
   <version>0.0.0</version>
-  <description>ROS 2 wrapper around Happypose python library for 6D pose estimation</description>
+  <description>ROS 2 wrapper around HappyPose python library for 6D pose estimation</description>
   <author email="krzysztof.wojciechowski@laas.fr">Krzysztof Wojciechowski</author>
   <maintainer email="guilhem.saurel@laas.fr">Guilhem Saurel</maintainer>
   <license>BSD</license>

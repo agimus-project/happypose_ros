@@ -5,6 +5,7 @@ from launch.launch_context import LaunchContext
 from launch.launch_description_entity import LaunchDescriptionEntity
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
 
 
@@ -14,30 +15,21 @@ def launch_setup(
     # Obtain argument specifying if RViz should be launched
     use_rviz = LaunchConfiguration("use_rviz")
 
-    # Evaluate path of the cosypose parameters
-    happypose_params_path = PathJoinSubstitution(
-        [
-            FindPackageShare("happypose_examples"),
-            "config",
-            "cosypose_params.yaml",
-        ]
-    )
+    # Obtain argument specifying if static transformation the camera should be published
+    publish_camera_tf = LaunchConfiguration("publish_camera_tf")
+
+    # Obtain argument specifying path from which to load happypose_ros parameters
+    happypose_params_path = LaunchConfiguration("happypose_params_path")
+
+    # Obtain argument specifying path from which to load RViz config
+    rviz_config_path = LaunchConfiguration("rviz_config_path")
 
     # Start ROS node of happypose
     happypose_node = Node(
         package="happypose_ros",
         executable="happypose_node",
         name="happypose_node",
-        parameters=[happypose_params_path],
-    )
-
-    # Evaluate path of the cosypose parameters
-    rviz_config_path = PathJoinSubstitution(
-        [
-            FindPackageShare("happypose_examples"),
-            "rviz",
-            "happypose_example.rviz",
-        ]
+        parameters=[ParameterFile(param_file=happypose_params_path, allow_substs=True)],
     )
 
     # Start RViz2 ROS node
@@ -52,7 +44,7 @@ def launch_setup(
     # Start static TF publisher to transform
     # camera optical frame and rotate it for better rviz preview
     static_transform_publisher_node = Node(
-        condition=IfCondition(use_rviz),
+        condition=IfCondition(publish_camera_tf),
         package="tf2_ros",
         executable="static_transform_publisher",
         name="static_transform_publisher",
@@ -77,6 +69,43 @@ def launch_setup(
 
 def generate_launch_description():
     declared_arguments = [
+        DeclareLaunchArgument(
+            "dataset_name",
+            default_value="ycbv",
+            description="Which dataset to use for inference.",
+        ),
+        DeclareLaunchArgument(
+            "device",
+            default_value="cpu",
+            description="Which device to load the models to.",
+        ),
+        DeclareLaunchArgument(
+            "happypose_params_path",
+            default_value=PathJoinSubstitution(
+                [
+                    FindPackageShare("happypose_examples"),
+                    "config",
+                    "cosypose_params.yaml",
+                ]
+            ),
+            description="Path to a file containing happypose_ros node parameters.",
+        ),
+        DeclareLaunchArgument(
+            "publish_camera_tf",
+            default_value="true",
+            description="Publish static transforamtion for the camera.",
+        ),
+        DeclareLaunchArgument(
+            "rviz_config_path",
+            default_value=PathJoinSubstitution(
+                [
+                    FindPackageShare("happypose_examples"),
+                    "rviz",
+                    "happypose_example.rviz",
+                ]
+            ),
+            description="Path to a file containing RViz view configuration.",
+        ),
         DeclareLaunchArgument(
             "use_rviz",
             default_value="false",

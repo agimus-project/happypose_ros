@@ -16,22 +16,29 @@ def launch_setup(
     context: LaunchContext, *args, **kwargs
 ) -> list[LaunchDescriptionEntity]:
     # Obtain argument value for image path
-    image_file_path = LaunchConfiguration("image_file_path")
+    image_path = LaunchConfiguration("image_path")
 
     # Start ROS node for image publishing
     image_publisher_node = Node(
         package="image_publisher",
         executable="image_publisher_node",
         output="screen",
-        arguments=[image_file_path],
         parameters=[
             {
                 "use_sim_time": False,
-                "publish_rate": 10.0,
-                # Ignored by the node, fixed by https://github.com/ros-perception/image_pipeline/pull/861
-                # Currently no bug fix for humble, requires back port
+                "publish_rate": 23.0,
+                "frame_id": "camera",
+                "filename": image_path,
+                # Camera info is ignored by the node on startup.
+                # Waiting for https://github.com/ros-perception/image_pipeline/issues/965
                 "camera_info_url": "package://happypose_examples/config/camera_info.yaml",
             }
+        ],
+        remappings=[
+            # Remapped topics have to match the names from
+            # happypose_examples/config/cosypose_params.yaml
+            ("image_raw", "/cam_1/image"),
+            ("camera_info", "cam_1/camera_info"),
         ],
     )
 
@@ -49,6 +56,8 @@ def launch_setup(
             ]
         ),
         launch_arguments={
+            "dataset_name": LaunchConfiguration("dataset_name"),
+            "device": LaunchConfiguration("device"),
             "use_rviz": LaunchConfiguration("use_rviz"),
         }.items(),
     )
@@ -59,8 +68,18 @@ def launch_setup(
 def generate_launch_description():
     declared_arguments = [
         DeclareLaunchArgument(
-            "image_file_path",
-            description="Path to image to be published as an input for happypose_ros node.",
+            "dataset_name",
+            default_value="ycbv",
+            description="Which dataset to use for inference.",
+        ),
+        DeclareLaunchArgument(
+            "device",
+            default_value="cpu",
+            description="Which device to load the models to.",
+        ),
+        DeclareLaunchArgument(
+            "image_path",
+            description="Path to image or webcam to be published as an input for happypose_ros node.",
         ),
         DeclareLaunchArgument(
             "use_rviz",
