@@ -1,4 +1,6 @@
-from setuptools import setup
+import os
+from glob import glob
+from setuptools import find_packages, setup
 
 from generate_parameter_library_py.setup_helper import generate_parameter_module
 
@@ -12,10 +14,13 @@ generate_parameter_module(module_name, yaml_file, validation_module=validation_m
 setup(
     name=package_name,
     version="0.0.0",
-    packages=[package_name],
+    packages=find_packages(exclude=["test"]),
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
         ("share/" + package_name, ["package.xml"]),
+        (os.path.join("share", package_name, "test"), glob("test/*.py")),
+        (os.path.join("share", package_name, "test"), glob("test/*.yaml")),
+        (os.path.join("share", package_name, "test"), glob("test/*.png")),
     ],
     install_requires=["setuptools"],
     zip_safe=True,

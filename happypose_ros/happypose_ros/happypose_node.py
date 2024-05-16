@@ -5,6 +5,8 @@ from statistics import mean
 from threading import Thread
 import torch
 import torch.multiprocessing as mp
+import queue
+
 
 import rclpy
 from rclpy.duration import Duration
@@ -42,7 +44,8 @@ def happypose_worker_proc(
     params: dict,
     worker_free: mp.Value,
     observation_tensor_queue: mp.Queue,
-    result_queue: mp.Queue,
+    results_queue: mp.Queue,
+    params_queue: mp.Queue,
 ) -> None:
     # Initialize the pipeline
     pipeline = HappyPosePipeline(params)
@@ -56,8 +59,15 @@ def happypose_worker_proc(
             # Await any data on all the input queues
             observation = observation_tensor_queue.get(block=True, timeout=None)
 
-            result = pipeline(observation)
-            result_queue.put(result)
+            # Update inference args if available
+            try:
+                params = params_queue.get_nowait()
+                pipeline.update_params(params)
+            except queue.Empty:
+                pass
+
+            results = pipeline(observation)
+            results_queue.put(results)
 
             # Notify parent that processing finished
             with worker_free.get_lock():
@@ -72,8 +82,8 @@ def happypose_worker_proc(
 
 
 class HappyPoseNode(Node):
-    def __init__(self) -> None:
-        super().__init__("happypose_node")
+    def __init__(self, node_name: str = "happypose_node", **kwargs) -> None:
+        super().__init__(node_name, **kwargs)
 
         try:
             self._param_listener = happypose_ros.ParamListener(self)
@@ -87,7 +97,8 @@ class HappyPoseNode(Node):
         ctx = mp.get_context("spawn")
         self._worker_free = ctx.Value(c_bool, False)
         self._observation_tensor_queue = ctx.Queue(1)
-        self._result_queue = ctx.Queue(1)
+        self._results_queue = ctx.Queue(1)
+        self._params_queue = ctx.Queue(1)
 
         # TODO check efficiency of a single queue of ObservationTensors
         self._happypose_worker = ctx.Process(
@@ -97,7 +108,8 @@ class HappyPoseNode(Node):
                 params_to_dict(self._params),
                 self._worker_free,
                 self._observation_tensor_queue,
-                self._result_queue,
+                self._results_queue,
+                self._params_queue,
             ),
         )
         self._await_results_task = None
@@ -112,10 +124,6 @@ class HappyPoseNode(Node):
             ).ds_dir.as_posix(),
             database_version=0,
         )
-
-        self._stmap_sort_strategy = {"newest": max, "oldest": min, "average": mean}[
-            self._params.time_stamp_strategy
-        ]
 
         # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
@@ -141,7 +149,12 @@ class HappyPoseNode(Node):
             self.get_logger().error(str(e))
             raise e
 
-        leading_cams = sum([cam.leading for cam in self._cameras.values()])
+        leading_cams = sum(
+            [
+                self._params.cameras.get_entry(name).leading
+                for name in self._cameras.keys()
+            ]
+        )
         if leading_cams == 0:
             e = ParameterException(
                 "No leading cameras specified. Modify parameter",
@@ -155,8 +168,8 @@ class HappyPoseNode(Node):
                 "HappyPose can use only single leading camera",
                 [
                     f"cameras.{name}.leading"
-                    for name, cam in self._cameras.items()
-                    if cam.leading
+                    for name in self._cameras.keys()
+                    if self._params.cameras.get_entry(name).leading
                 ],
             )
             self.get_logger().error(str(e))
@@ -164,10 +177,12 @@ class HappyPoseNode(Node):
 
         # Find leading camera name
         self._leading_camera = next(
-            filter(lambda name: self._cameras[name].leading, self._cameras)
+            filter(
+                lambda name: self._params.cameras.get_entry(name).leading, self._cameras
+            )
         )
 
-        if self._cameras[self._leading_camera].publish_tf:
+        if self._params.cameras.get_entry(self._leading_camera).publish_tf:
             e = ParameterException(
                 "Leading camera can not publish TF",
                 (
@@ -186,7 +201,12 @@ class HappyPoseNode(Node):
                 f"{self._params.cameras.n_min_cameras}."
             )
             # Broadcast TF if any camera needs it
-            if any([self._cameras[name].publish_tf for name in self._cameras]):
+            if any(
+                [
+                    self._params.cameras.get_entry(name).publish_tf
+                    for name in self._cameras
+                ]
+            ):
                 self._tf_broadcaster = TransformBroadcaster(self)
 
         # Create debug publisher
@@ -196,17 +216,18 @@ class HappyPoseNode(Node):
             )
 
         # Start the worker when all possible errors are handled
+        self._update_dynamic_params(True)
         self._happypose_worker.start()
 
         self.get_logger().info(
-            "Node initialized. Waiting for HappyPose worker to initialized...",
+            "Node initialized. Waiting for HappyPose worker to initialize...",
         )
 
     def destroy_node(self) -> None:
         if self._observation_tensor_queue is not None:
             self._observation_tensor_queue.close()
-        if self._result_queue is not None:
-            self._result_queue.close()
+        if self._results_queue is not None:
+            self._results_queue.close()
         if self._await_results_task is not None:
             self._await_results_task.join()
         if self._happypose_worker is not None:
@@ -214,7 +235,25 @@ class HappyPoseNode(Node):
             self._happypose_worker.terminate()
         super().destroy_node()
 
+    def _update_dynamic_params(self, on_init: bool = False) -> None:
+        self._param_listener.refresh_dynamic_parameters()
+        self._params = self._param_listener.get_params()
+        self._stamp_select_strategy = {"newest": max, "oldest": min, "average": mean}[
+            self._params.time_stamp_strategy
+        ]
+        # Clear the queue from old data
+        while not self._params_queue.empty():
+            self._params_queue.get()
+        # Put new data to the queue
+        self._params_queue.put(params_to_dict(self._params))
+        if self._params.verbose_info_logs and not on_init:
+            self.get_logger().info("Parameter change occurred.")
+
     def _on_image_cb(self) -> None:
+        #  Check if parameters didn't change
+        if self._param_listener.is_old(self._params):
+            self._update_dynamic_params()
+
         # Skip if task was initialized and is still running
         if self._await_results_task and self._await_results_task.is_alive():
             return
@@ -318,7 +357,7 @@ class HappyPoseNode(Node):
             if self._params.verbose_info_logs:
                 self.get_logger().info("Awaiting results...")
 
-            results = self._result_queue.get(block=True, timeout=None)
+            results = self._results_queue.get(block=True, timeout=None)
 
             if results is None:
                 if self._params.verbose_info_logs:
@@ -328,28 +367,28 @@ class HappyPoseNode(Node):
             if self._params.verbose_info_logs:
                 self.get_logger().info(f"Detected {len(results['infos'])} objects.")
 
-            missing_cameras = len(cam_data) - len(results["camera_poses"])
-            if missing_cameras > 0:
-                # Keep only the cameras that were not discarded in multiview
-                cam_data = {
-                    name: cam
-                    for i, (name, cam) in enumerate(cam_data.items())
-                    if i in results["camera_infos"].view_id
-                }
+            if self._multiview:
+                missing_cameras = len(cam_data) - len(results["camera_infos"])
+                if missing_cameras > 0:
+                    # Keep only the cameras that were not discarded in multiview
+                    cam_data = {
+                        name: cam
+                        for i, (name, cam) in enumerate(cam_data.items())
+                        if i in results["camera_infos"].view_id.values
+                    }
 
-                if self._leading_camera not in cam_data.keys():
-                    self.get_logger().error(
-                        f"Leading camera '{self._leading_camera}'"
-                        " was discarded when performing multi-view!"
-                    )
-                    return
+                    if self._leading_camera not in cam_data.keys():
+                        self.get_logger().error(
+                            f"Leading camera '{self._leading_camera}'"
+                            " was discarded when performing multi-view!"
+                        )
+                        return
 
-                if self._params.verbose_info_logs:
-                    self.get_logger().warn(
-                        f"{missing_cameras} camera views were discarded in multi-view."
-                    )
+                    if self._params.verbose_info_logs:
+                        self.get_logger().warn(
+                            f"{missing_cameras} camera views were discarded in multi-view."
+                        )
 
-            if self._multiview and len(results["camera_poses"]) > 1:
                 lead_cam_idx = list(cam_data.keys()).index(self._leading_camera)
                 # Transform objects into leading camera's reference frame
                 leading_cam_pose_inv = results["camera_poses"][lead_cam_idx].inverse()
@@ -357,7 +396,8 @@ class HappyPoseNode(Node):
                 results["poses"] = leading_cam_pose_inv @ results["poses"]
                 # Create mask of cameras that expect to have TF published
                 cams_to_tf = [
-                    self._cameras[name].publish_tf for name in cam_data.keys()
+                    self._params.cameras.get_entry(name).publish_tf
+                    for name in cam_data.keys()
                 ]
                 # Transform cameras' poses
                 results["camera_poses"][cams_to_tf] = (
@@ -368,7 +408,7 @@ class HappyPoseNode(Node):
                 frame_id=cam_data[self._leading_camera]["frame_id"],
                 # Choose sorted time stamp
                 stamp=Time(
-                    nanoseconds=self._stmap_sort_strategy(
+                    nanoseconds=self._stamp_select_strategy(
                         [cam["stamp"].nanoseconds for cam in cam_data.values()]
                     )
                 ).to_msg(),
@@ -388,9 +428,9 @@ class HappyPoseNode(Node):
                 markers = get_marker_array_msg(
                     detections,
                     f"file://{self._vision_info_msg.database_location}",
-                    label_to_strip=self._params.cosypose.dataset_name + "-",
+                    prefix=self._params.cosypose.dataset_name + "-",
                     dynamic_opacity=self._params.visualization.markers.dynamic_opacity,
-                    marker_timeout=self._params.visualization.markers.timeout,
+                    marker_lifetime=self._params.visualization.markers.lifetime,
                 )
                 self._marker_publisher.publish(markers)
 
@@ -398,8 +438,8 @@ class HappyPoseNode(Node):
                 # Assume HappyPose is already returning cameras in the same order it received them
                 for pose, (name, cam) in zip(results["camera_poses"], cam_data.items()):
                     if (
-                        not self._cameras[name].leading
-                        and self._cameras[name].publish_tf
+                        not self._params.cameras.get_entry(name).leading
+                        and self._params.cameras.get_entry(name).publish_tf
                     ):
                         self._tf_broadcaster.sendTransform(
                             get_camera_transform(pose, header, cam["frame_id"])

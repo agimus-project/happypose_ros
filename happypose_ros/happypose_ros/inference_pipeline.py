@@ -34,12 +34,7 @@ class HappyPosePipeline:
             **self._params["cosypose"]["renderer"],
         )
 
-        self._inference_args = self._params["cosypose"]["inference"]
-        self._inference_args["labels_to_keep"] = (
-            self._inference_args["labels_to_keep"]
-            if self._inference_args["labels_to_keep"] != [""]
-            else None
-        )
+        self.update_params(self._params)
 
         self._multiview = len(self._params["camera_names"]) > 1
         if self._multiview:
@@ -48,6 +43,14 @@ class HappyPosePipeline:
             object_ds = BOPObjectDataset(dir, label_format)
             mesh_db = MeshDataBase.from_object_ds(object_ds)
             self._mv_predictor = MultiviewScenePredictor(mesh_db)
+
+    def update_params(self, params: dict) -> None:
+        self._inference_args = params["cosypose"]["inference"]
+        self._inference_args["labels_to_keep"] = (
+            self._inference_args["labels_to_keep"]
+            if self._inference_args["labels_to_keep"] != [""]
+            else None
+        )
 
     def __call__(self, observation: ObservationTensor) -> Union[None, dict]:
         detections = self._wrapper.pose_predictor.detector_model.get_detections(
@@ -114,8 +117,6 @@ class HappyPosePipeline:
         cameras_pred.infos = cameras_pred.infos[
             cameras_pred.infos["view_group"] == max_view_group
         ]
-        cameras_pred.TWC = cameras_pred.TWC[cameras_pred.infos.index]
-        cameras_pred.K = cameras_pred.TWC[cameras_pred.infos.index]
 
         # Normalize score to range 0 - 1
         predictions["scene/objects"].infos["score"] /= predictions[

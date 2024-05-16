@@ -37,7 +37,7 @@ def launch_setup(
         remappings=[
             # Remapped topics have to match the names from
             # happypose_examples/config/cosypose_params.yaml
-            ("image_raw", "/cam_1/image"),
+            ("image_raw", "/cam_1/image_color"),
             ("camera_info", "cam_1/camera_info"),
         ],
     )

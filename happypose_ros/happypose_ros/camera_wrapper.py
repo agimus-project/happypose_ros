@@ -32,13 +32,10 @@ class CameraWrapper:
 
         if params.get_entry(self._camera_name).compressed:
             img_msg_type = CompressedImage
-            topic_postfix = "/image/compressed"
+            topic_postfix = "/image_color/compressed"
         else:
             img_msg_type = Image
-            topic_postfix = "/image"
-
-        self._leading = params.get_entry(self._camera_name).leading
-        self._publish_tf = params.get_entry(self._camera_name).publish_tf
+            topic_postfix = "/image_color"
 
         self._camera_k = None
         # If param with K matrix is correct, assume it is fixed
@@ -118,14 +115,6 @@ class CameraWrapper:
     def ready(self) -> bool:
         return self._image is not None and self._camera_k is not None
 
-    @property
-    def leading(self) -> bool:
-        return self._leading
-
-    @property
-    def publish_tf(self) -> bool:
-        return self._publish_tf
-
     @image_guarded
     def get_last_image_frame_id(self) -> str:
         return self._image.header.frame_id
@@ -141,7 +130,12 @@ class CameraWrapper:
             if isinstance(self._image, Image)
             else self._cvb.compressed_imgmsg_to_cv2
         )
-        desired_encoding = "passthrough" if self._image.encoding == "rgb8" else "rgb8"
+        desired_encoding = (
+            "passthrough"
+            # Compressed image has no attribute "encoding"
+            if hasattr(self._image, "encoding") and self._image.encoding == "rgb8"
+            else "rgb8"
+        )
         return encoder(self._image, desired_encoding)
 
     @k_matrix_guarded
