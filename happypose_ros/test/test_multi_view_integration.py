@@ -43,6 +43,7 @@ def generate_test_description():
     # Assume testing machine has only one GPU
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+    # Find parameters file
     happypose_params_path = PathJoinSubstitution(
         [
             FindPackageShare("happypose_ros"),
@@ -51,11 +52,13 @@ def generate_test_description():
         ]
     )
 
+    # Spawn the happypose_ros node
     happypose_node = launch_ros.actions.Node(
         package="happypose_ros",
         executable="happypose_node",
         name="happypose_node",
         namespace="test_multi_view",
+        # Dynamically set device
         parameters=[{"device": device}, happypose_params_path],
     )
 
@@ -133,7 +136,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         if not ready:
             self.fail("Failed to trigger the pipeline!")
 
-    def test_06_recive_messages(self) -> None:
+    def test_06_receive_messages(self) -> None:
         self.node.assert_message_received("happypose/detections", timeout=20.0)
         self.node.assert_message_received("happypose/vision_info", timeout=2.0)
 

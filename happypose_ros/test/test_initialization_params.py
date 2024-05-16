@@ -2,6 +2,7 @@
 
 import mock
 import pytest
+from typing import List
 
 import rclpy
 from rclpy.exceptions import ParameterException
@@ -13,13 +14,22 @@ from happypose_ros.happypose_node import HappyPoseNode
 
 @pytest.fixture(autouse=True)
 def setup_rclpy():
+    """Initialize ROS for every test case."""
     rclpy.init()
     yield
     rclpy.shutdown()
 
 
 @pytest.fixture()
-def happypose_params(request):
+def happypose_params(request: pytest.FixtureRequest) -> dict:
+    """Creates dict of parameters used to initialize
+    HappyPoseNode in all test cases
+
+    :param request: Request to obtain test case name.
+    :type request: pytest.FixtureRequest
+    :return: Class constructor arguments used by all test cases.
+    :rtype: dict
+    """
     return {
         "namespace": request.node.name,
         "use_global_arguments": False,
@@ -28,7 +38,12 @@ def happypose_params(request):
 
 
 @pytest.fixture()
-def minial_overwrites():
+def minial_overwrites() -> List[Parameter]:
+    """Crete set minimal set of ROS parameters needed for the ROS node to start correctly.
+
+    :return: Default, minimal parameters for the ROS node to start.
+    :rtype: List[rclpy.Parameter]
+    """
     return [
         Parameter("cosypose.dataset_name", Parameter.Type.STRING, "ycbv"),
         Parameter("camera_names", Parameter.Type.STRING_ARRAY, ["cam_1"]),
@@ -37,7 +52,7 @@ def minial_overwrites():
     ]
 
 
-def test_no_leading(happypose_params):
+def test_no_leading(happypose_params: dict) -> None:
     with pytest.raises(ParameterException) as excinfo:
         HappyPoseNode(
             **happypose_params,
@@ -54,7 +69,7 @@ def test_no_leading(happypose_params):
 
 
 @mock.patch("multiprocessing.context.SpawnContext.Process")
-def test_minimal(happypose_params, minial_overwrites):
+def test_minimal(happypose_params: dict, minial_overwrites: List[Parameter]) -> None:
     # Check if node starts correctly with minimal number of required parameters
     happypose_node = HappyPoseNode(
         **happypose_params,
@@ -63,7 +78,7 @@ def test_minimal(happypose_params, minial_overwrites):
     happypose_node.destroy_node()
 
 
-def test_multiple_leading(happypose_params):
+def test_multiple_leading(happypose_params: dict) -> None:
     with pytest.raises(ParameterException) as excinfo:
         HappyPoseNode(
             **happypose_params,
@@ -82,7 +97,7 @@ def test_multiple_leading(happypose_params):
     assert all(par in str(excinfo.value) for par in params_to_check)
 
 
-def test_leading_publish_tf(happypose_params):
+def test_leading_publish_tf(happypose_params: dict) -> None:
     with pytest.raises(ParameterException) as excinfo:
         HappyPoseNode(
             **happypose_params,
@@ -98,7 +113,9 @@ def test_leading_publish_tf(happypose_params):
     assert all(par in str(excinfo.value) for par in params_to_check)
 
 
-def test_device_unknown(happypose_params, minial_overwrites):
+def test_device_unknown(
+    happypose_params: dict, minial_overwrites: List[Parameter]
+) -> None:
     with pytest.raises(ParameterException) as excinfo:
         HappyPoseNode(
             **happypose_params,

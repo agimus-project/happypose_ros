@@ -41,14 +41,24 @@ from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
 
 def happypose_worker_proc(
-    params: dict,
     worker_free: mp.Value,
     observation_tensor_queue: mp.Queue,
     results_queue: mp.Queue,
     params_queue: mp.Queue,
 ) -> None:
+    """Function used to trigger worker process.
+
+    :param worker_free: Boolean, shared value indicating if a worker is free to start processing new data.
+    :type worker_free: multiprocessing.Value
+    :param observation_tensor_queue: Queue used to pass images from the main process to worker process.
+    :type observation_tensor_queue: multiprocessing.Queue
+    :param result_queue: Queue used to pass dict with the results to from worker process to the main process.
+    :type result_queue: multiprocessing.Queue
+    :param params_queue: Queue used to pass new incoming ROS parameters in a form of a dict.
+    :type params_queue: multiprocessing.Queue
+    """
     # Initialize the pipeline
-    pipeline = HappyPosePipeline(params)
+    pipeline = HappyPosePipeline(params_queue.get())
 
     # Notify parent that initialization has finished
     with worker_free.get_lock():
@@ -82,7 +92,20 @@ def happypose_worker_proc(
 
 
 class HappyPoseNode(Node):
+    """Main class wrapping HappyPose into ROS 2 node."""
+
     def __init__(self, node_name: str = "happypose_node", **kwargs) -> None:
+        """Initializes the HappyPoseNode object. Validates ROS parameters and creates
+        need subscribers and publishers. Initializes worker thread.
+
+        :param node_name: Name of the created ROS node, defaults to "happypose_node"
+        :type node_name: str, optional
+        :raises Exception: Initialization of the generate_parameter_library object failed.
+        :raises rclpy.ParameterException: More cameras expected than provided.
+        :raises rclpy.ParameterException: No leading camera was passed as a parameter.
+        :raises rclpy.ParameterException: More than one leading camera was passed as parameter.
+        :raises rclpy.ParameterException: Leading camera has TF parameter enabled.
+        """
         super().__init__(node_name, **kwargs)
 
         try:
@@ -100,12 +123,13 @@ class HappyPoseNode(Node):
         self._results_queue = ctx.Queue(1)
         self._params_queue = ctx.Queue(1)
 
+        self._update_dynamic_params(True)
+
         # TODO check efficiency of a single queue of ObservationTensors
         self._happypose_worker = ctx.Process(
             target=happypose_worker_proc,
             name="happypose_worker",
             args=(
-                params_to_dict(self._params),
                 self._worker_free,
                 self._observation_tensor_queue,
                 self._results_queue,
@@ -216,7 +240,6 @@ class HappyPoseNode(Node):
             )
 
         # Start the worker when all possible errors are handled
-        self._update_dynamic_params(True)
         self._happypose_worker.start()
 
         self.get_logger().info(
@@ -224,6 +247,7 @@ class HappyPoseNode(Node):
         )
 
     def destroy_node(self) -> None:
+        """Destroys the node and closes all queues."""
         if self._observation_tensor_queue is not None:
             self._observation_tensor_queue.close()
         if self._results_queue is not None:
@@ -236,6 +260,11 @@ class HappyPoseNode(Node):
         super().destroy_node()
 
     def _update_dynamic_params(self, on_init: bool = False) -> None:
+        """Updates ROS parameters and passes parsed parameters to a worker process via queue.
+
+        :param on_init: Whether to skip steps when node is initialized, defaults to False
+        :type on_init: bool, optional
+        """
         self._param_listener.refresh_dynamic_parameters()
         self._params = self._param_listener.get_params()
         self._stamp_select_strategy = {"newest": max, "oldest": min, "average": mean}[
@@ -250,6 +279,9 @@ class HappyPoseNode(Node):
             self.get_logger().info("Parameter change occurred.")
 
     def _on_image_cb(self) -> None:
+        """Callback function used to synchronize incoming images from different cameras.
+        Performs basic checks if worker process is available and can start HappyPose pipeline.
+        """
         #  Check if parameters didn't change
         if self._param_listener.is_old(self._params):
             self._update_dynamic_params()
@@ -271,15 +303,19 @@ class HappyPoseNode(Node):
         self._trigger_pipeline()
 
     def _trigger_pipeline(self) -> None:
+        """Triggers the HappyPose pipeline. Checks if camera images were received
+        within an acceptable time frame. Creates Observation tensor and passes it to the
+        worker process. Spawns thread to asynchronously await results.
+        """
         now = self.get_clock().now()
         # If timeout at 0.0 accept all images
-        skipp_timeout = math.isclose(self._params.cameras.timeout, 0.0)
+        skip_timeout = math.isclose(self._params.cameras.timeout, 0.0)
         processed_cameras = dict(
             filter(
                 lambda cam: (
                     cam[1].ready()
                     and (
-                        skipp_timeout
+                        skip_timeout
                         # Fallback to checking the timestamp if not skipped
                         or (now - cam[1].get_last_image_stamp())
                         < Duration(seconds=self._params.cameras.timeout)
@@ -352,6 +388,12 @@ class HappyPoseNode(Node):
         self._await_results_task.start()
 
     def _await_results(self, cam_data: dict) -> None:
+        """Awaits results from the worker process. Converts the results into ROS messages
+        and publishes them.
+
+        :param cam_data: Camera names with associated frame id and time stamps.
+        :type cam_data: dict
+        """
         try:
             # Await any data on all the input queues
             if self._params.verbose_info_logs:
@@ -452,6 +494,7 @@ class HappyPoseNode(Node):
 
 
 def main() -> None:
+    """Creates the ROS node object and spins it."""
     rclpy.init()
     try:
         happypose_node = HappyPoseNode()

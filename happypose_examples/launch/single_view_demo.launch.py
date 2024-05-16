@@ -22,12 +22,13 @@ def launch_setup(
     image_publisher_node = Node(
         package="image_publisher",
         executable="image_publisher_node",
+        namespace="cam_1",
         output="screen",
         parameters=[
             {
                 "use_sim_time": False,
                 "publish_rate": 23.0,
-                "frame_id": "camera",
+                "frame_id": "camera_1",
                 "filename": image_path,
                 # Camera info is ignored by the node on startup.
                 # Waiting for https://github.com/ros-perception/image_pipeline/issues/965
@@ -37,8 +38,7 @@ def launch_setup(
         remappings=[
             # Remapped topics have to match the names from
             # happypose_examples/config/cosypose_params.yaml
-            ("image_raw", "/cam_1/image_color"),
-            ("camera_info", "cam_1/camera_info"),
+            ("image_raw", "image_color"),
         ],
     )
 
@@ -79,6 +79,13 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "image_path",
+            default_value=PathJoinSubstitution(
+                [
+                    FindPackageShare("happypose_examples"),
+                    "resources",
+                    "000561.jpg",
+                ]
+            ),
             description="Path to image or webcam to be published as an input for happypose_ros node.",
         ),
         DeclareLaunchArgument(

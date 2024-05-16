@@ -136,7 +136,7 @@ happypose_ros:
         }
       labels_to_keep: {
         type: string_array,
-        description: "Labels of detected objects to keep. If not specyfied, all objects are kept.",
+        description: "Labels of detected objects to keep. If not specified, all objects are kept.",
         # Walkaround to obtain "empty" string array
         default_value: [""],
         validation: {
