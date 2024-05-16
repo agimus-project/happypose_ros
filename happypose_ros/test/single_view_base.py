@@ -13,9 +13,7 @@ from sensor_msgs.msg import Image, CompressedImage
 
 from ament_index_python.packages import get_package_share_directory
 
-
 from launch_testing.io_handler import ActiveIoHandler
-
 
 from happypose_testing_utils import (
     HappyPoseTestCase,
@@ -28,8 +26,19 @@ from happypose_testing_utils import (
 
 
 class SingleViewBase(HappyPoseTestCase):
+    """Base class for the single view test cases."""
+
     @classmethod
     def setUpClass(cls, namespace: str = "", use_compressed: bool = False) -> None:
+        """Wraps the HappyPoseTestCase.setUpClass by configuring single camera
+        and reading test image.
+
+        :param namespace: Namespace to apply to the node, defaults to "".
+        :type namespace: str, optional
+        :param use_compressed: Whether to use compressed images during the test, defaults to False.
+        :type use_compressed: bool, optional
+        :raises unittest.SkipTest: Used to prevent the base class from executing as a separate test case.
+        """
         if cls.__name__ == SingleViewBase.__name__:
             raise unittest.SkipTest("Skipping because of case class")
 
@@ -45,6 +54,11 @@ class SingleViewBase(HappyPoseTestCase):
         )
 
     def setUp(self) -> None:
+        """Wraps HappyPoseTestCase.setUp by preventing execution of tests
+        if only the case class is expected.
+
+        :raises unittest.SkipTest: sed to prevent the base class from executing as a separate test case.
+        """
         if self.__class__.__name__ == SingleViewBase.__name__:
             raise unittest.SkipTest("Skipping because of case class")
         super().setUp()
@@ -55,10 +69,16 @@ class SingleViewBase(HappyPoseTestCase):
 
     def test_02_check_topics(self) -> None:
         # Check if node subscribes to correct topics
-        self.node.assert_node_is_subscriber(
-            "cam_1/image_color" + ("/compressed" if self.compressed else ""),
-            timeout=3.0,
-        )
+        if self.compressed:
+            self.node.assert_node_is_subscriber(
+                "cam_1/image_color/compressed",
+                timeout=3.0,
+            )
+        else:
+            self.node.assert_node_is_subscriber(
+                "cam_1/image_color",
+                timeout=3.0,
+            )
         self.node.assert_node_is_subscriber("cam_1/camera_info", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/detections", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/markers", timeout=3.0)
@@ -78,7 +98,7 @@ class SingleViewBase(HappyPoseTestCase):
             ready = proc_output.waitFor("HappyPose initialized", timeout=0.5)
         assert ready, "Failed to trigger the pipeline!"
 
-    def test_04_recive_messages(self) -> None:
+    def test_04_receive_messages(self) -> None:
         self.node.assert_message_received("happypose/detections", timeout=20.0)
         self.node.assert_message_received("happypose/markers", timeout=2.0)
         self.node.assert_message_received("happypose/vision_info", timeout=2.0)

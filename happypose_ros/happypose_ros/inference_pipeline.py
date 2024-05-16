@@ -23,7 +23,14 @@ from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database impor
 
 
 class HappyPosePipeline:
+    """Object wrapping HappyPose pipeline extracting its calls from the main ROS node."""
+
     def __init__(self, params: dict) -> None:
+        """Creates HappyPosePipeline object and starts loading Torch models to the memory.
+
+        :param params: Parameters used to initialize the HappyPose pipeline.
+        :type params: dict
+        """
         super().__init__()
         self._params = params
         self._device = self._params["device"]
@@ -45,6 +52,12 @@ class HappyPosePipeline:
             self._mv_predictor = MultiviewScenePredictor(mesh_db)
 
     def update_params(self, params: dict) -> None:
+        """Updates parameters used by the HappyPose.
+
+        :param params: Parameters used to initialize the HappyPose pipeline.
+            On runtime to update inference parameters.
+        :type params: dict
+        """
         self._inference_args = params["cosypose"]["inference"]
         self._inference_args["labels_to_keep"] = (
             self._inference_args["labels_to_keep"]
@@ -53,6 +66,15 @@ class HappyPosePipeline:
         )
 
     def __call__(self, observation: ObservationTensor) -> Union[None, dict]:
+        """Performs sequence of actions to estimate pose and optionally merge
+        multiview results.
+
+        :param observation: Tensor containing camera information and incoming images.
+        :type observation: happypose.toolbox.inference.types.ObservationTensor
+        :return: Dictionary with final detections. If pipeline failed or nothing
+            was detected None is returned
+        :rtype: Union[None, dict]
+        """
         detections = self._wrapper.pose_predictor.detector_model.get_detections(
             observation,
             output_masks=False,

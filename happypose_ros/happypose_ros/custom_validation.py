@@ -4,6 +4,14 @@ from rclpy.parameter import Parameter
 
 
 def torch_check_device(param: Parameter) -> str:
+    """Performs ROS parameter check to see if the selected Torch device
+        is available on the machine.
+
+    :param param: ROS parameter with a string containing the name of the Torch device.
+    :type param: rclpy.Parameter
+    :return: Error explanation. If empty string, everything is correct.
+    :rtype: str
+    """
     if torch.cuda.is_available():
         available_devices = [f"cuda:{num}" for num in range(torch.cuda.device_count())]
     else:

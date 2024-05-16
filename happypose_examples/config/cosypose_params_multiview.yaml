@@ -72,14 +72,14 @@
         # Normally K matrix should be obtained from <camera_name>/camera_info.
         # Currently hard-coded due to bug in image_publisher_node
         # Do not use hard-coded K matrix unless needed!
-        k_matrix: [615.2, 0.0, 324.0, 0.0, 615.2, 237.0, 0.0, 0.0, 1.0]
+        k_matrix: [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
       cam_2:
         leading: false
         publish_tf: true
         compressed: false
-        k_matrix: [615.2, 0.0, 324.0, 0.0, 615.2, 237.0, 0.0, 0.0, 1.0]
+        k_matrix: [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
       cam_3:
         leading: false
         publish_tf: true
         compressed: false
-        k_matrix: [615.2, 0.0, 324.0, 0.0, 615.2, 237.0, 0.0, 0.0, 1.0]
+        k_matrix: [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]

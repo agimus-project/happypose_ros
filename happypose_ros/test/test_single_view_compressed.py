@@ -20,6 +20,7 @@ def generate_test_description():
     # Assume testing machine has only one GPU
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
+    # Find parameters file
     happypose_params_path = PathJoinSubstitution(
         [
             FindPackageShare("happypose_ros"),
@@ -28,12 +29,14 @@ def generate_test_description():
         ]
     )
 
+    # Spawn the happypose_ros node
     happypose_node = launch_ros.actions.Node(
         package="happypose_ros",
         executable="happypose_node",
         name="happypose_node",
         namespace="test_single_view_compressed",
         parameters=[
+            # Dynamically set device and expect compressed images
             {"device": device, "cameras.cam_1.compressed": True},
             happypose_params_path,
         ],

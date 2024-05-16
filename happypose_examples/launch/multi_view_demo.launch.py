@@ -41,8 +41,7 @@ def launch_setup(
                 remappings=[
                     # Remapped topics are created to match camera names in
                     # happypose_examples/config/cosypose_params_multiview.yaml
-                    ("image_raw", f"/cam_{i}/image_color"),
-                    ("camera_info", f"cam_{i}/camera_info"),
+                    ("image_raw", "image_color"),
                 ],
             )
         )
@@ -82,7 +81,6 @@ def launch_setup(
             "dataset_name": LaunchConfiguration("dataset_name"),
             "device": LaunchConfiguration("device"),
             "use_rviz": LaunchConfiguration("use_rviz"),
-            "publish_camera_tf": "false",
             "rviz_config_path": rviz_config_path,
             "happypose_params_path": happypose_params_path,
         }.items(),
@@ -105,16 +103,37 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "image_1_path",
+            default_value=PathJoinSubstitution(
+                [
+                    FindPackageShare("happypose_examples"),
+                    "resources",
+                    "001073.jpg",
+                ]
+            ),
             description="Path to the first image to be published "
             + "as an input for happypose_ros node.",
         ),
         DeclareLaunchArgument(
             "image_2_path",
+            default_value=PathJoinSubstitution(
+                [
+                    FindPackageShare("happypose_examples"),
+                    "resources",
+                    "000561.jpg",
+                ]
+            ),
             description="Path to the second image to be published "
             + "as an input for happypose_ros node.",
         ),
         DeclareLaunchArgument(
             "image_3_path",
+            default_value=PathJoinSubstitution(
+                [
+                    FindPackageShare("happypose_examples"),
+                    "resources",
+                    "001546.jpg",
+                ]
+            ),
             description="Path to the third image to be published "
             + "as an input for happypose_ros node.",
         ),

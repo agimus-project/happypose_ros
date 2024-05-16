@@ -31,6 +31,14 @@ from happypose_ros.happypose_ros_parameters import happypose_ros
 
 
 def params_to_dict(params: happypose_ros.Params) -> dict:
+    """Converts an object created by generate_parameter_library to a Python dictionary.
+    Parameters are converted from 'my_params.foo.bar' to 'my_params["foo"]["bar"]'.
+
+    :param params: Object created by generate_parameter_library with ROS parameters.
+    :type params: happypose_ros.Params
+    :return: ROS parameters converted to a dictionary.
+    :rtype: dict
+    """
     out = {}
 
     def to_dict_internal(instance: Any, name: str, base_dict: dict) -> None:
@@ -62,6 +70,16 @@ def params_to_dict(params: happypose_ros.Params) -> dict:
 def create_bounding_box_msg(
     bbox_data: Union[list[float], npt.NDArray[np.float32]], format: str = "xyxy"
 ) -> BoundingBox2D:
+    """Converts a bounding box passed as a list or array to a ROS message.
+
+    :param bbox_data: List of key points in the bounding box.
+    :type bbox_data: Union[list[float], numpy.typing.NDArray[numpy.float32]]
+    :param format: Format in which the bounding box is stored, allowed "xyxy" and "xywh", defaults to "xyxy".
+    :type format: str, optional
+    :raises ValueError: Incorrect value of :param: format.
+    :return: Bounding box converted to a ROS message.
+    :rtype: vision_msgs.msg.BoundingBox2D
+    """
     bbox = BoundingBox2D()
     if format == "xyxy":
         bbox.center.position.x = float(bbox_data[0] + bbox_data[2]) / 2.0
@@ -82,6 +100,19 @@ def create_bounding_box_msg(
 def get_detection_array_msg(
     results: dict, header: Header, has_bbox: bool = True
 ) -> Detection2DArray:
+    """Converts results dictionary to a Detection2DArray message.
+
+    :param results: Detections obtained from HappyPose pipeline.
+    :type results: dict
+    :param header: Header to pass to the message.
+    :type header: std_msgs.msg.Header
+    :param has_bbox: Indicates if bounding box has to be populated
+        or left empty, defaults to True.
+    :type has_bbox: bool, optional
+    :return: ROS message with detection.
+    :rtype: vision_msgs.msg.Detection2DArray
+    """
+
     def generate_detection_msg(i: int) -> Detection2D:
         # Convert SE3 tensor to [x, y, z, qx, qy, qz, qw] pose representations
         pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results["poses"][i].numpy()))
@@ -125,6 +156,24 @@ def get_marker_array_msg(
     dynamic_opacity: bool = False,
     marker_lifetime: float = 10.0,
 ) -> MarkerArray:
+    """Converts Detection2DArray to MarkerArray ROS message for visualization.
+
+    :param detections: Detections messages to get information from.
+    :type detections: vision_msgs.msg.Detection2DArray
+    :param mesh_folder_url: Path from which meshes will be later fetched for visualization.
+    :type mesh_folder_url: str
+    :param mesh_file_extension: Extension file format of the meshes, defaults to "ply".
+    :type mesh_file_extension: str, optional
+    :param prefix: Prefix used to subtract from the object class name, used to create valid mesh paths, defaults to "".
+    :type prefix: str, optional
+    :param dynamic_opacity: Whether to use detection score as opacity of a mesh, defaults to False.
+    :type dynamic_opacity: bool, optional
+    :param marker_lifetime: Value to set as a lifetime of the marker in seconds, defaults to 10.0.
+    :type marker_lifetime: float, optional
+    :return: Message ready to publish for visualization.
+    :rtype: visualization_msgs.msg.MarkerArray
+    """
+
     def generate_marker_msg(i: int) -> Marker:
         detection = detections.detections[i]
         mesh_file_name = (
@@ -155,6 +204,20 @@ def get_marker_array_msg(
 def get_camera_transform(
     camera_pose: Tensor, header: Header, child_frame_id: str
 ) -> TransformStamped:
+    """Convert SE3 tensor from HappyPose to ROS Transformation message.
+
+    :param camera_pose: SE3 tensor.
+    :type camera_pose: torch.Tensor
+    :param header: Header used to populate the message.
+        Contains frame id of leading camera.
+    :type header: std_msgs.msg.Header
+    :param child_frame_id: Frame id of the camera which TF will be published.
+    :type child_frame_id: str
+    :return: ROS message representing transformation between
+        leading camera and estimated camera pose.
+    :rtype: geometry_msgs.msg.TransformStamped
+    """
+
     pose_vec = pin.SE3ToXYZQUAT(pin.SE3(camera_pose.numpy()))
     return TransformStamped(
         header=header,

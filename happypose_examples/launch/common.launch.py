@@ -15,9 +15,6 @@ def launch_setup(
     # Obtain argument specifying if RViz should be launched
     use_rviz = LaunchConfiguration("use_rviz")
 
-    # Obtain argument specifying if static transformation the camera should be published
-    publish_camera_tf = LaunchConfiguration("publish_camera_tf")
-
     # Obtain argument specifying path from which to load happypose_ros parameters
     happypose_params_path = LaunchConfiguration("happypose_params_path")
 
@@ -44,7 +41,6 @@ def launch_setup(
     # Start static TF publisher to transform
     # camera optical frame and rotate it for better rviz preview
     static_transform_publisher_node = Node(
-        condition=IfCondition(publish_camera_tf),
         package="tf2_ros",
         executable="static_transform_publisher",
         name="static_transform_publisher",
@@ -56,7 +52,7 @@ def launch_setup(
             "--frame-id",
             "world",
             "--child-frame-id",
-            "camera",
+            "camera_1",
         ],
     )
 
