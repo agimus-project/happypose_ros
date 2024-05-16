@@ -17,12 +17,24 @@
 
   <!-- When the whole thing will be packages this will be required -->
   <!-- <depend>pinocchio</depend> -->
+  <depend>cv_bridge</depend>
+  <depend>rclpy</depend>
+  <depend>tf2_ros</depend>
+  <depend>geometry_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
   <depend>vision_msgs</depend>
+  <depend>visualization_msgs</depend>
+  <depend version_eq="1.26.4">python3-numpy</depend>
+  <depend version_eq="1.13.1">python3-torch</depend>
 
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
   <test_depend>python3-pytest</test_depend>
+  <test_depend>python3-mock</test_depend>
+  <test_depend>launch</test_depend>
+  <test_depend>launch_ros</test_depend>
+  <test_depend>launch_testing</test_depend>
+  <test_depend>launch_testing_ros</test_depend>
+  <test_depend>ros_testing</test_depend>
 
   <export>
     <build_type>ament_python</build_type>

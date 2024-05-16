@@ -64,13 +64,13 @@ def create_bounding_box_msg(
 ) -> BoundingBox2D:
     bbox = BoundingBox2D()
     if format == "xyxy":
-        bbox.center.position.x = (bbox_data[0] + bbox_data[2]) / 2.0
-        bbox.center.position.y = (bbox_data[1] + bbox_data[3]) / 2.0
+        bbox.center.position.x = float(bbox_data[0] + bbox_data[2]) / 2.0
+        bbox.center.position.y = float(bbox_data[1] + bbox_data[3]) / 2.0
         bbox.size_x = float(bbox_data[2] - bbox_data[0])
         bbox.size_y = float(bbox_data[3] - bbox_data[1])
     elif format == "xywh":
-        bbox.center.position.x = (bbox_data[0] + bbox_data[2]) / 2.0
-        bbox.center.position.y = (bbox_data[1] + bbox_data[3]) / 2.0
+        bbox.center.position.x = float(bbox_data[0] + (bbox_data[2] / 2.0))
+        bbox.center.position.y = float(bbox_data[1] + (bbox_data[3] / 2.0))
         bbox.size_x = float(bbox_data[2])
         bbox.size_y = float(bbox_data[3])
     else:
@@ -121,14 +121,14 @@ def get_marker_array_msg(
     detections: Detection2DArray,
     mesh_folder_url: str,
     mesh_file_extension: str = "ply",
-    label_to_strip: str = "",
+    prefix: str = "",
     dynamic_opacity: bool = False,
-    marker_timeout: float = 10.0,
+    marker_lifetime: float = 10.0,
 ) -> MarkerArray:
     def generate_marker_msg(i: int) -> Marker:
         detection = detections.detections[i]
         mesh_file_name = (
-            detection.results[0].hypothesis.class_id.lstrip(label_to_strip)
+            detection.results[0].hypothesis.class_id.removeprefix(prefix)
             + "."
             + mesh_file_extension
         )
@@ -143,7 +143,7 @@ def get_marker_array_msg(
                 **dict(zip("rgb", [1.0] * 3)),
                 a=detection.results[0].hypothesis.score if dynamic_opacity else 1.0,
             ),
-            lifetime=Duration(seconds=marker_timeout).to_msg(),
+            lifetime=Duration(seconds=marker_lifetime).to_msg(),
             pose=detection.results[0].pose.pose,
         )
 

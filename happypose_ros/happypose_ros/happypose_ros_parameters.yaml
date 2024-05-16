@@ -5,7 +5,8 @@ happypose_ros:
     description: "Device to which the models will be loaded. Supported options are 'cpu' and 'cuda:x' where 'x' is the GPU number.",
     validation: {
       "custom_validators::torch_check_device": null
-    }
+    },
+    read_only: true,
   }
 
   verbose_info_logs: {
@@ -28,17 +29,18 @@ happypose_ros:
       type: bool,
       default_value: false,
       description: "Publish detected objects as markers to visualize detections in RViz.",
+      read_only: true,
     }
     markers:
       dynamic_opacity: {
         type: bool,
-        default_value: true,
+        default_value: false,
         description: "Change opacity of published markers based on their prediction score.",
       }
-      timeout: {
+      lifetime: {
         type: double,
         default_value: 10.0,
-        description: "Timeout used for published markers.",
+        description: "Lifetime of a published marker.",
         validation: {
           gt<>: [ 0.0 ],
         }
@@ -50,7 +52,8 @@ happypose_ros:
     description: "Specifies which pose estimator to use in the pipeline.",
     validation: {
       one_of<>: [[ "cosypose" ]],
-    }
+    },
+    read_only: true,
   }
   cosypose:
     dataset_name: {
@@ -59,7 +62,8 @@ happypose_ros:
       description: "Name of a dataset used during training.",
       validation: {
         one_of<>: [[ "hope", "tless", "ycbv" ]],
-      }
+      },
+      read_only: true,
     }
     renderer:
       renderer_type: {
@@ -68,7 +72,8 @@ happypose_ros:
         description: "Specifies which renderer to use in the pipeline.",
         validation: {
           one_of<>: [[ "panda3d", "bullet" ]],
-        }
+        },
+        read_only: true,
       }
       n_workers: {
         type: int,
@@ -76,12 +81,14 @@ happypose_ros:
         description: "Number of CPU cores to use during rendering.",
         validation: {
           gt_eq<>: 1,
-        }
+        },
+        read_only: true,
       }
       gpu_renderer: {
         type: bool,
         default_value: true,
         description: "Render objects on a GPU.",
+        read_only: true,
       }
 
     inference:
@@ -160,23 +167,27 @@ happypose_ros:
       description: "Minimum number of valid camera views to start pose estimation pipeline.",
       validation: {
         gt_eq<>: [1],
-      }
+      },
+      read_only: true,
     }
     __map_camera_names:
       compressed: {
         type: bool,
         default_value: false,
         description: "Expect compressed image messages from given camera.",
+        read_only: true,
       }
       leading: {
         type: bool,
         default_value: false,
         description: "Consider the camera to be leading. If a camera is leading, its frame_id is used as a reference. Only one camera can be leading, and it can't publish TF at the same time.",
+        read_only: true,
       }
       publish_tf: {
         type: bool,
         default_value: false,
         description: "Publish TF of a given camera relative to the leading camera.",
+        read_only: true,
       }
       k_matrix: {
         type: double_array,
