@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>happypose_examples</name>
-  <version>0.0.0</version>
+  <version>0.0.2</version>
   <description>Examples for happypose_ros package</description>
   <author email="krzysztof.wojciechowski@laas.fr">Krzysztof Wojciechowski</author>
   <maintainer email="guilhem.saurel@laas.fr">Guilhem Saurel</maintainer>

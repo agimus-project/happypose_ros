@@ -61,6 +61,10 @@ The node provides the following ROS topics:
 
     Information about the used pose estimator (currently only CosyPose is supported) and URL with object database location.
 
+- **happypose/object_symmetries** [happypose_msgs/msg/ObjectSymmetriesArray] (*QOS: TRANSIENT_LOCAL*)
+
+    Discrete and continuous symmetries of objects in the dataset.
+
 - **happypose/markers** [visualization_msgs/msg/MarkerArray]
 
     Array of markers used to visualize detections with their meshes in software like RViz 2.

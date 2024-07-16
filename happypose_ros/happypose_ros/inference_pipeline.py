@@ -4,6 +4,7 @@ from typing import Union
 
 from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.inference.utils import filter_detections
+from happypose.toolbox.datasets.object_dataset import RigidObjectDataset
 
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
     CosyPoseWrapper,
@@ -64,6 +65,17 @@ class HappyPosePipeline:
             if self._inference_args["labels_to_keep"] != [""]
             else None
         )
+
+    def get_dataset(self) -> RigidObjectDataset:
+        """Returns rigid object dataset used by detector.
+
+        :return: Dataset used by detector.
+        :rtype: RigidObjectDataset
+        """
+        dataset = self._wrapper.object_dataset
+        if self._inference_args["labels_to_keep"] is None:
+            return dataset
+        return dataset.filter_objects(self._inference_args["labels_to_keep"])
 
     def __call__(self, observation: ObservationTensor) -> Union[None, dict]:
         """Performs sequence of actions to estimate pose and optionally merge

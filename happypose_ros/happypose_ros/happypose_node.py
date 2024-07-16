@@ -7,13 +7,13 @@ import torch
 import torch.multiprocessing as mp
 import queue
 
-
 import rclpy
 from rclpy.duration import Duration
 from rclpy.exceptions import ParameterException
 import rclpy.logging
 from rclpy.node import Node
 from rclpy.time import Time
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
 
 from tf2_ros import TransformBroadcaster
 
@@ -34,7 +34,10 @@ from happypose_ros.utils import (  # noqa: E402
     get_camera_transform,
     get_detection_array_msg,
     get_marker_array_msg,
+    get_object_symmetries_msg,
 )
+
+from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
@@ -44,6 +47,7 @@ def happypose_worker_proc(
     worker_free: mp.Value,
     observation_tensor_queue: mp.Queue,
     results_queue: mp.Queue,
+    symmetries_queue: mp.Queue,
     params_queue: mp.Queue,
 ) -> None:
     """Function used to trigger worker process.
@@ -59,6 +63,8 @@ def happypose_worker_proc(
     """
     # Initialize the pipeline
     pipeline = HappyPosePipeline(params_queue.get())
+    # Inform ROS node about the dataset
+    symmetries_queue.put(pipeline.get_dataset())
 
     # Notify parent that initialization has finished
     with worker_free.get_lock():
@@ -73,6 +79,7 @@ def happypose_worker_proc(
             try:
                 params = params_queue.get_nowait()
                 pipeline.update_params(params)
+                symmetries_queue.put(pipeline.get_dataset())
             except queue.Empty:
                 pass
 
@@ -121,6 +128,7 @@ class HappyPoseNode(Node):
         self._worker_free = ctx.Value(c_bool, False)
         self._observation_tensor_queue = ctx.Queue(1)
         self._results_queue = ctx.Queue(1)
+        self._symmetries_queue = ctx.Queue(1)
         self._params_queue = ctx.Queue(1)
 
         self._update_dynamic_params(True)
@@ -133,12 +141,13 @@ class HappyPoseNode(Node):
                 self._worker_free,
                 self._observation_tensor_queue,
                 self._results_queue,
+                self._symmetries_queue,
                 self._params_queue,
             ),
         )
         self._await_results_task = None
 
-        # TODO once Megapose is available initialization
+        # TODO once MegaPose is available initialization
         # should be handled better
         self._vision_info_msg = VisionInfo(
             method=self._params.pose_estimator_type,
@@ -162,6 +171,16 @@ class HappyPoseNode(Node):
         )
         self._vision_info_publisher = self.create_publisher(
             VisionInfo, "happypose/vision_info", 10
+        )
+
+        # Set the message to be "latched"
+        qos = QoSProfile(
+            depth=1,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+        )
+        self._symmetries_publisher = self.create_publisher(
+            ObjectSymmetriesArray, "happypose/object_symmetries", qos
         )
 
         if self._params.cameras.n_min_cameras > len(self._cameras):
@@ -242,6 +261,10 @@ class HappyPoseNode(Node):
         # Start the worker when all possible errors are handled
         self._happypose_worker.start()
 
+        # Start spinner waiting for updates in symmetries
+        self._symmetries_queue_task = Thread(target=self._symmetries_queue_spinner)
+        self._symmetries_queue_task.start()
+
         self.get_logger().info(
             "Node initialized. Waiting for HappyPose worker to initialize...",
         )
@@ -252,8 +275,12 @@ class HappyPoseNode(Node):
             self._observation_tensor_queue.close()
         if self._results_queue is not None:
             self._results_queue.close()
+        if self._symmetries_queue is not None:
+            self._symmetries_queue.close()
         if self._await_results_task is not None:
             self._await_results_task.join()
+        if self._symmetries_queue_task is not None:
+            self._symmetries_queue_task.join()
         if self._happypose_worker is not None:
             self._happypose_worker.join()
             self._happypose_worker.terminate()
@@ -277,6 +304,20 @@ class HappyPoseNode(Node):
         self._params_queue.put(params_to_dict(self._params))
         if self._params.verbose_info_logs and not on_init:
             self.get_logger().info("Parameter change occurred.")
+
+    def _symmetries_queue_spinner(self) -> None:
+        """Awaits new data in a queue with symmetries and publishes them on a ROS topic"""
+        while True:
+            try:
+                symmetries = self._symmetries_queue.get()
+                header = Header(
+                    frame_id="",
+                    stamp=self.get_clock().now().to_msg(),
+                )
+                symmetries_msg = get_object_symmetries_msg(symmetries, header)
+                self._symmetries_publisher.publish(symmetries_msg)
+            except ValueError:
+                break
 
     def _on_image_cb(self) -> None:
         """Callback function used to synchronize incoming images from different cameras.
@@ -327,7 +368,7 @@ class HappyPoseNode(Node):
 
         if len(processed_cameras) < self._params.cameras.n_min_cameras:
             # Throttle logs to either 5 times the timeout or 10 seconds
-            timeout = max(5 * self._params.cameras.timeout, 10.0)
+            timeout = max(5.0 * self._params.cameras.timeout, 10.0)
             if (now - self._last_pipeline_trigger) > (Duration(seconds=timeout)):
                 self.get_logger().warn(
                     "Unable to start pipeline! Not enough camera"
@@ -401,51 +442,6 @@ class HappyPoseNode(Node):
 
             results = self._results_queue.get(block=True, timeout=None)
 
-            if results is None:
-                if self._params.verbose_info_logs:
-                    self.get_logger().info("No objects detected.")
-                return
-
-            if self._params.verbose_info_logs:
-                self.get_logger().info(f"Detected {len(results['infos'])} objects.")
-
-            if self._multiview:
-                missing_cameras = len(cam_data) - len(results["camera_infos"])
-                if missing_cameras > 0:
-                    # Keep only the cameras that were not discarded in multiview
-                    cam_data = {
-                        name: cam
-                        for i, (name, cam) in enumerate(cam_data.items())
-                        if i in results["camera_infos"].view_id.values
-                    }
-
-                    if self._leading_camera not in cam_data.keys():
-                        self.get_logger().error(
-                            f"Leading camera '{self._leading_camera}'"
-                            " was discarded when performing multi-view!"
-                        )
-                        return
-
-                    if self._params.verbose_info_logs:
-                        self.get_logger().warn(
-                            f"{missing_cameras} camera views were discarded in multi-view."
-                        )
-
-                lead_cam_idx = list(cam_data.keys()).index(self._leading_camera)
-                # Transform objects into leading camera's reference frame
-                leading_cam_pose_inv = results["camera_poses"][lead_cam_idx].inverse()
-                # Transform detected objects' poses
-                results["poses"] = leading_cam_pose_inv @ results["poses"]
-                # Create mask of cameras that expect to have TF published
-                cams_to_tf = [
-                    self._params.cameras.get_entry(name).publish_tf
-                    for name in cam_data.keys()
-                ]
-                # Transform cameras' poses
-                results["camera_poses"][cams_to_tf] = (
-                    leading_cam_pose_inv @ results["camera_poses"][cams_to_tf]
-                )
-
             header = Header(
                 frame_id=cam_data[self._leading_camera]["frame_id"],
                 # Choose sorted time stamp
@@ -456,10 +452,63 @@ class HappyPoseNode(Node):
                 ).to_msg(),
             )
 
-            # In case of multi-view, do not use bounding boxes
-            detections = get_detection_array_msg(
-                results, header, has_bbox=not self._multiview
-            )
+            if results is not None:
+                if self._params.verbose_info_logs:
+                    self.get_logger().info(f"Detected {len(results['infos'])} objects.")
+
+                if self._multiview:
+                    missing_cameras = len(cam_data) - len(results["camera_infos"])
+                    if missing_cameras > 0:
+                        # Keep only the cameras that were not discarded in multiview
+                        cam_data = {
+                            name: cam
+                            for i, (name, cam) in enumerate(cam_data.items())
+                            if i in results["camera_infos"].view_id.values
+                        }
+
+                        if self._leading_camera not in cam_data.keys():
+                            self.get_logger().error(
+                                f"Leading camera '{self._leading_camera}'"
+                                " was discarded when performing multi-view!"
+                            )
+                            return
+
+                        if self._params.verbose_info_logs:
+                            self.get_logger().warn(
+                                f"{missing_cameras} camera views were discarded in multi-view."
+                            )
+
+                    lead_cam_idx = list(cam_data.keys()).index(self._leading_camera)
+                    # Transform objects into leading camera's reference frame
+                    leading_cam_pose_inv = results["camera_poses"][
+                        lead_cam_idx
+                    ].inverse()
+                    # Transform detected objects' poses
+                    results["poses"] = leading_cam_pose_inv @ results["poses"]
+                    # Create mask of cameras that expect to have TF published
+                    cams_to_tf = [
+                        self._params.cameras.get_entry(name).publish_tf
+                        for name in cam_data.keys()
+                    ]
+                    # Transform cameras' poses
+                    results["camera_poses"][cams_to_tf] = (
+                        leading_cam_pose_inv @ results["camera_poses"][cams_to_tf]
+                    )
+
+                # In case of multi-view, do not use bounding boxes
+                detections = get_detection_array_msg(
+                    results, header, has_bbox=not self._multiview
+                )
+
+            else:
+                if self._params.verbose_info_logs:
+                    self.get_logger().info("No objects detected.")
+
+                detections = Detection2DArray(
+                    header=header,
+                    detections=[],
+                )
+
             self._detections_publisher.publish(detections)
 
             self._vision_info_msg.header = header
