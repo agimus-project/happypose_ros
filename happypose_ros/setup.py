@@ -26,16 +26,16 @@ setup(
         ("share/ament_index/resource_index/packages", ["resource/happypose_node"]),
         ("share/happypose_ros", ["package.xml"]),
         (
-            f"share/{package_name}/config",
-            get_files(project_source_dir / "config", "*.yaml"),
-        ),
-        (
             f"share/{package_name}/test",
             get_files(project_source_dir / "test", "*.py"),
         ),
         (
             f"share/{package_name}/test",
             get_files(project_source_dir / "test", "*.png"),
+        ),
+        (
+            f"share/{package_name}/test",
+            get_files(project_source_dir / "test", "*.yaml"),
         ),
     ],
     install_requires=["setuptools"],
