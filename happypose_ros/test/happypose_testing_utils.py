@@ -11,6 +11,7 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.time import Time
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
 
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -128,11 +129,17 @@ class HappyPoseTesterNode(Node):
         self._vision_info_sub = self.create_subscription(
             VisionInfo, "happypose/vision_info", self._vision_info_cb, 5
         )
+
+        qos = QoSProfile(
+            depth=1,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+        )
         self._object_symmetries_sub = self.create_subscription(
             ObjectSymmetriesArray,
             "happypose/object_symmetries",
             self._object_symmetries_cb,
-            5,
+            qos,
         )
 
         # Initialize service clients
@@ -180,7 +187,7 @@ class HappyPoseTesterNode(Node):
         :param msg: Message containing object symmetries
         :type msg: happypose_msgs.msg.ObjectSymmetriesArray
         """
-        self._sub_topic["happypose/vision_info"].append(msg)
+        self._sub_topic["happypose/object_symmetries"].append(msg)
 
     def get_transform(
         self, target_frame: str, source_frame: str, timeout: float = 5.0
