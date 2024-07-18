@@ -74,6 +74,8 @@ def happypose_worker_proc(
         while True:
             # Await any data on all the input queues
             observation = observation_tensor_queue.get(block=True, timeout=None)
+            if observation is None:
+                break
 
             # Update inference args if available
             try:
@@ -271,19 +273,30 @@ class HappyPoseNode(Node):
 
     def destroy_node(self) -> None:
         """Destroys the node and closes all queues."""
+        # Signal closing of queues
+        if self._symmetries_queue is not None:
+            self._symmetries_queue.put(None)
         if self._observation_tensor_queue is not None:
-            self._observation_tensor_queue.close()
+            self._observation_tensor_queue.put(None)
+
+        # Close receiving queue
         if self._results_queue is not None:
             self._results_queue.close()
-        if self._symmetries_queue is not None:
-            self._symmetries_queue.close()
+
+        # Stop threads
         if self._await_results_task is not None:
             self._await_results_task.join()
         if self._symmetries_queue_task is not None:
             self._symmetries_queue_task.join()
+            if self._symmetries_queue is not None:
+                self._symmetries_queue.close()
+
+        # Stop worker process
         if self._happypose_worker is not None:
             self._happypose_worker.join()
             self._happypose_worker.terminate()
+        if self._observation_tensor_queue is not None:
+            self._observation_tensor_queue.close()
         super().destroy_node()
 
     def _update_dynamic_params(self, on_init: bool = False) -> None:
@@ -307,17 +320,21 @@ class HappyPoseNode(Node):
 
     def _symmetries_queue_spinner(self) -> None:
         """Awaits new data in a queue with symmetries and publishes them on a ROS topic"""
-        while True:
-            try:
-                symmetries = self._symmetries_queue.get()
+        try:
+            while True:
+                symmetries = self._symmetries_queue.get(block=True, timeout=None)
+                if symmetries is None:
+                    break
+
                 header = Header(
                     frame_id="",
                     stamp=self.get_clock().now().to_msg(),
                 )
                 symmetries_msg = get_object_symmetries_msg(symmetries, header)
                 self._symmetries_publisher.publish(symmetries_msg)
-            except ValueError:
-                break
+        # Queue is closed
+        except ValueError:
+            pass
 
     def _on_image_cb(self) -> None:
         """Callback function used to synchronize incoming images from different cameras.
