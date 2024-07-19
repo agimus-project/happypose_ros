@@ -68,10 +68,3 @@ jobs:
         with:
           package-name: happypose_ros
           target-ros2-distro: humble
-
-      - name: Build happypose_examples
-        uses: ros-tooling/action-ros-ci@v0.3
-        with:
-          package-name: happypose_examples
-          target-ros2-distro: humble
-          skip-tests: true
