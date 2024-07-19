@@ -3,7 +3,7 @@ name: Checks installation and tests happypose_ros package
 on: [ push, pull_request ]
 
 jobs:
-  test:
+  test_happypose_ros:
     runs-on: ubuntu-22.04
 
     env:
@@ -41,7 +41,7 @@ jobs:
 
       - name: Download pre-trained models required for tests
         run: |
-          mkdir -p happypose_data_dir
+          mkdir -p local_data
           python -m happypose.toolbox.utils.download \
             --bop_dataset ycbv \
             --cosypose_models  \
@@ -50,7 +50,7 @@ jobs:
               refiner-bop-ycbv-pbr--604090
 
       - name: Unzip HappyPose YCBV models
-        working-directory: happypose_data_dir/bop_datasets/ycbv
+        working-directory: local_data/bop_datasets/ycbv
         run: |
           unzip ycbv_base.zip
           unzip ycbv_models.zip
