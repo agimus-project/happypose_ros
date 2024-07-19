@@ -1,0 +1,77 @@
+name: Checks installation and tests happypose_ros package
+
+on: [ push, pull_request ]
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+
+    env:
+      HAPPYPOSE_DATA_DIR: local_data
+
+    steps:
+      - name: Install EGL mesa - required for Panda3D renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -qqy libegl1-mesa libegl1-mesa-dev
+
+      - name: Install Python C headers and remove Blinker version conflicting with HappyPose
+        run: |
+          sudo apt-get update
+          sudo apt-get install -qqy python3-dev
+          sudo apt purge -qqy python3-blinker
+
+      - name: Caching of the HappyPose installation and data
+        uses: actions/cache@v4
+        with:
+          path: local_data
+          key: data
+
+      - name: Update pip
+        run: pip install -U pip
+
+      - name: Download HappyPose source
+        working-directory: /tmp
+        run: |
+          git clone --branch dev --recurse-submodules https://github.com/agimus-project/happypose.git
+
+      - name: Build and install HappyPose
+        working-directory: /tmp/happypoes
+        run: pip install ".[cpu,pypi,evaluation,multiview]" --extra-index-url https://download.pytorch.org/whl/cpu
+
+      - name: Download pre-trained models required for tests
+        run: |
+          mkdir -p happypose_data_dir
+          python -m happypose.toolbox.utils.download \
+            --bop_dataset ycbv \
+            --cosypose_models  \
+              detector-bop-ycbv-pbr--970850 \
+              coarse-bop-ycbv-pbr--724183 \
+              refiner-bop-ycbv-pbr--604090
+
+      - name: Unzip HappyPose YCBV models
+        working-directory: happypose_data_dir/bop_datasets/ycbv
+        run: |
+          unzip ycbv_base.zip
+          unzip ycbv_models.zip
+
+      - name: Remove incompatible PyTest version
+        run: pip uninstall -y pytest
+
+      - name: Install ROS 2 Humble
+        uses: ros-tooling/setup-ros@v0.7
+        with:
+          required-ros-distributions: humble
+
+      - name: Build and test happypose_ros
+        uses: ros-tooling/action-ros-ci@v0.3
+        with:
+          package-name: happypose_ros
+          target-ros2-distro: humble
+
+      - name: Build happypose_examples
+        uses: ros-tooling/action-ros-ci@v0.3
+        with:
+          package-name: happypose_examples
+          target-ros2-distro: humble
+          skip-tests: true
