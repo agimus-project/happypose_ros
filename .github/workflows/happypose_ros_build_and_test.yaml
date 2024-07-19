@@ -7,7 +7,7 @@ jobs:
     runs-on: ubuntu-22.04
 
     env:
-      HAPPYPOSE_DATA_DIR: local_data
+      HAPPYPOSE_DATA_DIR: /tmp/local_data
 
     steps:
       - name: Install EGL mesa - required for Panda3D renderer
@@ -24,7 +24,7 @@ jobs:
       - name: Caching of the HappyPose installation and data
         uses: actions/cache@v4
         with:
-          path: local_data
+          path: /tmp/local_data
           key: data
 
       - name: Update pip
@@ -41,7 +41,7 @@ jobs:
 
       - name: Download pre-trained models required for tests
         run: |
-          mkdir -p local_data
+          mkdir -p /tmp/local_data
           python -m happypose.toolbox.utils.download \
             --bop_dataset ycbv \
             --cosypose_models  \
@@ -50,7 +50,7 @@ jobs:
               refiner-bop-ycbv-pbr--604090
 
       - name: Unzip HappyPose YCBV models
-        working-directory: local_data/bop_datasets/ycbv
+        working-directory: /tmp/local_data/bop_datasets/ycbv
         run: |
           unzip ycbv_base.zip
           unzip ycbv_models.zip
