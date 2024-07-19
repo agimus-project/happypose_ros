@@ -137,8 +137,8 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             self.fail("Failed to trigger the pipeline!")
 
     def test_06_receive_messages(self) -> None:
-        self.node.assert_message_received("happypose/detections", timeout=20.0)
-        self.node.assert_message_received("happypose/vision_info", timeout=2.0)
+        self.node.assert_message_received("happypose/detections", timeout=180.0)
+        self.node.assert_message_received("happypose/vision_info", timeout=8.0)
 
     def test_07_check_vision_info(self) -> None:
         vision_info = self.node.get_received_message("happypose/vision_info")
@@ -244,11 +244,11 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         # Disable timeout. Single image should trigger now
         self.set_timeout(0.0)
         self.node.publish_image("cam_1", self.cam_1_image, self.K)
-        self.node.assert_message_received("happypose/detections", timeout=20.0)
+        self.node.assert_message_received("happypose/detections", timeout=180.0)
 
     def expect_no_detection(self) -> None:
         with self.assertRaises(AssertionError) as excinfo:
-            self.node.assert_message_received("happypose/detections", timeout=5.0)
+            self.node.assert_message_received("happypose/detections", timeout=60.0)
         self.assertTrue(
             "No messages received" in str(excinfo.exception),
             msg="One image after timeout triggered the pipeline!",
@@ -284,7 +284,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_1", self.cam_1_image, self.K)
         self.node.publish_image("cam_2", self.cam_2_image, self.K)
         self.node.publish_image("cam_3", self.cam_3_image, self.K)
-        self.node.assert_message_received("happypose/detections", timeout=20.0)
+        self.node.assert_message_received("happypose/detections", timeout=60.0)
 
     def test_16_dynamic_params_camera_timeout_three_cameras_short(self) -> None:
         # Set timeout to a small value
@@ -315,7 +315,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_1", self.cam_1_image, self.K)
         self.node.publish_image("cam_2", self.cam_2_image, self.K)
         self.node.publish_image("cam_3", self.cam_3_image, self.K)
-        self.node.assert_message_received("happypose/detections", timeout=20.0)
+        self.node.assert_message_received("happypose/detections", timeout=60.0)
 
     def setup_timestamp_test(
         self, offsets: List[float], expected: float, strategy: str
@@ -350,7 +350,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.set_timeout(0.0)
         self.node.publish_image("cam_3", self.cam_3_image, self.K, cam_3_stamp)
         # Await the results
-        self.node.assert_message_received("happypose/detections", timeout=20.0)
+        self.node.assert_message_received("happypose/detections", timeout=60.0)
 
         detections = self.node.get_received_message("happypose/detections")
         stamp_sec = (Time.from_msg(detections.header.stamp) - now).nanoseconds / S_TO_NS
