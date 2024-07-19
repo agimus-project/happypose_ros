@@ -36,7 +36,7 @@ jobs:
           git clone --branch dev --recurse-submodules https://github.com/agimus-project/happypose.git
 
       - name: Build and install HappyPose
-        working-directory: /tmp/happypoes
+        working-directory: /tmp/happypose
         run: pip install ".[cpu,pypi,evaluation,multiview]" --extra-index-url https://download.pytorch.org/whl/cpu
 
       - name: Download pre-trained models required for tests
