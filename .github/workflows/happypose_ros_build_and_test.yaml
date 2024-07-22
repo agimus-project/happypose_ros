@@ -1,4 +1,4 @@
-name: Checks installation and tests happypose_ros package
+name: "Humble: Build and Test"
 
 on: [ push, pull_request ]
 
