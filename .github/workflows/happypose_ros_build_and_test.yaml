@@ -52,8 +52,8 @@ jobs:
       - name: Unzip HappyPose YCBV models
         working-directory: /tmp/local_data/bop_datasets/ycbv
         run: |
-          unzip ycbv_base.zip
-          unzip ycbv_models.zip
+          unzip -n -qq ycbv_base.zip
+          unzip -n -qq ycbv_models.zip
 
       - name: Remove incompatible PyTest version
         run: pip uninstall -y pytest
