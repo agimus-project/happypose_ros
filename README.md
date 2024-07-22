@@ -1,11 +1,12 @@
 
+# happypose_ros
+
 [![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![Test happypose_ros](https://github.com/agimus-project/happypose_ros/actions/workflows/happypose_ros_build_and_test.yaml/badge.svg)](https://github.com/agimus-project/happypose_ros/actions/workflows/happypose_ros_build_and_test.yaml
 )
 [![pre-commit.ci status](https://results.pre-commit.ci/badge/github/agimus-project/happypose_ros/main.svg)](https://results.pre-commit.ci/latest/github/agimus-project/happypose_ros/main)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-# happypose_ros
 ROS 2 wrapper for a 6D pose estimation library, [Happypose](https://github.com/agimus-project/happypose).
 
 ## Build instructions
