@@ -260,7 +260,10 @@ def continuous_symmetry_to_msg(
     :rtype: happypose_msgs.msg.ContinuousSymmetry
     """
     return ContinuousSymmetry(
-        # Explicit conversion to float is required in this case
+        # Explicit conversion to float is required in this case.
+        # Some values in json files defining object properties are written without decimal
+        # precision and are stored as integers. ROS 2 generated messages do not cast
+        # integers to floats resulting in an error.
         offset=Vector3(**dict(zip("xyz", [float(i) for i in symmetry.offset]))),
         axis=Vector3(**dict(zip("xyz", [float(i) for i in symmetry.axis]))),
     )
@@ -269,9 +272,9 @@ def continuous_symmetry_to_msg(
 def discrete_symmetry_to_msg(
     symmetry: happypose_symmetries.DiscreteSymmetry,
 ) -> Transform:
-    """Converts HappyPose DiscreteSymmetry object into Transform ROS message corresponding to
+    """Converts HappyPose DiscreteSymmetry object into Transform ROS message.
 
-    :param symmetry: HappyPose object storing definition of continuous symmetry.
+    :param symmetry: HappyPose object storing definition of discrete symmetry.
     :type symmetry: happypose_symmetries.DiscreteSymmetry
     :return: ROS message with transformation corresponding to given symmetry.
     :rtype: geometry_msgs.msg.Transform

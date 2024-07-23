@@ -67,9 +67,9 @@ class HappyPosePipeline:
         )
 
     def get_dataset(self) -> RigidObjectDataset:
-        """Returns rigid object dataset used by detector.
+        """Returns rigid object dataset used by HappyPose pose estimator
 
-        :return: Dataset used by detector.
+        :return: Dataset used by HappyPose pose estimator
         :rtype: RigidObjectDataset
         """
         dataset = self._wrapper.object_dataset
