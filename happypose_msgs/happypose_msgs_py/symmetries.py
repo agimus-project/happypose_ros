@@ -42,7 +42,7 @@ def discretize_symmetries(
             )
         symmetries = np.zeros((n_symmetries_continuous, 4, 4))
 
-        # Pre compute steps of rotations
+        # Precompute steps of rotations
         rot_base = 2.0 * axis * np.pi / n_symmetries_continuous
         for i in range(n_symmetries_continuous):
             symmetries[i, :3, :3] = transforms3d.euler.euler2mat(*(rot_base * i))
