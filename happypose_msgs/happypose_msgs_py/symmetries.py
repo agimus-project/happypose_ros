@@ -8,7 +8,7 @@ from geometry_msgs.msg import Transform, Vector3, Quaternion
 from happypose_msgs.msg import ContinuousSymmetry, ObjectSymmetries
 
 
-def discretize_poses(
+def discretize_symmetries(
     object_symmetries: ObjectSymmetries,
     n_symmetries_continuous: int = 8,
     return_ros_msg: bool = False,
