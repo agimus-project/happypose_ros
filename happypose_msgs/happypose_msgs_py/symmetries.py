@@ -1,24 +1,36 @@
 import numpy as np
 import numpy.typing as npt
 import transforms3d
+from typing import List, Union
 
-from geometry_msgs.msg import Transform
+from geometry_msgs.msg import Transform, Vector3, Quaternion
 
 from happypose_msgs.msg import ContinuousSymmetry, ObjectSymmetries
 
 
 def discretize_poses(
-    object_symmetries: ObjectSymmetries, n_symmetries_continuous: int = 8
-) -> npt.NDArray[np.float64]:
+    object_symmetries: ObjectSymmetries,
+    n_symmetries_continuous: int = 8,
+    return_ros_msg: bool = False,
+) -> Union[npt.NDArray[np.float64], List[Transform]]:
     """Converts discrete and continuous symmetries to a list of discrete symmetries.
 
     :param object_symmetries: ROS message containing symmetries of a given object.
     :type object_symmetries: happypose_msgs.msg.ObjectSymmetries
     :param n_symmetries_continuous: Number of segments to discretize continuous symmetries.
     :type n_symmetries_continuous: int
-    :return: List of a shape (n, 4, 4) with ``n`` SE3 transformation matrices representing symmetries.
-    :rtype: npt.NDArray[np.float64]
+    :param return_ros_msg: Whether to return ROS message or numpy array
+        with 4x4 matrices, defaults to False.
+    :type return_ros_msg: bool, optional
+    :return: If ``return_ros_msg`` is False returns array of a shape (n, 4, 4) with ``n``
+        SE3 transformation matrices representing symmetries.
+        Otherwise list of ROS Transform messages.
+    :rtype: Union[npt.NDArray[np.float64], List[geometry_msgs.msg.Transform]]
     """
+
+    # If there are not continuous symmetries and ROS message is expected skip computations
+    if return_ros_msg and len(object_symmetries.symmetries_continuous) == 0:
+        return object_symmetries.symmetries_discrete
 
     def _discretize_continuous(
         sym: ContinuousSymmetry, idx: int
@@ -69,4 +81,17 @@ def discretize_poses(
         for i in range(len(object_symmetries.symmetries_discrete))
     ]
 
-    return np.vstack([symmetries_continuous, symmetries_discrete, *symmetries_mixed])
+    symmetries = np.vstack(
+        [symmetries_continuous, symmetries_discrete, *symmetries_mixed]
+    )
+    if not return_ros_msg:
+        return symmetries
+
+    def _mat_to_msg(M: npt.NDArray[np.float64]):
+        q = transforms3d.quaternions.mat2quat(M[:3, :3])
+        return Transform(
+            translation=Vector3(**dict(zip("xyz", M[:, -1]))),
+            rotation=Quaternion(**dict(zip("wxyz", q))),
+        )
+
+    return [_mat_to_msg(M) for M in symmetries]
