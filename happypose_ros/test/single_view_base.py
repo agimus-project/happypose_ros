@@ -121,7 +121,7 @@ class SingleViewBase(HappyPoseTestCase):
             ready = proc_output.waitFor("HappyPose initialized", timeout=0.5)
         assert ready, "Failed to trigger the pipeline!"
 
-    def test_04_receive_messages(self) -> None:
+    def test_06_receive_messages(self) -> None:
         self.node.assert_message_received("happypose/detections", timeout=180.0)
         self.node.assert_message_received("happypose/markers", timeout=6.0)
         self.node.assert_message_received("happypose/vision_info", timeout=6.0)
