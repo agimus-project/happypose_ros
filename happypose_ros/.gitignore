@@ -17,5 +17,4 @@ AMENT_IGNORE
 .vscode
 
 # Generated ROS parameters
-# The file has to be manually modified as the code generations has a bug in __map
 happypose_ros/happypose_ros_parameters.py
