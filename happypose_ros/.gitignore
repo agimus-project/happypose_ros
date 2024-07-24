@@ -19,6 +19,6 @@ AMENT_IGNORE
 # Generated ROS parameters
 # The file has to be manually modified as the code generations has a bug in __map
 happypose_ros/happypose_ros_parameters.py
-happypose_ros/test/__pycache__
+*__pycache__*
 happypose_msgs/test/__pycache__
 happypose_msgs_py/test/__pycache__
