@@ -7,9 +7,9 @@
   <maintainer email="guilhem.saurel@laas.fr">Guilhem Saurel</maintainer>
   <license>BSD</license>
 
-  <url type="website">https://gitlab.laas.fr/kwojciecho/happypose_ros</url>
-  <url type="bugtracker">https://gitlab.laas.fr/kwojciecho/happypose_ros/-/issues</url>
-  <url type="repository">https://gitlab.laas.fr/kwojciecho/happypose_ros</url>
+  <url type="website">https://github.com/agimus-project/happypose_ros</url>
+  <url type="bugtracker">https://github.com/agimus-project/happypose_ros/issues</url>
+  <url type="repository">https://github.com/agimus-project/happypose_ros</url>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_python</buildtool_depend>
