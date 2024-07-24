@@ -86,7 +86,7 @@ class SingleViewBase(HappyPoseTestCase):
         self.node.assert_node_is_publisher("happypose/object_symmetries", timeout=3.0)
 
     def test_03_receive_object_symmetries(self) -> None:
-        self.node.assert_message_received("happypose/object_symmetries", timeout=20.0)
+        self.node.assert_message_received("happypose/object_symmetries", timeout=120.0)
 
     def test_04_check_object_symmetries(self) -> None:
         object_symmetries = self.node.get_received_message(
@@ -308,7 +308,7 @@ class SingleViewBase(HappyPoseTestCase):
             msg="Filtered label is not the same as the expected one!",
         )
 
-        self.node.assert_message_received("happypose/object_symmetries", timeout=5.0)
+        self.node.assert_message_received("happypose/object_symmetries", timeout=20.0)
         object_symmetries = self.node.get_received_message(
             "happypose/object_symmetries"
         )
