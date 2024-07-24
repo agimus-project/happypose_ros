@@ -1,10 +1,19 @@
+
 # happypose_ros
+
+[![License](https://img.shields.io/badge/License-BSD_2--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
+[![Test happypose_ros](https://github.com/agimus-project/happypose_ros/actions/workflows/happypose_ros_build_and_test.yaml/badge.svg)](https://github.com/agimus-project/happypose_ros/actions/workflows/happypose_ros_build_and_test.yaml
+)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/agimus-project/happypose_ros/main.svg)](https://results.pre-commit.ci/latest/github/agimus-project/happypose_ros/main)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
 ROS 2 wrapper for a 6D pose estimation library, [Happypose](https://github.com/agimus-project/happypose).
 
 ## Build instructions
 
 
-:warning: Conda installation is not supported
+> [!WARNING]
+> Conda installation is not supported
 
 Currently, there is no automated build for happypose library itself built into the ROS node. Please follow the installation guide found in the [happypose README.md](https://github.com/agimus-project/happypose?tab=readme-ov-file#example-with-venv).
 
@@ -17,11 +26,14 @@ colcon build --symlink-install
 
 ## Launch
 
-:warning: Intrinsic parameters of the camera are approximate in the demos and may cause inaccurate results! You can change them by modifying the `k_matrix` param in [cosypose_params.yaml](./happypose_examples/config/cosypose_params.yaml) file.
+> [!NOTE]
+> Intrinsic parameters of the camera are approximate in the demos and may cause inaccurate results! You can change them by modifying the `k_matrix` param in [cosypose_params.yaml](./happypose_examples/config/cosypose_params.yaml) file.
 
-:warning: When running the demos, make sure to change `device` parameter according to your hardware configuration!
+> [!TIP]
+> When running the demos, make sure to change `device` parameter according to your hardware configuration!
 
-Before running the demos download the dataset model and pretrained detectors for object type you plan to use. The default dataset used in the examples is ycbv. For more information refer to [*Downloading and preparing the data* page](https://agimus-project.github.io/happypose/cosypose/download_data.html) in the HappyPose documentation.
+> [!IMPORTANT]
+> Before running the demos download the dataset model and pretrained detectors for object type you plan to use. The default dataset used in the examples is ycbv. For more information refer to [*Downloading and preparing the data* page](https://agimus-project.github.io/happypose/cosypose/download_data.html) in the HappyPose documentation.
 
 To launch the demo run:
 ```bash
