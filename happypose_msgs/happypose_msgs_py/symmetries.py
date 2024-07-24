@@ -36,16 +36,18 @@ def discretize_symmetries(
         sym: ContinuousSymmetry, idx: int
     ) -> npt.NDArray[np.float64]:
         axis = np.array([sym.axis.x, sym.axis.y, sym.axis.z])
-        if not np.isclose(axis.sum(), 1.0):
+        if not np.isclose(np.linalg.norm(axis), 1.0):
             raise ValueError(
                 f"Continuous symmetry at index {idx} has non unitary rotation axis!"
             )
         symmetries = np.zeros((n_symmetries_continuous, 4, 4))
 
         # Precompute steps of rotations
-        rot_base = 2.0 * axis * np.pi / n_symmetries_continuous
+        rot_base = 2.0 * np.pi / n_symmetries_continuous
         for i in range(n_symmetries_continuous):
-            symmetries[i, :3, :3] = transforms3d.euler.euler2mat(*(rot_base * i))
+            symmetries[i, :3, :3] = transforms3d.axangles.axangle2mat(
+                axis, rot_base * i
+            )
 
         symmetries[:, -1, -1] = 1.0
         symmetries[:, :3, -1] = np.array([sym.offset.x, sym.offset.y, sym.offset.z])
@@ -61,8 +63,9 @@ def discretize_symmetries(
 
     def _transform_msg_to_mat(sym: Transform) -> npt.NDArray[np.float64]:
         M = np.eye(4)
+
         M[:3, :3] = transforms3d.quaternions.quat2mat(
-            (sym.rotation.w, sym.rotation.x, sym.rotation.y, sym.rotation.z)
+            [sym.rotation.w, sym.rotation.x, sym.rotation.y, sym.rotation.z]
         )
         M[0, -1] = sym.translation.x
         M[1, -1] = sym.translation.y
