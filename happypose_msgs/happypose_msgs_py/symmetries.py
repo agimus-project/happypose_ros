@@ -29,7 +29,7 @@ def discretize_symmetries(
     :rtype: Union[npt.NDArray[np.float64], List[geometry_msgs.msg.Transform]]
     """
 
-    # If there are not continuous symmetries and ROS message is expected skip computations
+    # If there are no continuous symmetries and ROS message is expected skip computations
     if return_ros_msg and len(object_symmetries.symmetries_continuous) == 0:
         return copy(object_symmetries.symmetries_discrete)
 
