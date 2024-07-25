@@ -1,3 +1,4 @@
+from copy import copy
 import numpy as np
 import numpy.typing as npt
 import transforms3d
@@ -5,7 +6,7 @@ from typing import List, Union
 
 from geometry_msgs.msg import Transform, Vector3, Quaternion
 
-from happypose_msgs.msg import ContinuousSymmetry, ObjectSymmetries
+from happypose_msgs.msg import ObjectSymmetries
 
 
 def discretize_symmetries(
@@ -30,71 +31,68 @@ def discretize_symmetries(
 
     # If there are not continuous symmetries and ROS message is expected skip computations
     if return_ros_msg and len(object_symmetries.symmetries_continuous) == 0:
-        return object_symmetries.symmetries_discrete
+        return copy(object_symmetries.symmetries_discrete)
 
-    def _discretize_continuous(
-        sym: ContinuousSymmetry, idx: int
-    ) -> npt.NDArray[np.float64]:
-        axis = np.array([sym.axis.x, sym.axis.y, sym.axis.z])
+    n_con = len(object_symmetries.symmetries_continuous) * n_symmetries_continuous
+    n_disc = len(object_symmetries.symmetries_discrete)
+    n_mix = n_con * n_disc
+
+    # Preallocate memory for results
+    out = np.zeros((n_con + n_disc + n_mix, 4, 4))
+
+    # Precompute steps of rotations
+    rot_base = 2.0 * np.pi / n_symmetries_continuous
+
+    # Discretize continuous symmetries
+    for i, sym_c in enumerate(object_symmetries.symmetries_continuous):
+        axis = np.array([sym_c.axis.x, sym_c.axis.y, sym_c.axis.z])
         if not np.isclose(np.linalg.norm(axis), 1.0):
             raise ValueError(
-                f"Continuous symmetry at index {idx} has non unitary rotation axis!"
+                f"Continuous symmetry at index {i} has non unitary rotation axis!"
             )
-        symmetries = np.zeros((n_symmetries_continuous, 4, 4))
-
-        # Precompute steps of rotations
-        rot_base = 2.0 * np.pi / n_symmetries_continuous
-        for i in range(n_symmetries_continuous):
-            symmetries[i, :3, :3] = transforms3d.axangles.axangle2mat(
-                axis, rot_base * i
-            )
-
-        symmetries[:, -1, -1] = 1.0
-        symmetries[:, :3, -1] = np.array([sym.offset.x, sym.offset.y, sym.offset.z])
-
-        return symmetries
-
-    symmetries_continuous = np.array(
-        [
-            _discretize_continuous(sym_c, idx)
-            for idx, sym_c in enumerate(object_symmetries.symmetries_continuous)
-        ]
-    ).reshape((-1, 4, 4))
-
-    def _transform_msg_to_mat(sym: Transform) -> npt.NDArray[np.float64]:
-        M = np.eye(4)
-
-        M[:3, :3] = transforms3d.quaternions.quat2mat(
-            [sym.rotation.w, sym.rotation.x, sym.rotation.y, sym.rotation.z]
+        # Compute begin and end indices
+        begin = i * n_symmetries_continuous
+        end = (i + 1) * n_symmetries_continuous
+        out[begin:end, :3, :3] = np.array(
+            [
+                transforms3d.axangles.axangle2mat(axis, rot_base * j)
+                for j in range(n_symmetries_continuous)
+            ]
         )
-        M[0, -1] = sym.translation.x
-        M[1, -1] = sym.translation.y
-        M[2, -1] = sym.translation.z
-        return M
+        out[begin:end, :, -1] = np.array(
+            [sym_c.offset.x, sym_c.offset.y, sym_c.offset.z, 1.0]
+        )
 
-    symmetries_discrete = np.array(
-        [
-            _transform_msg_to_mat(sym_d)
-            for sym_d in object_symmetries.symmetries_discrete
-        ]
-    ).reshape((-1, 4, 4))
+    # Convert discrete symmetries to matrix format
+    for i, sym_d in enumerate(object_symmetries.symmetries_discrete):
+        begin = n_con + i
+        out[begin, :3, :3] = transforms3d.quaternions.quat2mat(
+            [sym_d.rotation.w, sym_d.rotation.x, sym_d.rotation.y, sym_d.rotation.z]
+        )
+        out[begin, :, -1] = np.array(
+            [sym_d.translation.x, sym_d.translation.y, sym_d.translation.z, 1.0]
+        )
 
-    symmetries_mixed = [
-        (symmetries_discrete[i] @ symmetries_continuous).reshape((-1, 4, 4))
-        for i in range(len(object_symmetries.symmetries_discrete))
-    ]
+    sym_c_d_end = n_con + n_disc
+    symmetries_continuous = out[:n_con]
+    # Combine discrete symmetries with possible continuous rotations
+    # TODO @MedericFourmy ensure this operation is valid for all object and not only objects with offset
+    # being at the origin of the coordinate system.
+    for i in range(n_disc):
+        begin = sym_c_d_end + i * n_symmetries_continuous
+        end = sym_c_d_end + (i + 1) * n_symmetries_continuous
+        symmetry_discrete = out[n_con + i]
+        # Multiply batch of continuous symmetries onto single discrete symmetry
+        out[begin:end] = symmetry_discrete @ symmetries_continuous
 
-    symmetries = np.vstack(
-        [symmetries_continuous, symmetries_discrete, *symmetries_mixed]
-    )
     if not return_ros_msg:
-        return symmetries
+        return out
 
-    def _mat_to_msg(M: npt.NDArray[np.float64]):
+    def _mat_to_msg(M: npt.NDArray[np.float64]) -> Transform:
         q = transforms3d.quaternions.mat2quat(M[:3, :3])
         return Transform(
             translation=Vector3(**dict(zip("xyz", M[:, -1]))),
             rotation=Quaternion(**dict(zip("wxyz", q))),
         )
 
-    return [_mat_to_msg(M) for M in symmetries]
+    return [_mat_to_msg(M) for M in out]
