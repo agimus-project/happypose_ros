@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>happypose_msgs</name>
-  <version>0.0.2</version>
+  <version>0.2.0</version>
   <description>Custom messages used by happypose_ros package.</description>
   <author email="krzysztof.wojciechowski@laas.fr">Krzysztof Wojciechowski</author>
   <maintainer email="guilhem.saurel@laas.fr">Guilhem Saurel</maintainer>
