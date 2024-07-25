@@ -76,8 +76,8 @@ def discretize_symmetries(
     sym_c_d_end = n_con + n_disc
     symmetries_continuous = out[:n_con]
     # Combine discrete symmetries with possible continuous rotations
-    # TODO @MedericFourmy ensure this operation is valid for all object and not only objects with offset
-    # being at the origin of the coordinate system.
+    # TODO @MedericFourmy we should ensure this operation is valid for all object
+    # and not only objects with offset being at the origin of the coordinate system.
     for i in range(n_disc):
         begin = sym_c_d_end + i * n_symmetries_continuous
         end = sym_c_d_end + (i + 1) * n_symmetries_continuous
