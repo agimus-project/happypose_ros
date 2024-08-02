@@ -53,15 +53,23 @@ def discretize_symmetries(
         # Compute begin and end indices
         begin = i * n_symmetries_continuous
         end = (i + 1) * n_symmetries_continuous
+
+        # Compute T @ R @ int(T)
+        # Discrete rotations around axis, generating matrices R
         out[begin:end, :3, :3] = np.array(
             [
                 transforms3d.axangles.axangle2mat(axis, rot_base * j)
                 for j in range(n_symmetries_continuous)
             ]
         )
-        out[begin:end, :, -1] = np.array(
-            [sym_c.offset.x, sym_c.offset.y, sym_c.offset.z, 1.0]
-        )
+        # Compute T @ R
+        offset = np.array([sym_c.offset.x, sym_c.offset.y, sym_c.offset.z, 1.0])
+        out[begin:end, :, -1] = offset
+
+        # Multiply by inv(T)
+        T = np.eye(4)
+        T[:3, 3] = -offset[:3]
+        out[begin:end, :, :] = out[begin:end, :, :] @ T
 
     # Convert discrete symmetries to matrix format
     for i, sym_d in enumerate(object_symmetries.symmetries_discrete):

@@ -180,10 +180,12 @@ def test_only_continuous_np() -> None:
     offset = np.array([-0.1, 0.0, 0.1])
 
     t_list = [
-        pin.SE3(
+        pin.SE3(np.eye(3), offset)
+        * pin.SE3(
             pin.Quaternion(pin.AngleAxis(2.0 * np.pi / n_symmetries * i, axis)),
-            offset,
+            np.array([0.0, 0.0, 0.0]),
         )
+        * pin.SE3(np.eye(3), offset).inverse()
         for i in range(n_symmetries)
     ]
     msg = ObjectSymmetries(
@@ -211,10 +213,12 @@ def test_only_continuous_ros() -> None:
     offset = np.array([0.0, 0.0, 0.1])
 
     t_list = [
-        pin.SE3(
+        pin.SE3(np.eye(3), offset)
+        * pin.SE3(
             pin.Quaternion(pin.AngleAxis(2.0 * np.pi / n_symmetries * i, axis)),
-            offset,
+            np.array([0.0, 0.0, 0.0]),
         )
+        * pin.SE3(np.eye(3), offset).inverse()
         for i in range(n_symmetries)
     ]
     msg = ObjectSymmetries(
@@ -250,10 +254,12 @@ def test_mixed_np() -> None:
     offset = np.array([-0.1, 0.6, 0.1])
 
     t_c_list = [
-        pin.SE3(
+        pin.SE3(np.eye(3), offset)
+        * pin.SE3(
             pin.Quaternion(pin.AngleAxis(2.0 * np.pi / n_symmetries * i, axis)),
-            offset,
+            np.array([0.0, 0.0, 0.0]),
         )
+        * pin.SE3(np.eye(3), offset).inverse()
         for i in range(n_symmetries)
     ]
 
@@ -305,10 +311,12 @@ def test_mixed_ros() -> None:
     offset = np.array([-1.1, 0.6, 0.1])
 
     t_c_list = [
-        pin.SE3(
+        pin.SE3(np.eye(3), offset)
+        * pin.SE3(
             pin.Quaternion(pin.AngleAxis(2.0 * np.pi / n_symmetries * i, axis)),
-            offset,
+            np.array([0.0, 0.0, 0.0]),
         )
+        * pin.SE3(np.eye(3), offset).inverse()
         for i in range(n_symmetries)
     ]
 
