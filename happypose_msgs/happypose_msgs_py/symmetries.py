@@ -41,7 +41,7 @@ def discretize_symmetries(
     out = np.zeros((n_con + n_disc + n_mix, 4, 4))
 
     # Precompute steps of rotations
-    rot_base = 2.0 * np.pi / n_symmetries_continuous
+    angles = np.linspace(0.0, 2.0 * np.pi, n_symmetries_continuous, endpoint=False)
 
     # Discretize continuous symmetries
     for i, sym_c in enumerate(object_symmetries.symmetries_continuous):
@@ -57,10 +57,7 @@ def discretize_symmetries(
         # Compute T @ R @ int(T)
         # Discrete rotations around axis, generating matrices R
         out[begin:end, :3, :3] = np.array(
-            [
-                transforms3d.axangles.axangle2mat(axis, rot_base * j)
-                for j in range(n_symmetries_continuous)
-            ]
+            [transforms3d.axangles.axangle2mat(axis, a) for a in angles]
         )
         # Compute T @ R
         offset = np.array([sym_c.offset.x, sym_c.offset.y, sym_c.offset.z, 1.0])
