@@ -1,6 +1,6 @@
 /**:
   ros__parameters:
-    # device is set from launchfile
+    # device is set from launch file
     verbose_info_logs: true
     pose_estimator_type: cosypose
     visualization.publish_markers: true
@@ -17,4 +17,4 @@
       cam_1:
         leading: true
         publish_tf: false
-        # compressed is set from launchfile
+        # compressed is set from launch file

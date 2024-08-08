@@ -11,6 +11,7 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.time import Time
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
 
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -28,6 +29,8 @@ from visualization_msgs.msg import MarkerArray, Marker
 
 from rcl_interfaces.msg import Parameter as RCL_Parameter
 from rcl_interfaces.srv import GetParameters, SetParametersAtomically
+
+from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
 
 
 class HappyPoseTestCase(unittest.TestCase):
@@ -115,6 +118,7 @@ class HappyPoseTesterNode(Node):
             "happypose/markers": [],
             "happypose/detections": [],
             "happypose/vision_info": [],
+            "happypose/object_symmetries": [],
         }
         self._markers_sub = self.create_subscription(
             MarkerArray, "happypose/markers", self._markers_cb, 5
@@ -124,6 +128,18 @@ class HappyPoseTesterNode(Node):
         )
         self._vision_info_sub = self.create_subscription(
             VisionInfo, "happypose/vision_info", self._vision_info_cb, 5
+        )
+
+        qos = QoSProfile(
+            depth=1,
+            durability=DurabilityPolicy.TRANSIENT_LOCAL,
+            history=HistoryPolicy.KEEP_LAST,
+        )
+        self._object_symmetries_sub = self.create_subscription(
+            ObjectSymmetriesArray,
+            "happypose/object_symmetries",
+            self._object_symmetries_cb,
+            qos,
         )
 
         # Initialize service clients
@@ -164,6 +180,14 @@ class HappyPoseTesterNode(Node):
         :type msg: vision_msgs.msg.VisionInfo
         """
         self._sub_topic["happypose/vision_info"].append(msg)
+
+    def _object_symmetries_cb(self, msg: ObjectSymmetriesArray) -> None:
+        """Callback of the object symmetries message topic
+
+        :param msg: Message containing object symmetries
+        :type msg: happypose_msgs.msg.ObjectSymmetriesArray
+        """
+        self._sub_topic["happypose/object_symmetries"].append(msg)
 
     def get_transform(
         self, target_frame: str, source_frame: str, timeout: float = 5.0

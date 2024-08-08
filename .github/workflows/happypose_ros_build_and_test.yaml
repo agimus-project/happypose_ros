@@ -1,6 +1,12 @@
 name: "Humble: Build and Test"
 
-on: [ push, pull_request ]
+on:
+  push:
+    branches:
+      - "main"
+  pull_request:
+    branches:
+      - "*"
 
 jobs:
   test_happypose_ros:
