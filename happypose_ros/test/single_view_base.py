@@ -83,8 +83,31 @@ class SingleViewBase(HappyPoseTestCase):
         self.node.assert_node_is_publisher("happypose/detections", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/markers", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/vision_info", timeout=3.0)
+        self.node.assert_node_is_publisher("happypose/object_symmetries", timeout=3.0)
 
-    def test_03_trigger_pipeline(self, proc_output: ActiveIoHandler) -> None:
+    def test_03_receive_object_symmetries(self) -> None:
+        self.node.assert_message_received("happypose/object_symmetries", timeout=120.0)
+
+    def test_04_check_object_symmetries(self) -> None:
+        object_symmetries = self.node.get_received_message(
+            "happypose/object_symmetries"
+        )
+        self.assertEqual(len(object_symmetries.objects), 21)
+        # Check if all object names follow the scheme
+        self.assertTrue(
+            all(["ycbv-obj_0000" in obj.class_id for obj in object_symmetries.objects])
+        )
+
+        self.assertEqual(len(object_symmetries.objects[0].symmetries_discrete), 1)
+        self.assertEqual(len(object_symmetries.objects[0].symmetries_continuous), 0)
+
+        self.assertEqual(len(object_symmetries.objects[4].symmetries_discrete), 0)
+        self.assertEqual(len(object_symmetries.objects[4].symmetries_continuous), 0)
+
+        self.assertEqual(len(object_symmetries.objects[12].symmetries_discrete), 0)
+        self.assertEqual(len(object_symmetries.objects[12].symmetries_continuous), 1)
+
+    def test_05_trigger_pipeline(self, proc_output: ActiveIoHandler) -> None:
         # Clear buffer before expecting any messages
         self.node.clear_msg_buffer()
 
@@ -98,17 +121,17 @@ class SingleViewBase(HappyPoseTestCase):
             ready = proc_output.waitFor("HappyPose initialized", timeout=0.5)
         assert ready, "Failed to trigger the pipeline!"
 
-    def test_04_receive_messages(self) -> None:
+    def test_06_receive_messages(self) -> None:
         self.node.assert_message_received("happypose/detections", timeout=180.0)
         self.node.assert_message_received("happypose/markers", timeout=6.0)
         self.node.assert_message_received("happypose/vision_info", timeout=6.0)
 
-    def test_05_check_vision_info(self) -> None:
+    def test_07_check_vision_info(self) -> None:
         vision_info = self.node.get_received_message("happypose/vision_info")
         self.assertEqual(vision_info.method, "cosypose")
         self.assertTrue("ycbv" in vision_info.database_location)
 
-    def test_06_check_detection(self) -> None:
+    def test_08_check_detection(self) -> None:
         detections = self.node.get_received_message("happypose/detections")
         self.assertEqual(
             detections.header.frame_id, "cam_1", "Incorrect frame_id in the header!"
@@ -174,7 +197,7 @@ class SingleViewBase(HappyPoseTestCase):
         assert_bbox(ycbv_05.bbox, [394, 107, 77, 248], percent_error=50.0)
         assert_bbox(ycbv_15.bbox, [64, 204, 267, 151])
 
-    def test_07_check_markers(self) -> None:
+    def test_09_check_markers(self) -> None:
         detections = self.node.get_received_message("happypose/detections")
         ycbv_02 = assert_and_find_detection(detections, "ycbv-obj_000002")
         ycbv_05 = assert_and_find_detection(detections, "ycbv-obj_000005")
@@ -251,7 +274,7 @@ class SingleViewBase(HappyPoseTestCase):
                 "Mesh expected to use 'mesh_use_embedded_materials'!",
             )
 
-    def test_08_dynamic_params_labels_to_keep(
+    def test_10_dynamic_params_labels_to_keep(
         self, proc_output: ActiveIoHandler
     ) -> None:
         label_to_keep = "ycbv-obj_000002"
@@ -285,7 +308,18 @@ class SingleViewBase(HappyPoseTestCase):
             msg="Filtered label is not the same as the expected one!",
         )
 
-    def test_09_dynamic_params_markers(self) -> None:
+        self.node.assert_message_received("happypose/object_symmetries", timeout=20.0)
+        object_symmetries = self.node.get_received_message(
+            "happypose/object_symmetries"
+        )
+        self.assertEqual(
+            len(object_symmetries.objects),
+            1,
+            msg="Number of objects with symmetries does not reflect changes after filtering labels!",
+        )
+        self.assertEqual(object_symmetries.objects[0].class_id, label_to_keep)
+
+    def test_11_dynamic_params_markers(self) -> None:
         lifetime = 2137.0
         self.node.set_params(
             [
@@ -328,8 +362,8 @@ class SingleViewBase(HappyPoseTestCase):
             msg="Marker lifetime did not change!",
         )
 
-    def test_10_dynamic_params_labels_to_keep_reset(self: ActiveIoHandler) -> None:
-        # Undoo filtering of the labels
+    def test_12_dynamic_params_labels_to_keep_reset(self: ActiveIoHandler) -> None:
+        # Undo filtering of the labels
         self.node.set_params(
             [
                 Parameter(
@@ -352,4 +386,42 @@ class SingleViewBase(HappyPoseTestCase):
             len(detections.detections),
             3,
             msg="Detections were not brought back to being unfiltered!",
+        )
+
+        self.node.assert_message_received("happypose/object_symmetries", timeout=5.0)
+        object_symmetries = self.node.get_received_message(
+            "happypose/object_symmetries"
+        )
+        self.assertEqual(
+            len(object_symmetries.objects),
+            21,
+            msg="Number of objects with symmetries is not equal to full YCBV dataset!",
+        )
+
+    def test_13_dynamic_params_labels_to_keep_empty_message(
+        self: ActiveIoHandler,
+    ) -> None:
+        # Undo filtering of the labels
+        self.node.set_params(
+            [
+                Parameter(
+                    "cosypose.inference.labels_to_keep",
+                    Parameter.Type.STRING_ARRAY,
+                    ["ycbv-obj_000020"],
+                )
+            ]
+        )
+
+        # Clear old messages
+        self.node.clear_msg_buffer()
+
+        # Publish new to trigger parameter change
+        self.node.publish_image("cam_1", self.rgb, self.K)
+        self.node.assert_message_received("happypose/detections", timeout=20.0)
+        detections = self.node.get_received_message("happypose/detections")
+
+        self.assertGreaterEqual(
+            len(detections.detections),
+            0,
+            "After filtering labels published message is not empty!",
         )

@@ -25,6 +25,14 @@ from vision_msgs.msg import (
     ObjectHypothesis,
     ObjectHypothesisWithPose,
 )
+from happypose_msgs.msg import (
+    ContinuousSymmetry,
+    ObjectSymmetries,
+    ObjectSymmetriesArray,
+)
+
+import happypose.toolbox.lib3d.symmetries as happypose_symmetries
+from happypose.toolbox.datasets.object_dataset import RigidObject, RigidObjectDataset
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros
@@ -201,6 +209,22 @@ def get_marker_array_msg(
     )
 
 
+def transform_mat_to_msg(transform: npt.NDArray[np.float64]) -> Transform:
+    """Converts 4x4 transformation matrix to ROS Transform message.
+
+    :param transform: 4x4 transformation array.
+    :type transform: npt.NDArray[np.float64]
+    :return: Converted SE3 transformation into ROS Transform
+        message format.
+    :rtype: geometry_msgs.msg.Transform
+    """
+    pose_vec = pin.SE3ToXYZQUAT(pin.SE3(transform))
+    return Transform(
+        translation=Vector3(**dict(zip("xyz", pose_vec[:3]))),
+        rotation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
+    )
+
+
 def get_camera_transform(
     camera_pose: Tensor, header: Header, child_frame_id: str
 ) -> TransformStamped:
@@ -218,12 +242,73 @@ def get_camera_transform(
     :rtype: geometry_msgs.msg.TransformStamped
     """
 
-    pose_vec = pin.SE3ToXYZQUAT(pin.SE3(camera_pose.numpy()))
     return TransformStamped(
         header=header,
         child_frame_id=child_frame_id,
-        transform=Transform(
-            translation=Vector3(**dict(zip("xyz", pose_vec[:3]))),
-            rotation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
-        ),
+        transform=transform_mat_to_msg(camera_pose.numpy()),
+    )
+
+
+def continuous_symmetry_to_msg(
+    symmetry: happypose_symmetries.ContinuousSymmetry,
+) -> ContinuousSymmetry:
+    """Converts HappyPose ContinuousSymmetry object into ContinuousSymmetry ROS message
+
+    :param symmetry: HappyPose object storing definition of continuous symmetry.
+    :type symmetry: happypose_symmetries.ContinuousSymmetry
+    :return: ROS message representing continuous symmetry.
+    :rtype: happypose_msgs.msg.ContinuousSymmetry
+    """
+    return ContinuousSymmetry(
+        # Explicit conversion to float is required in this case.
+        # Some values in json files defining object properties are written without decimal
+        # precision and are stored as integers. ROS 2 generated messages do not cast
+        # integers to floats resulting in an error.
+        offset=Vector3(**dict(zip("xyz", [float(i) for i in symmetry.offset]))),
+        axis=Vector3(**dict(zip("xyz", [float(i) for i in symmetry.axis]))),
+    )
+
+
+def discrete_symmetry_to_msg(
+    symmetry: happypose_symmetries.DiscreteSymmetry,
+) -> Transform:
+    """Converts HappyPose DiscreteSymmetry object into Transform ROS message.
+
+    :param symmetry: HappyPose object storing definition of discrete symmetry.
+    :type symmetry: happypose_symmetries.DiscreteSymmetry
+    :return: ROS message with transformation corresponding to given symmetry.
+    :rtype: geometry_msgs.msg.Transform
+    """
+    return transform_mat_to_msg(symmetry.pose)
+
+
+def get_object_symmetries_msg(
+    dataset: RigidObjectDataset, header: Header
+) -> ObjectSymmetriesArray:
+    """Converts HappyPose RigidObjectDataset object into ROS message representing symmetries
+    of all objects in that dataset.
+
+    :param dataset: Dataset of rigid objects detected by HappyPose.
+    :type dataset: RigidObjectDataset
+    :param header: Header used to populate the message.
+        Contains timestamp at which message was published.
+    :type header: std_msgs.msg.Header
+    :return: Message containing symmetries of objects detected by HappyPose.
+    :rtype: happypose_msgs.msg.ObjectSymmetriesArray
+    """
+
+    def generate_symmetry_msg(object: RigidObject) -> ObjectSymmetries:
+        return ObjectSymmetries(
+            class_id=object.label,
+            symmetries_discrete=[
+                discrete_symmetry_to_msg(sym) for sym in object.symmetries_discrete
+            ],
+            symmetries_continuous=[
+                continuous_symmetry_to_msg(sym) for sym in object.symmetries_continuous
+            ],
+        )
+
+    return ObjectSymmetriesArray(
+        header=header,
+        objects=[generate_symmetry_msg(object) for object in dataset.list_objects],
     )

@@ -69,9 +69,15 @@ The node provides the following ROS topics:
     - Single-view: bounding box is populated.
     - Multi-view: no bounding box. Results are represented in the *leading camera* reference frame. Detections are the result of CosyPose multi-view algorithm.
 
+    Timestamp in the message's header is set to the moment it is published, after the pose etimation pipeline finished. Timestamps of each result are the same as the timestamp of the image used for the detection. In case of multiview see parameter **time_stamp_strategy** for more information.
+
 - **happypose/vision_info** [vision_msgs/msg/VisionInfo]
 
     Information about the used pose estimator (currently only CosyPose is supported) and URL with object database location.
+
+- **happypose/object_symmetries** [happypose_msgs/msg/ObjectSymmetriesArray] (*QOS: TRANSIENT_LOCAL*)
+
+    Discrete and continuous symmetries of objects in the dataset.
 
 - **happypose/markers** [visualization_msgs/msg/MarkerArray]
 
