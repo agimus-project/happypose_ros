@@ -1,13 +1,12 @@
 /**:
   ros__parameters:
     verbose_info_logs: true
-    pose_estimator_type: cosypose
+    pose_estimator_type: "cosypose"
     cosypose:
-      dataset_name: ycbv
+      dataset_name: "ycbv"
       # reduce memory footprint during tests by reducing number of workers
       renderer:
         n_workers: 1
-
     camera_names: ["cam_1", "cam_2", "cam_3"]
     cameras:
       timeout: 0.0
@@ -16,8 +15,7 @@
         leading: true
         publish_tf: false
         compressed: false
-        k_matrix:
-          [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
+        k_matrix: [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
       cam_2:
         compressed: true
       cam_3:

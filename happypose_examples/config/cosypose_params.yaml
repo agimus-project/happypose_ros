@@ -6,16 +6,15 @@
     visualization.publish_markers: true
     # Extended verbosity on info logs. Show logs with number of detections and more
     verbose_info_logs: true
-
     # Specifies which pose estimator to use in the pipeline
-    pose_estimator_type: cosypose
+    pose_estimator_type: "cosypose"
     cosypose:
       # Name of a dataset used during training
       dataset_name: $(var dataset_name)
       # Object renderer parameters
       renderer:
         # Specifies which renderer to use in the pipeline
-        renderer_type: panda3d
+        renderer_type: "panda3d"
         # Number of CPU cores to use during rendering
         n_workers: 8
         # Render objects on a GPU
@@ -32,10 +31,9 @@
           n_coarse_iterations: 1
           # Number of iterations for the coarse estimate
           n_refiner_iterations: 3
-        # Labels of detected objects to keep. If not specyfied, all objects are kept
-        # labels_to_keep:
-        #   - "ycbv-obj_000001"
-
+          # Labels of detected objects to keep. If not specyfied, all objects are kept
+          # labels_to_keep:
+          #   - "ycbv-obj_000001"
     # List of camera names to subscribe to. Those names are internal to happypose_ros node
     # and can be chosen arbitrarily as long as they are valid YAML keys to be used later
     camera_names: ["cam_1"]
