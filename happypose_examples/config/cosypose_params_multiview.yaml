@@ -12,7 +12,6 @@
     verbose_info_logs: true
     # Which image time stamp to use in final detection message
     time_stamp_strategy: oldest
-
     # Specifies which pose estimator to use in the pipeline
     pose_estimator_type: cosypose
     cosypose:
@@ -49,10 +48,9 @@
           ransac_dist_threshold: 0.02
           # Number of steps in the final bundle adjustment refinement
           ba_n_iter: 100
-
     # List of camera names to subscribe to. Those names are internal to happypose_ros node
     # and can be chosen arbitrarily as long as they are valid YAML keys to be used later
-    camera_names: ["cam_1", "cam_2", "cam_3"]
+    camera_names: [cam_1, cam_2, cam_3]
     cameras:
       # Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout
       timeout: 0.0

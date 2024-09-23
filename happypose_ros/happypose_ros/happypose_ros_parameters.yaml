@@ -1,200 +1,155 @@
 happypose_ros:
-  device: {
-    type: string,
-    default_value: "cpu",
-    description: "Device to which the models will be loaded. Supported options are 'cpu' and 'cuda:x' where 'x' is the GPU number.",
-    validation: {
-      "custom_validators::torch_check_device": null
-    },
-    read_only: true,
-  }
-
-  verbose_info_logs: {
-    type: bool,
-    default_value: false,
-    description: "Extended verbosity on info logs. Show logs with number of detections and more.",
-  }
-
-  time_stamp_strategy: {
-    type: string,
-    default_value: "oldest",
-    description: "Which image time stamp to use in final detection message.",
-    validation: {
-      one_of<>: [[ "average", "newest", "oldest" ]],
-    }
-  }
-
+  device:
+    type: string
+    default_value: cpu
+    description: Device to which the models will be loaded. Supported options are 'cpu' and 'cuda:x' where 'x' is the GPU number.
+    validation:
+      custom_validators::torch_check_device:
+    read_only: true
+  verbose_info_logs:
+    type: bool
+    default_value: false
+    description: Extended verbosity on info logs. Show logs with number of detections and more.
+  time_stamp_strategy:
+    type: string
+    default_value: oldest
+    description: Which image time stamp to use in final detection message.
+    validation:
+      one_of<>: [[average, newest, oldest]]
   visualization:
-    publish_markers: {
-      type: bool,
-      default_value: false,
-      description: "Publish detected objects as markers to visualize detections in RViz.",
-      read_only: true,
-    }
+    publish_markers:
+      type: bool
+      default_value: false
+      description: Publish detected objects as markers to visualize detections in RViz.
+      read_only: true
     markers:
-      dynamic_opacity: {
-        type: bool,
-        default_value: false,
-        description: "Change opacity of published markers based on their prediction score.",
-      }
-      lifetime: {
-        type: double,
-        default_value: 10.0,
-        description: "Lifetime of a published marker.",
-        validation: {
-          gt<>: [ 0.0 ],
-        }
-      }
-
-  pose_estimator_type: {
-    type: string,
-    default_value: "cosypose",
-    description: "Specifies which pose estimator to use in the pipeline.",
-    validation: {
-      one_of<>: [[ "cosypose" ]],
-    },
-    read_only: true,
-  }
+      dynamic_opacity:
+        type: bool
+        default_value: false
+        description: Change opacity of published markers based on their prediction score.
+      lifetime:
+        type: double
+        default_value: 10.0
+        description: Lifetime of a published marker.
+        validation:
+          gt<>: [0.0]
+  pose_estimator_type:
+    type: string
+    default_value: cosypose
+    description: Specifies which pose estimator to use in the pipeline.
+    validation:
+      one_of<>: [[cosypose]]
+    read_only: true
   cosypose:
-    dataset_name: {
-      type: string,
-      default_value: "",
-      description: "Name of a dataset used during training.",
-      validation: {
-        one_of<>: [[ "hope", "tless", "ycbv" ]],
-      },
-      read_only: true,
-    }
+    dataset_name:
+      type: string
+      default_value: ''
+      description: Name of a dataset used during training.
+      validation:
+        one_of<>: [[hope, tless, ycbv]]
+      read_only: true
     renderer:
-      renderer_type: {
-        type: string,
-        default_value: "panda3d",
-        description: "Specifies which renderer to use in the pipeline.",
-        validation: {
-          one_of<>: [[ "panda3d", "bullet" ]],
-        },
-        read_only: true,
-      }
-      n_workers: {
-        type: int,
-        default_value: 8,
-        description: "Number of CPU cores to use during rendering.",
-        validation: {
-          gt_eq<>: 1,
-        },
-        read_only: true,
-      }
-      gpu_renderer: {
-        type: bool,
-        default_value: true,
-        description: "Render objects on a GPU.",
-        read_only: true,
-      }
-
+      renderer_type:
+        type: string
+        default_value: panda3d
+        description: Specifies which renderer to use in the pipeline.
+        validation:
+          one_of<>: [[panda3d, bullet]]
+        read_only: true
+      n_workers:
+        type: int
+        default_value: 8
+        description: Number of CPU cores to use during rendering.
+        validation:
+          gt_eq<>: 1
+        read_only: true
+      gpu_renderer:
+        type: bool
+        default_value: true
+        description: Render objects on a GPU.
+        read_only: true
     inference:
       detector:
-        detection_th: {
-          type: double,
-          default_value: 0.7,
-          description: "Detection threshold of an object used by detector.",
-          validation: {
-            bounds<>: [0.0, 1.0],
-          }
-        }
+        detection_th:
+          type: double
+          default_value: 0.7
+          description: Detection threshold of an object used by detector.
+          validation:
+            bounds<>: [0.0, 1.0]
       pose_estimator:
-        n_refiner_iterations: {
-          type: int,
-          default_value: 3,
-          description: "Number of iterations for the refiner.",
-          validation: {
-            gt_eq<>: [ 1 ],
-          }
-        }
-        n_coarse_iterations: {
-          type: int,
-          default_value: 1,
-          description: "Number of iterations for the coarse estimate.",
-          validation: {
-            gt_eq<>: [ 1 ] ,
-          }
-        }
+        n_refiner_iterations:
+          type: int
+          default_value: 3
+          description: Number of iterations for the refiner.
+          validation:
+            gt_eq<>: [1]
+        n_coarse_iterations:
+          type: int
+          default_value: 1
+          description: Number of iterations for the coarse estimate.
+          validation:
+            gt_eq<>: [1]
       multiview:
-        ransac_n_iter: {
-          type: int,
-          default_value: 2000,
-          description: "Number of ransac iterations when matching views.",
-        }
-        ransac_dist_threshold: {
-          type: double,
-          default_value: 0.2,
-          description: "Threshold (in metter) on the symmetric distance (Mean Symmetry-Aware Surface Distance) used consider a tentative match as an inlier during RANSAC iterations.",
-        }
-        ba_n_iter: {
-          type: int,
-          default_value: 100,
-          description: "Number of steps in the final bundle adjustment refinement.",
-        }
-      labels_to_keep: {
-        type: string_array,
-        description: "Labels of detected objects to keep. If not specified, all objects are kept.",
+        ransac_n_iter:
+          type: int
+          default_value: 2000
+          description: Number of ransac iterations when matching views.
+        ransac_dist_threshold:
+          type: double
+          default_value: 0.2
+          description: Threshold (in metter) on the symmetric distance (Mean Symmetry-Aware Surface Distance) used consider a tentative match as an inlier during RANSAC iterations.
+        ba_n_iter:
+          type: int
+          default_value: 100
+          description: Number of steps in the final bundle adjustment refinement.
+      labels_to_keep:
+        type: string_array
+        description: Labels of detected objects to keep. If not specified, all objects are kept.
         # Walkaround to obtain "empty" string array
-        default_value: [""],
-        validation: {
-          unique<>: null,
-        }
-      }
-  camera_names: {
-    type: string_array,
-    description: "List of names of cameras to subscribe.",
-    read_only: true,
-    validation: {
-      size_gt<>: [0],
-      unique<>: null,
-    }
-  }
+        default_value: ['']
+        validation:
+          unique<>:
+  camera_names:
+    type: string_array
+    description: List of names of cameras to subscribe.
+    read_only: true
+    validation:
+      size_gt<>: [0]
+      unique<>:
   cameras:
-    timeout: {
-      type: double,
-      default_value: 0.0,
-      description: "Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout.",
-      validation: {
-        gt_eq<>: [0.0],
-      }
-    }
-    n_min_cameras: {
-      type: int,
-      default_value: 1,
-      description: "Minimum number of valid camera views to start pose estimation pipeline.",
-      validation: {
-        gt_eq<>: [1],
-      },
-      read_only: true,
-    }
+    timeout:
+      type: double
+      default_value: 0.0
+      description: Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout.
+      validation:
+        gt_eq<>: [0.0]
+    n_min_cameras:
+      type: int
+      default_value: 1
+      description: Minimum number of valid camera views to start pose estimation pipeline.
+      validation:
+        gt_eq<>: [1]
+      read_only: true
     __map_camera_names:
-      compressed: {
-        type: bool,
-        default_value: false,
-        description: "Expect compressed image messages from given camera.",
-        read_only: true,
-      }
-      leading: {
-        type: bool,
-        default_value: false,
-        description: "Consider the camera to be leading. If a camera is leading, its frame_id is used as a reference. Only one camera can be leading, and it can't publish TF at the same time.",
-        read_only: true,
-      }
-      publish_tf: {
-        type: bool,
-        default_value: false,
-        description: "Publish TF of a given camera relative to the leading camera.",
-        read_only: true,
-      }
-      time_sync_slop: {
-        type: double,
-        default_value: 0.04,
-        description: "Delay [seconds] with which incoming messages can be synchronized.",
-        validation: {
-          gt<>: [0.0],
-        },
+      compressed:
+        type: bool
+        default_value: false
+        description: Expect compressed image messages from given camera.
         read_only: true
-      }
+      leading:
+        type: bool
+        default_value: false
+        description: Consider the camera to be leading. If a camera is leading, its frame_id is used as a reference. Only one camera can be leading, and it can't publish TF at the same time.
+        read_only: true
+      publish_tf:
+        type: bool
+        default_value: false
+        description: Publish TF of a given camera relative to the leading camera.
+        read_only: true
+      time_sync_slop:
+        type: double
+        default_value: 0.04
+        description: "Delay [seconds] with which incoming messages can be synchronized."
+        validation:
+          gt<>: [0.0]
+        read_only: true
