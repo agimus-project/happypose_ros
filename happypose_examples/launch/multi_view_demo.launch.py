@@ -15,6 +15,15 @@ from launch_ros.substitutions import FindPackageShare
 def launch_setup(
     context: LaunchContext, *args, **kwargs
 ) -> list[LaunchDescriptionEntity]:
+    # Obtain value for FoV
+    field_of_view = LaunchConfiguration("field_of_view")
+    # Obtain URL of camera calibration. If FoV is non zero overwrite the calibration
+    camera_info_url = (
+        ""
+        if float(field_of_view.perform(context)) > 0.0
+        else LaunchConfiguration("camera_info_url")
+    )
+
     # Register image publishers in loop
     image_publishers = []
     for i in range(1, 4):
@@ -33,9 +42,8 @@ def launch_setup(
                         "publish_rate": 10.0,
                         "frame_id": f"camera_{i}",
                         "filename": image_path,
-                        # Camera info is ignored by the node on startup.
-                        # Waiting for https://github.com/ros-perception/image_pipeline/issues/965
-                        "camera_info_url": "package://happypose_examples/config/camera_info.yaml",
+                        "field_of_view": field_of_view,
+                        "camera_info_url": camera_info_url,
                     }
                 ],
                 remappings=[
@@ -136,6 +144,18 @@ def generate_launch_description():
             ),
             description="Path to the third image to be published "
             + "as an input for happypose_ros node.",
+        ),
+        DeclareLaunchArgument(
+            "field_of_view",
+            default_value="0.0",
+            description="Field of view of the camera taking images "
+            + "used to approximate intrinsic parameters. "
+            + "Overwritten by param `camera_info_url`",
+        ),
+        DeclareLaunchArgument(
+            "camera_info_url",
+            default_value="package://happypose_examples/config/camera_info.yaml",
+            description="URL of the calibrated camera params. Overwrites param `field_of_view`.",
         ),
         DeclareLaunchArgument(
             "use_rviz",
