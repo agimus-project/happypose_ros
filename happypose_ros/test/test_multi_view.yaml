@@ -16,8 +16,6 @@
         leading: true
         publish_tf: false
         compressed: false
-        k_matrix:
-          [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
       cam_2:
         compressed: true
       cam_3:
