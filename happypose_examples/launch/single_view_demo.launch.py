@@ -35,11 +35,6 @@ def launch_setup(
                 "camera_info_url": "package://happypose_examples/config/camera_info.yaml",
             }
         ],
-        remappings=[
-            # Remapped topics have to match the names from
-            # happypose_examples/config/cosypose_params.yaml
-            ("image_raw", "image_color"),
-        ],
     )
 
     # Include common part of the demo launch files

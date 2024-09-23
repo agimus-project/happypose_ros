@@ -93,13 +93,13 @@ The node provides the following ROS topics:
 
 ### Subscribers
 
-- **\<camera name\>/image_color** [sensor_msgs/msg/Image]
+- **\<camera name\>/image_raw** [sensor_msgs/msg/Image]
 
     Video stream from a given camera. This is a default topic subscribed by a given camera. Can be changed to compressed image via parameters.
 
     Disabled by the parameter **cameras.\<camera name\>.compressed**.
 
-- **\<camera name\>/image_color/compressed** [sensor_msgs/msg/CompressedImage]
+- **\<camera name\>/image_raw/compressed** [sensor_msgs/msg/CompressedImage]
 
     Compressed video stream from a given camera.
 
