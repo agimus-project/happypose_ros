@@ -1,4 +1,3 @@
----
 /**:
   ros__parameters:
     # device is set from launch file
@@ -10,7 +9,6 @@
       # reduce memory footprint during tests by reducing number of workers
       renderer:
         n_workers: 1
-
     camera_names: [cam_1]
     cameras:
       timeout: 0.0
