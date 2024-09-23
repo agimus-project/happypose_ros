@@ -89,7 +89,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /cam_1/image_color
+        Value: /cam_1/image_raw
       Value: true
       Visibility:
         Grid: false

@@ -71,12 +71,12 @@ class SingleViewBase(HappyPoseTestCase):
         # Check if node subscribes to correct topics
         if self.compressed:
             self.node.assert_node_is_subscriber(
-                "cam_1/image_color/compressed",
+                "cam_1/image_raw/compressed",
                 timeout=3.0,
             )
         else:
             self.node.assert_node_is_subscriber(
-                "cam_1/image_color",
+                "cam_1/image_raw",
                 timeout=3.0,
             )
         self.node.assert_node_is_subscriber("cam_1/camera_info", timeout=3.0)
