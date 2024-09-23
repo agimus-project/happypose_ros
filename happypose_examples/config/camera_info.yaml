@@ -1,3 +1,4 @@
+# Camera parameters based on YCBV dataset camera parameters
 image_width: 640
 image_height: 480
 camera_name: "webcam"
@@ -17,4 +18,4 @@ rectification_matrix:
 projection_matrix:
   rows: 3
   cols: 4
-  data: [1.0, 0.0, 320.0, 0.0, 0.0, 1.0, 240.0, 0.0, 0.0, 0.0, 1.0, 0.0]
+  data: [1066.778, 0.0, 312.9869, 0.0, 0.0, 1067.487, 241.3109, 0.0, 0.0, 0.0, 1.0, 0.0]
