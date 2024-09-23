@@ -2,7 +2,7 @@ name: 'Humble: Build and Test'
 on:
   push:
     branches:
-      - main
+      - "main"
   pull_request:
     branches:
       - '*'
