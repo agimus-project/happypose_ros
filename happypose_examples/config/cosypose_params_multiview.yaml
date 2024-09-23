@@ -1,3 +1,4 @@
+---
 /**:
   ros__parameters:
     # Device to which the models will be loaded. Supported options are 'cpu' and 'cuda:x' where 'x' is the GPU number.
@@ -52,7 +53,7 @@
 
     # List of camera names to subscribe to. Those names are internal to happypose_ros node
     # and can be chosen arbitrarily as long as they are valid YAML keys to be used later
-    camera_names: ["cam_1", "cam_2", "cam_3"]
+    camera_names: [cam_1, cam_2, cam_3]
     cameras:
       # Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout
       timeout: 0.0

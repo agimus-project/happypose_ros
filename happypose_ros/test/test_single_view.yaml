@@ -1,3 +1,4 @@
+---
 /**:
   ros__parameters:
     # device is set from launch file
@@ -10,7 +11,7 @@
       renderer:
         n_workers: 1
 
-    camera_names: ["cam_1"]
+    camera_names: [cam_1]
     cameras:
       timeout: 0.0
       n_min_cameras: 1

@@ -1,3 +1,4 @@
+---
 /**:
   ros__parameters:
     verbose_info_logs: true
@@ -8,7 +9,7 @@
       renderer:
         n_workers: 1
 
-    camera_names: ["cam_1", "cam_2", "cam_3"]
+    camera_names: [cam_1, cam_2, cam_3]
     cameras:
       timeout: 0.0
       n_min_cameras: 3
@@ -16,8 +17,7 @@
         leading: true
         publish_tf: false
         compressed: false
-        k_matrix:
-          [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
+        k_matrix: [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
       cam_2:
         compressed: true
       cam_3:

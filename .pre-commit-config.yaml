@@ -1,3 +1,4 @@
+---
 repos:
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.6.5
@@ -29,5 +30,10 @@ repos:
   rev: v2.3.0
   hooks:
   - id: codespell
-    args: ['--write-changes']
+    args: [--write-changes]
     exclude: resources/happypose_ros_diagram.drawio.svg
+- repo: https://github.com/jumanjihouse/pre-commit-hook-yamlfmt
+  rev: 0.2.3
+  hooks:
+  - id: yamlfmt
+    args: [--mapping, '2', --sequence, '2', --offset, '0', --colons, --width, '86']
