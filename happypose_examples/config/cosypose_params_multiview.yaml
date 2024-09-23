@@ -11,16 +11,16 @@
     # Extended verbosity on info logs. Show logs with number of detections and more
     verbose_info_logs: true
     # Which image time stamp to use in final detection message
-    time_stamp_strategy: oldest
+    time_stamp_strategy: "oldest"
     # Specifies which pose estimator to use in the pipeline
-    pose_estimator_type: cosypose
+    pose_estimator_type: "cosypose"
     cosypose:
       # Name of a dataset used during training
       dataset_name: $(var dataset_name)
       # Object renderer parameters
       renderer:
         # Specifies which renderer to use in the pipeline
-        renderer_type: panda3d
+        renderer_type: "panda3d"
         # Number of CPU cores to use during rendering
         n_workers: 8
         # Render objects on a GPU
@@ -50,7 +50,7 @@
           ba_n_iter: 100
     # List of camera names to subscribe to. Those names are internal to happypose_ros node
     # and can be chosen arbitrarily as long as they are valid YAML keys to be used later
-    camera_names: [cam_1, cam_2, cam_3]
+    camera_names: ["cam_1", "cam_2", "cam_3"]
     cameras:
       # Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout
       timeout: 0.0
