@@ -65,19 +65,16 @@
         publish_tf: false
         # Expect compressed image messages from given camera
         compressed: false
-        # Camera intrinsic matrix. If values are valid intrinsic matrix,
-        # overwrites values from info ROS topic.
-        # Normally K matrix should be obtained from <camera_name>/camera_info.
-        # Currently hard-coded due to bug in image_publisher_node
-        # Do not use hard-coded K matrix unless needed!
-        k_matrix: [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
+        # Delay [seconds] with which incoming messages can be synchronized.
+        # Value corresponds to synchronization of messages at 10 Hz.
+        time_sync_slop: 0.05
       cam_2:
         leading: false
         publish_tf: true
         compressed: false
-        k_matrix: [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
+        time_sync_slop: 0.05
       cam_3:
         leading: false
         publish_tf: true
         compressed: false
-        k_matrix: [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
+        time_sync_slop: 0.05

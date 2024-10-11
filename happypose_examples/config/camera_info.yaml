@@ -1,3 +1,4 @@
+# Camera parameters based on YCBV dataset camera parameters
 image_width: 640
 image_height: 480
 camera_name: "webcam"
