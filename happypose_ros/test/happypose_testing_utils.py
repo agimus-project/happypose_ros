@@ -98,9 +98,9 @@ class HappyPoseTesterNode(Node):
                     cam[1],
                     # Choose topic name based on the type
                     (
-                        f"{cam[0]}/image_color"
+                        f"{cam[0]}/image_raw"
                         if isinstance(cam[1], Metaclass_Image)
-                        else f"{cam[0]}/image_color/compressed"
+                        else f"{cam[0]}/image_raw/compressed"
                     ),
                     10,
                 ),

@@ -46,11 +46,6 @@ def launch_setup(
                         "camera_info_url": camera_info_url,
                     }
                 ],
-                remappings=[
-                    # Remapped topics are created to match camera names in
-                    # happypose_examples/config/cosypose_params_multiview.yaml
-                    ("image_raw", "image_color"),
-                ],
             )
         )
 
