@@ -146,10 +146,10 @@ happypose_ros:
         default_value: false
         description: "Publish TF of a given camera relative to the leading camera."
         read_only: true
-      time_sync_slop:
-        type: double
-        default_value: 0.04
-        description: "Delay [seconds] with which incoming messages can be synchronized."
+      k_matrix:
+        type: double_array
+        default_value: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        description: "Camera intrinsic matrix. If values are valid intrinsic matrix, overwrites values from info ROS topic."
         validation:
-          gt<>: [0.0]
-        read_only: true
+          fixed_size<>: [9]
+          lower_element_bounds<>: [0.0]

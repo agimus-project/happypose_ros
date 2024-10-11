@@ -3,14 +3,13 @@ import numpy as np
 import numpy.typing as npt
 from typing import Callable, Union, TypeVar
 
+from rclpy.exceptions import ParameterException
 from rclpy.node import Node
 from rclpy.time import Time
 
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 
 from cv_bridge import CvBridge
-
-from message_filters import ApproximateTimeSynchronizer, Subscriber
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros
@@ -57,22 +56,38 @@ class CameraWrapper:
             img_msg_type = Image
             topic_postfix = "/image_color"
 
+        self._camera_k = None
+        # If param with K matrix is correct, assume it is fixed
+        param_k_matrix = np.array(params.get_entry(self._camera_name).k_matrix)
+        self._fixed_k = self._validate_k_matrix(param_k_matrix)
+        if self._fixed_k:
+            self._camera_k = param_k_matrix
+            self._node.get_logger().warn(
+                f"Camera '{self._camera_name}' uses fixed K matrix."
+                f" Camera info topic is not subscribed."
+            )
+        # If non zero, but incorrect
+        elif np.any(np.nonzero(param_k_matrix)):
+            e = ParameterException(
+                f"K matrix for '{self._camera_name}' is incorrect",
+                (f"cameras.{self._camera_name}.k_matrix"),
+            )
+            self._node.get_logger().error(str(e))
+            raise e
+
         self._image = None
         self._cvb = CvBridge()
 
-        sync_topics = [
-            Subscriber(self._node, img_msg_type, self._camera_name + topic_postfix),
-            Subscriber(self._node, CameraInfo, self._camera_name + "/camera_info"),
-        ]
-
-        # Create time approximate time synchronization
-        self._image_approx_time_sync = ApproximateTimeSynchronizer(
-            sync_topics,
-            queue_size=5,
-            slop=params.get_entry(self._camera_name).time_sync_slop,
+        image_topic = self._camera_name + topic_postfix
+        self._image_sub = node.create_subscription(
+            img_msg_type, image_topic, self._image_cb, 5
         )
-        # Register callback depending on the configuration
-        self._image_approx_time_sync.registerCallback(self._on_image_data_cb)
+
+        if not self._fixed_k:
+            info_topic = self._camera_name + "/camera_info"
+            self._info_sub = node.create_subscription(
+                CameraInfo, info_topic, self._camera_info_cb, 5
+            )
 
     def image_guarded(func: Callable[..., RetType]) -> Callable[..., RetType]:
         """Decorator, checks if image was already received.
@@ -125,15 +140,22 @@ class CameraWrapper:
         keep_vals = [True, False, True, False, True, True, False, False, True]
         return np.all(k_arr[keep_vals] > 0.0) and math.isclose(k_arr[-1], 1.0)
 
-    def _on_image_data_cb(
-        self, image: Union[Image, CompressedImage], info: CameraInfo
-    ) -> None:
-        """Called on every time synchronized image and camera info are received.
-        Saves the image and checks if intrinsics are correct. If all checks pass
-        calls :func:`_image_sync_hook`.
+    def _image_cb(self, image: Union[Image, CompressedImage]) -> None:
+        """Called on every received image. Saves the image. If intrinsic matrix
+        already received calls :func:`_image_sync_hook`
 
         :param image: Image received from the camera
         :type image: Union[sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]
+        """
+
+        self._image = image
+        # Fire the callback only if camera info is available
+        if self._camera_k is not None:
+            self._image_sync_hook()
+
+    def _camera_info_cb(self, info: CameraInfo) -> None:
+        """Receives camera info messages and extracts intrinsic matrices from them.
+
         :param info: Camera info message
         :type info: sensor_msgs.msg.CameraInfo
         """
@@ -147,12 +169,6 @@ class CameraWrapper:
                 f" param for the camera '{self._camera_name}'.",
                 throttle_duration_sec=5.0,
             )
-            return
-
-        self._image = image
-        # Fire the callback only if camera info is available
-        if self._camera_k is not None:
-            self._image_sync_hook()
 
     def ready(self) -> bool:
         """Checks if the camera has all the data needed to use.

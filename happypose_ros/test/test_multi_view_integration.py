@@ -95,7 +95,6 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
     def test_02_check_topics(self) -> None:
         # Check if node subscribes to correct topics
         self.node.assert_node_is_subscriber("cam_1/image_color", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_1/camera_info", timeout=3.0)
         self.node.assert_node_is_subscriber("cam_2/image_color/compressed", timeout=3.0)
         self.node.assert_node_is_subscriber("cam_2/camera_info", timeout=3.0)
         self.node.assert_node_is_subscriber("cam_3/image_color", timeout=3.0)
@@ -104,7 +103,15 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.assert_node_is_publisher("happypose/vision_info", timeout=3.0)
         self.node.assert_node_is_publisher("/tf", timeout=3.0)
 
-    def test_03_check_not_publish_markers(self) -> None:
+    def test_03_check_not_subscribed_cam_info(self) -> None:
+        with self.assertRaises(AssertionError) as excinfo:
+            self.node.assert_node_is_subscriber("cam_1/camera_info", timeout=3.0)
+        self.assertTrue(
+            "node is not a subscriber of" in str(excinfo.exception),
+            msg="One image after timeout triggered the pipeline!",
+        )
+
+    def test_04_check_not_publish_markers(self) -> None:
         with self.assertRaises(AssertionError) as excinfo:
             self.node.assert_node_is_publisher("happypose/markers", timeout=3.0)
         self.assertTrue(
@@ -112,7 +119,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             msg="One image after timeout triggered the pipeline!",
         )
 
-    def test_04_trigger_pipeline(self, proc_output: ActiveIoHandler) -> None:
+    def test_05_trigger_pipeline(self, proc_output: ActiveIoHandler) -> None:
         # Clear buffer before expecting any messages
         self.node.clear_msg_buffer()
 
@@ -129,16 +136,16 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         if not ready:
             self.fail("Failed to trigger the pipeline!")
 
-    def test_05_receive_messages(self) -> None:
+    def test_06_receive_messages(self) -> None:
         self.node.assert_message_received("happypose/detections", timeout=180.0)
         self.node.assert_message_received("happypose/vision_info", timeout=8.0)
 
-    def test_06_check_vision_info(self) -> None:
+    def test_07_check_vision_info(self) -> None:
         vision_info = self.node.get_received_message("happypose/vision_info")
         self.assertEqual(vision_info.method, "cosypose")
         self.assertTrue("ycbv" in vision_info.database_location)
 
-    def test_07_check_detection(self) -> None:
+    def test_08_check_detection(self) -> None:
         detections = self.node.get_received_message("happypose/detections")
         # Ensure none of the detections have bounding box
         for detection in detections.detections:
@@ -199,7 +206,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         assert_pose_equal(ycbv_05.results[0].pose.pose, ycbv_05_pose)
         assert_pose_equal(ycbv_15.results[0].pose.pose, ycbv_15_pose)
 
-    def test_8_check_not_published_transforms(self) -> None:
+    def test_10_check_not_published_transforms(self) -> None:
         with self.assertRaises(LookupException) as excinfo:
             self.node.get_transform("cam_1", "cam_2")
         self.assertTrue(
@@ -208,7 +215,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             msg="'cam_2' is published even though it shouldn't!",
         )
 
-    def test_9_check_transforms_correct(self) -> None:
+    def test_11_check_transforms_correct(self) -> None:
         # Based on transformed ground truth
         # Image 1874 camera pose transformed into image 629 camera pose reference frame
         expected_translation = Transform(
@@ -230,7 +237,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             timeout=10.0,
         )
 
-    def test_10_dynamic_params_camera_no_timeout(self) -> None:
+    def test_12_dynamic_params_camera_no_timeout(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
 
@@ -247,7 +254,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             msg="One image after timeout triggered the pipeline!",
         )
 
-    def test_11_dynamic_params_camera_timeout_one_camera(self) -> None:
+    def test_13_dynamic_params_camera_timeout_one_camera(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -258,7 +265,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_1", self.cam_1_image, self.K)
         self.expect_no_detection()
 
-    def test_12_dynamic_params_camera_timeout_two_cameras(self) -> None:
+    def test_14_dynamic_params_camera_timeout_two_cameras(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -268,7 +275,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_2", self.cam_2_image, self.K)
         self.expect_no_detection()
 
-    def test_13_dynamic_params_camera_timeout_three_cameras_ok(self) -> None:
+    def test_15_dynamic_params_camera_timeout_three_cameras_ok(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -279,7 +286,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_3", self.cam_3_image, self.K)
         self.node.assert_message_received("happypose/detections", timeout=60.0)
 
-    def test_14_dynamic_params_camera_timeout_three_cameras_short(self) -> None:
+    def test_16_dynamic_params_camera_timeout_three_cameras_short(self) -> None:
         # Set timeout to a small value
         timeout = 0.05
         self.set_timeout(timeout)
@@ -297,7 +304,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
                 self.node.publish_image("cam_3", self.cam_3_image, self.K)
             self.expect_no_detection()
 
-    def test_15_dynamic_params_camera_timeout_three_cameras_short_ok(self) -> None:
+    def test_17_dynamic_params_camera_timeout_three_cameras_short_ok(self) -> None:
         # Set timeout to a small value
         self.set_timeout(0.05)
         # Wait more than the timeout
@@ -354,16 +361,16 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             msg=f"Timestamp was not chosen to be '{strategy}'",
         )
 
-    def test_16_dynamic_params_timestamp_strategy(self) -> None:
+    def test_18_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.02]
         self.setup_timestamp_test(offsets, 0.0, "newest")
 
-    def test_17_dynamic_params_timestamp_strategy(self) -> None:
+    def test_19_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.05]
         # Offestes are subtracted from time current time so
         # the result has to be expected in the past
         self.setup_timestamp_test(offsets, -0.05, "oldest")
 
-    def test_18_dynamic_params_timestamp_strategy(self) -> None:
+    def test_20_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.05]
         self.setup_timestamp_test(offsets, -0.02, "average")
