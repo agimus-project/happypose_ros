@@ -17,6 +17,14 @@ def launch_setup(
 ) -> list[LaunchDescriptionEntity]:
     # Obtain argument value for image path
     image_path = LaunchConfiguration("image_path")
+    # Obtain value for FoV
+    field_of_view = LaunchConfiguration("field_of_view")
+    # Obtain URL of camera calibration. If FoV is non zero overwrite the calibration
+    camera_info_url = (
+        ""
+        if float(field_of_view.perform(context)) > 0.0
+        else LaunchConfiguration("camera_info_url")
+    )
 
     # Start ROS node for image publishing
     image_publisher_node = Node(
@@ -30,9 +38,8 @@ def launch_setup(
                 "publish_rate": 23.0,
                 "frame_id": "camera_1",
                 "filename": image_path,
-                # Camera info is ignored by the node on startup.
-                # Waiting for https://github.com/ros-perception/image_pipeline/issues/965
-                "camera_info_url": "package://happypose_examples/config/camera_info.yaml",
+                "field_of_view": field_of_view,
+                "camera_info_url": camera_info_url,
             }
         ],
     )
@@ -82,6 +89,18 @@ def generate_launch_description():
                 ]
             ),
             description="Path to image or webcam to be published as an input for happypose_ros node.",
+        ),
+        DeclareLaunchArgument(
+            "field_of_view",
+            default_value="0.0",
+            description="Field of view of the camera taking images "
+            + "used to approximate intrinsic parameters. "
+            + "Overwrites `camera_info_url` parameter",
+        ),
+        DeclareLaunchArgument(
+            "camera_info_url",
+            default_value="package://happypose_examples/config/camera_info.yaml",
+            description="URL of the calibrated camera params. Is overwritten by param `field_of_view`.",
         ),
         DeclareLaunchArgument(
             "use_rviz",

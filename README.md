@@ -27,7 +27,7 @@ colcon build --symlink-install
 ## Launch
 
 > [!NOTE]
-> Intrinsic parameters of the camera are approximate in the demos and may cause inaccurate results! You can change them by modifying the `k_matrix` param in [cosypose_params.yaml](./happypose_examples/config/cosypose_params.yaml) file.
+> Default intrinsic parameters in demos are based on those from YCBV dataset. In you are running demos on a webcam with unknown intrinsics parameters you can set `field_of_view` that will approximate them for you. Another option is calibrate camera with [camera_calibration](https://docs.ros.org/en/rolling/p/camera_calibration/) ROS package. Path to resulting YAML with camera parameters can be passed with parameter `camera_info_url`. Example of such file can be found in [camera_info.yaml](./happypose_examples/config/camera_info.yaml) file.
 
 > [!TIP]
 > When running the demos, make sure to change `device` parameter according to your hardware configuration!
