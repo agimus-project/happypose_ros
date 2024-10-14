@@ -39,6 +39,7 @@ class HappyPosePipeline:
         # Currently only cosypose is supported
         self._wrapper = CosyPoseWrapper(
             dataset_name=self._params["cosypose"]["dataset_name"],
+            model_type=self._params["cosypose"]["model_type"],
             **self._params["cosypose"]["renderer"],
         )
 

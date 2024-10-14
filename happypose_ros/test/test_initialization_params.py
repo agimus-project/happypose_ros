@@ -38,7 +38,7 @@ def happypose_params(request: pytest.FixtureRequest) -> dict:
 
 
 @pytest.fixture()
-def minial_overwrites() -> List[Parameter]:
+def minimal_overwrites() -> List[Parameter]:
     """Crete set minimal set of ROS parameters needed for the ROS node to start correctly.
 
     :return: Default, minimal parameters for the ROS node to start.
@@ -46,6 +46,7 @@ def minial_overwrites() -> List[Parameter]:
     """
     return [
         Parameter("cosypose.dataset_name", Parameter.Type.STRING, "ycbv"),
+        Parameter("cosypose.model_type", Parameter.Type.STRING, "pbr"),
         Parameter("camera_names", Parameter.Type.STRING_ARRAY, ["cam_1"]),
         Parameter("cameras.cam_1.leading", Parameter.Type.BOOL, True),
         Parameter("cameras.cam_1.publish_tf", Parameter.Type.BOOL, False),
@@ -58,6 +59,7 @@ def test_no_leading(happypose_params: dict) -> None:
             **happypose_params,
             parameter_overrides=[
                 Parameter("cosypose.dataset_name", Parameter.Type.STRING, "ycbv"),
+                Parameter("cosypose.model_type", Parameter.Type.STRING, "pbr"),
                 Parameter(
                     "camera_names", Parameter.Type.STRING_ARRAY, ["cam_1", "cam_2"]
                 ),
@@ -69,11 +71,11 @@ def test_no_leading(happypose_params: dict) -> None:
 
 
 @mock.patch("multiprocessing.context.SpawnContext.Process")
-def test_minimal(happypose_params: dict, minial_overwrites: List[Parameter]) -> None:
+def test_minimal(happypose_params: dict, minimal_overwrites: List[Parameter]) -> None:
     # Check if node starts correctly with minimal number of required parameters
     happypose_node = HappyPoseNode(
         **happypose_params,
-        parameter_overrides=minial_overwrites,
+        parameter_overrides=minimal_overwrites,
     )
     happypose_node.destroy_node()
 
@@ -84,6 +86,7 @@ def test_multiple_leading(happypose_params: dict) -> None:
             **happypose_params,
             parameter_overrides=[
                 Parameter("cosypose.dataset_name", Parameter.Type.STRING, "ycbv"),
+                Parameter("cosypose.model_type", Parameter.Type.STRING, "pbr"),
                 Parameter(
                     "camera_names", Parameter.Type.STRING_ARRAY, ["cam_1", "cam_2"]
                 ),
@@ -103,6 +106,7 @@ def test_leading_publish_tf(happypose_params: dict) -> None:
             **happypose_params,
             parameter_overrides=[
                 Parameter("cosypose.dataset_name", Parameter.Type.STRING, "ycbv"),
+                Parameter("cosypose.model_type", Parameter.Type.STRING, "synth+real"),
                 Parameter("camera_names", Parameter.Type.STRING_ARRAY, ["cam_1"]),
                 Parameter("cameras.cam_1.leading", Parameter.Type.BOOL, True),
                 Parameter("cameras.cam_1.publish_tf", Parameter.Type.BOOL, True),
@@ -114,13 +118,13 @@ def test_leading_publish_tf(happypose_params: dict) -> None:
 
 
 def test_device_unknown(
-    happypose_params: dict, minial_overwrites: List[Parameter]
+    happypose_params: dict, minimal_overwrites: List[Parameter]
 ) -> None:
     with pytest.raises(ParameterException) as excinfo:
         HappyPoseNode(
             **happypose_params,
             parameter_overrides=[
-                *minial_overwrites,
+                *minimal_overwrites,
                 # CUDA -1 is an invalid device
                 Parameter("device", Parameter.Type.STRING, "cuda:-1"),
             ],

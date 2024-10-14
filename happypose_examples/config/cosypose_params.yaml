@@ -9,16 +9,16 @@
     # Specifies which pose estimator to use in the pipeline
     pose_estimator_type: "cosypose"
     cosypose:
-      # Name of a dataset used during training
+      # Name of BOP dataset, used to load specific weights and object models
       dataset_name: $(var dataset_name)
+      # What type of NN model to use, type of training data used,  'pbr'|'synth+real' 
+      model_type: $(var model_type)
       # Object renderer parameters
       renderer:
         # Specifies which renderer to use in the pipeline
         renderer_type: "panda3d"
         # Number of CPU cores to use during rendering
         n_workers: 8
-        # Render objects on a GPU
-        gpu_renderer: false
       # Parameters expected on the runtime
       inference:
         # 2D image detection parameters
