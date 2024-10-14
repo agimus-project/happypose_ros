@@ -17,7 +17,7 @@
     cosypose:
       # Name of BOP dataset, used to load specific weights and object models
       dataset_name: $(var dataset_name)
-      # What type of NN model to use, type of training data used,  'pbr'|'synth+real' 
+      # What type of NN model to use, type of training data used,  'pbr'|'synth+real'
       model_type: $(var model_type)
       # Object renderer parameters
       renderer:
