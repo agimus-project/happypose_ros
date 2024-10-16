@@ -78,7 +78,7 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "model_type",
             default_value="pbr",
-            description="What type of NN model to use, type of training data used, 'pbr'|'synth+real'.",
+            description="Type of neural network model to use. Available: 'pbr'|'synth+real'.",
         ),
         DeclareLaunchArgument(
             "device",

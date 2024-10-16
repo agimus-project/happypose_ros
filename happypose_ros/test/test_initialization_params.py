@@ -106,7 +106,6 @@ def test_leading_publish_tf(happypose_params: dict) -> None:
             **happypose_params,
             parameter_overrides=[
                 Parameter("cosypose.dataset_name", Parameter.Type.STRING, "ycbv"),
-                Parameter("cosypose.model_type", Parameter.Type.STRING, "synth+real"),
                 Parameter("camera_names", Parameter.Type.STRING_ARRAY, ["cam_1"]),
                 Parameter("cameras.cam_1.leading", Parameter.Type.BOOL, True),
                 Parameter("cameras.cam_1.publish_tf", Parameter.Type.BOOL, True),
