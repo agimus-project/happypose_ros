@@ -51,8 +51,7 @@ happypose_ros:
     model_type:
       type: string
       default_value: "pbr"
-description: "Type of neural network model to use. Available: 'pbr'|'synth+real'"
-```
+      description: "Type of neural network model to use. Available: 'pbr'|'synth+real'"
       validation:
         one_of<>: [["pbr", "synth+real"]]
       read_only: true
