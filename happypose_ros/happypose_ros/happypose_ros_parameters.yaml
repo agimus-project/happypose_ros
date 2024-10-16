@@ -44,9 +44,16 @@ happypose_ros:
     dataset_name:
       type: string
       default_value: ""
-      description: "Name of a dataset used during training."
+      description: "Name of BOP dataset, used to load specific weights and object models."
       validation:
         one_of<>: [["hope", "tless", "ycbv"]]
+      read_only: true
+    model_type:
+      type: string
+      default_value: "pbr"
+      description: "Type of neural network model to use. Available: 'pbr'|'synth+real'"
+      validation:
+        one_of<>: [["pbr", "synth+real"]]
       read_only: true
     renderer:
       renderer_type:
@@ -62,11 +69,6 @@ happypose_ros:
         description: "Number of CPU cores to use during rendering."
         validation:
           gt_eq<>: 1
-        read_only: true
-      gpu_renderer:
-        type: bool
-        default_value: true
-        description: "Render objects on a GPU."
         read_only: true
     inference:
       detector:

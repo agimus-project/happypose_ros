@@ -82,6 +82,7 @@ def launch_setup(
         ),
         launch_arguments={
             "dataset_name": LaunchConfiguration("dataset_name"),
+            "model_type": LaunchConfiguration("model_type"),
             "device": LaunchConfiguration("device"),
             "use_rviz": LaunchConfiguration("use_rviz"),
             "rviz_config_path": rviz_config_path,
@@ -97,7 +98,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "dataset_name",
             default_value="ycbv",
-            description="Which dataset to use for inference.",
+            description="Name of BOP dataset, used to load specific weights and object models.",
+        ),
+        DeclareLaunchArgument(
+            "model_type",
+            default_value="pbr",
+            description="What type of NN model to use, type of training data used, 'pbr'|'synth+real'.",
         ),
         DeclareLaunchArgument(
             "device",
