@@ -192,4 +192,4 @@ class CameraWrapper:
         :rtype: numpy.typing.NDArray[numpy.float64]
         """
         self._cam_model.fromCameraInfo(self._camera_info)
-        return self._cam_model.full_K
+        return np.array(self._cam_model.full_K)
