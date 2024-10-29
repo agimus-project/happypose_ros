@@ -11,6 +11,7 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.time import Time
+from rclpy.qos import qos_profile_sensor_data
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
 
 from tf2_ros.buffer import Buffer
@@ -21,7 +22,7 @@ from launch_testing_ros import MessagePump
 from cv_bridge import CvBridge
 
 from geometry_msgs.msg import Pose, Transform
-from sensor_msgs.msg import CameraInfo, Image, CompressedImage
+from sensor_msgs.msg import CameraInfo, Image, CompressedImage, RegionOfInterest
 from sensor_msgs.msg._image import Metaclass_Image
 from std_msgs.msg import Header
 from vision_msgs.msg import Detection2D, Detection2DArray, BoundingBox2D, VisionInfo
@@ -102,12 +103,12 @@ class HappyPoseTesterNode(Node):
                         if isinstance(cam[1], Metaclass_Image)
                         else f"{cam[0]}/image_raw/compressed"
                     ),
-                    10,
+                    qos_profile=qos_profile_sensor_data,
                 ),
                 self.create_publisher(
                     CameraInfo,
                     (f"{cam[0]}/camera_info"),
-                    10,
+                    qos_profile=qos_profile_sensor_data,
                 ),
             )
             for cam in cameras
@@ -296,6 +297,10 @@ class HappyPoseTesterNode(Node):
         bgr: npt.NDArray[np.uint8],
         K: npt.NDArray[np.float32],
         stamp: Optional[Time] = None,
+        width: int = 0,
+        height: int = 0,
+        x_offset: int = 0,
+        y_offset: int = 0,
     ) -> None:
         """Publish image for a given camera.
 
@@ -307,24 +312,47 @@ class HappyPoseTesterNode(Node):
         :type K: numpy.typing.NDArray[numpy.float32]
         :param stamp: Time stamp of the message. If None uses the current time, defaults to None.
         :type stamp: Optional[rclpy.Time], optional
+        :param width: Final cropped image width. 0 means no cropping.
+        :type width: int, optional
+        :param height: Final cropped image height. 0 means no cropping.
+        :type height: int, optional
+        :param x_offset: X offset used for cropping.
+        :type x_offset: int, optional
+        :param y_offset: Y offset used for cropping.
+        :type y_offset: int, optional
         """
         if stamp is None:
             stamp = self.get_clock().now()
 
+        height = bgr.shape[0] if height == 0 else height
+        width = bgr.shape[1] if width == 0 else width
+        cropped_bgr = bgr[
+            y_offset : y_offset + height,
+            x_offset : x_offset + width,
+        ]
+
         if isinstance(self._cam_pubs[cam][0].msg_type, Metaclass_Image):
-            img_msg = self._cvb.cv2_to_imgmsg(bgr, encoding="rgb8")
+            img_msg = self._cvb.cv2_to_imgmsg(cropped_bgr, encoding="rgb8")
         else:
             # Convert BGR to RGB
-            rgb = bgr[:, :, ::-1]
+            rgb = cropped_bgr[:, :, ::-1]
             img_msg = self._cvb.cv2_to_compressed_imgmsg(rgb, dst_format="jpg")
 
         header = Header(frame_id=cam, stamp=stamp.to_msg())
         img_msg.header = header
         info_msg = CameraInfo(
             header=header,
+            # Resized dimensions are specified in ROI message.
+            # Here shape before resizing is expected.
             height=bgr.shape[0],
             width=bgr.shape[1],
             k=K.reshape(-1),
+            roi=RegionOfInterest(
+                width=width,
+                height=height,
+                x_offset=x_offset,
+                y_offset=y_offset,
+            ),
         )
         # Publish messages
         self._cam_pubs[cam][0].publish(img_msg)
