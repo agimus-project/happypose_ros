@@ -5,6 +5,7 @@ from typing import Callable, Union, TypeVar
 
 from rclpy.node import Node
 from rclpy.time import Time
+from rclpy.qos import qos_profile_sensor_data
 
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 
@@ -64,8 +65,18 @@ class CameraWrapper:
         self._cam_model = PinholeCameraModel()
 
         sync_topics = [
-            Subscriber(self._node, img_msg_type, self._camera_name + topic_postfix),
-            Subscriber(self._node, CameraInfo, self._camera_name + "/camera_info"),
+            Subscriber(
+                self._node,
+                img_msg_type,
+                self._camera_name + topic_postfix,
+                qos_profile=qos_profile_sensor_data,
+            ),
+            Subscriber(
+                self._node,
+                CameraInfo,
+                self._camera_name + "/camera_info",
+                qos_profile=qos_profile_sensor_data,
+            ),
         ]
 
         # Create time approximate time synchronization
@@ -192,4 +203,4 @@ class CameraWrapper:
         :rtype: numpy.typing.NDArray[numpy.float64]
         """
         self._cam_model.fromCameraInfo(self._camera_info)
-        return np.array(self._cam_model.full_K)
+        return np.array(self._cam_model.intrinsicMatrix())
