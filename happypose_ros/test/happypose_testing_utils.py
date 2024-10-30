@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import pinocchio as pin
 import time
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import unittest
 import urllib
 
@@ -11,7 +11,7 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.time import Time
-from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, ReliabilityPolicy, QoSProfile
 
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -91,6 +91,12 @@ class HappyPoseTesterNode(Node):
 
         self._tested_node_name = tested_node_name
 
+        reliable_qos = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            depth=10,
+            history=HistoryPolicy.KEEP_ALL,
+        )
+
         # Create dict with camera topic publishers
         self._cam_pubs = {
             cam[0]: (
@@ -102,12 +108,12 @@ class HappyPoseTesterNode(Node):
                         if isinstance(cam[1], Metaclass_Image)
                         else f"{cam[0]}/image_raw/compressed"
                     ),
-                    10,
+                    qos_profile=reliable_qos,
                 ),
                 self.create_publisher(
                     CameraInfo,
                     (f"{cam[0]}/camera_info"),
-                    10,
+                    qos_profile=reliable_qos,
                 ),
             )
             for cam in cameras
@@ -590,3 +596,27 @@ def assert_bbox(
 
     if abs(msg.center.theta) > 1e-8:
         "Bbox theta is not 0.0!"
+
+
+def create_camera_reliable_qos_config(
+    namespace: str, cam_name: str
+) -> Dict[str, Union[str, int]]:
+    """Creates dictionary with parameters configuring reliability of sensor topics.
+
+    :param topic_name: Name of the topic for which the config has to be created.
+    :type topic_name: str
+    :return: Dictionary with parameters.
+    :rtype: Dict[str, Union[str, int]]
+    """
+
+    qos_settings = {
+        "reliability": "reliable",
+        "depth": 10,
+        "history": "keep_all",
+    }
+
+    return {
+        f"qos_overrides./{namespace}/{cam_name}/{topic}.subscription.{key}": value
+        for topic in ("camera_info", "image_raw")
+        for key, value in qos_settings.items()
+    }

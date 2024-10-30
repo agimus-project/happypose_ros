@@ -5,6 +5,8 @@ from typing import Callable, Union, TypeVar
 
 from rclpy.node import Node
 from rclpy.time import Time
+from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos_overriding_options import QoSOverridingOptions
 
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 
@@ -61,8 +63,20 @@ class CameraWrapper:
         self._cvb = CvBridge()
 
         sync_topics = [
-            Subscriber(self._node, img_msg_type, self._camera_name + topic_postfix),
-            Subscriber(self._node, CameraInfo, self._camera_name + "/camera_info"),
+            Subscriber(
+                self._node,
+                img_msg_type,
+                self._camera_name + topic_postfix,
+                qos_profile=qos_profile_sensor_data,
+                qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+            ),
+            Subscriber(
+                self._node,
+                CameraInfo,
+                self._camera_name + "/camera_info",
+                qos_profile=qos_profile_sensor_data,
+                qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+            ),
         ]
 
         # Create time approximate time synchronization
