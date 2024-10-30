@@ -30,7 +30,7 @@ def launch_setup(
     image_publisher_node = Node(
         package="image_publisher",
         executable="image_publisher_node",
-        namespace="cam_1/uncropped",
+        namespace="cam_1",
         output="screen",
         parameters=[
             {
@@ -41,30 +41,6 @@ def launch_setup(
                 "field_of_view": field_of_view,
                 "camera_info_url": camera_info_url,
             }
-        ],
-    )
-
-    image_cropper = Node(
-        package="image_proc",
-        executable="crop_decimate_node",
-        namespace="cam_1",
-        output="screen",
-        parameters=[
-            {
-                "use_sim_time": False,
-                "decimation_x": 1,
-                "decimation_y": 1,
-                "width": 504,
-                "height": 378,
-                "offset_x": 10,
-                "offset_y": 51,
-            }
-        ],
-        remappings=[
-            ("in/image_raw", "/cam_1/uncropped/image_raw"),
-            ("in/camera_info", "/cam_1/uncropped/camera_info"),
-            ("out/image_raw", "/cam_1/image_raw"),
-            ("out/camera_info", "/cam_1/camera_info"),
         ],
     )
 
@@ -83,12 +59,13 @@ def launch_setup(
         ),
         launch_arguments={
             "dataset_name": LaunchConfiguration("dataset_name"),
+            "model_type": LaunchConfiguration("model_type"),
             "device": LaunchConfiguration("device"),
             "use_rviz": LaunchConfiguration("use_rviz"),
         }.items(),
     )
 
-    return [happypose_example_common_launch, image_publisher_node, image_cropper]
+    return [happypose_example_common_launch, image_publisher_node]
 
 
 def generate_launch_description():
@@ -96,7 +73,12 @@ def generate_launch_description():
         DeclareLaunchArgument(
             "dataset_name",
             default_value="ycbv",
-            description="Which dataset to use for inference.",
+            description="Name of BOP dataset, used to load specific weights and object models.",
+        ),
+        DeclareLaunchArgument(
+            "model_type",
+            default_value="pbr",
+            description="Type of neural network model to use. Available: 'pbr'|'synth+real'.",
         ),
         DeclareLaunchArgument(
             "device",
