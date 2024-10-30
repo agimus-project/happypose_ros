@@ -124,6 +124,8 @@ def test_leading_estimated_tf_frame_id(happypose_params: dict) -> None:
                 Parameter("cosypose.dataset_name", Parameter.Type.STRING, "ycbv"),
                 Parameter("camera_names", Parameter.Type.STRING_ARRAY, ["cam_1"]),
                 Parameter("cameras.cam_1.leading", Parameter.Type.BOOL, True),
+                # Clear state after previous test
+                Parameter("cameras.cam_1.publish_tf", Parameter.Type.BOOL, False),
                 Parameter(
                     "cameras.cam_1.estimated_tf_frame_id",
                     Parameter.Type.STRING,

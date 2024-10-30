@@ -12,7 +12,6 @@ from rclpy.constants import S_TO_NS
 from rclpy.parameter import Parameter
 from rclpy.time import Time
 
-from tf2_ros import LookupException
 
 from geometry_msgs.msg import Point, Pose, Transform, Vector3, Quaternion
 from sensor_msgs.msg import Image, CompressedImage
@@ -199,38 +198,27 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         assert_pose_equal(ycbv_05.results[0].pose.pose, ycbv_05_pose)
         assert_pose_equal(ycbv_15.results[0].pose.pose, ycbv_15_pose)
 
-    def test_8_check_not_published_transforms(self) -> None:
-        with self.assertRaises(LookupException) as excinfo:
-            self.node.get_transform("cam_1", "cam_2")
-        self.assertTrue(
-            '"cam_2" passed to lookupTransform argument source_frame does not exist'
-            in str(excinfo.exception),
-            msg="'cam_2' is published even though it shouldn't!",
+    def test_08_check_not_published_transforms(self) -> None:
+        self.assertFalse(
+            self.node.can_transform("cam_1", "cam2"),
+            msg="`cam_2` frame_id was was published even thought it shouldn't!",
         )
 
-    def test_9_check_transforms_correct(self) -> None:
+    def test_09_check_transforms_correct(self) -> None:
         # Based on transformed ground truth
         # Image 1874 camera pose transformed into image 629 camera pose reference frame
         expected_translation = Transform(
             translation=Vector3(**dict(zip("xyz", [-0.4790, -0.0166, 0.3517]))),
             rotation=Quaternion(**dict(zip("xyzw", [0.0536, 0.3365, 0.1493, 0.9281]))),
         )
+        self.assertTrue(
+            self.node.can_transform("cam_1", "cam_3"),
+            msg="`cam_3` frame_id was not published!",
+        )
         cam_3_trans = self.node.get_transform("cam_1", "cam_3")
         assert_transform_equal(cam_3_trans, expected_translation)
 
-    def test_10_dynamic_params_change_frame_id(self) -> None:
-        # cam_3 frame_id
-        self.node.set_params(
-            [
-                Parameter(
-                    "cam_3.estimated_tf_frame_id",
-                    Parameter.Type.STRING,
-                    "custom_estimated_cam_3_frame_id",
-                ),
-            ],
-            10.0,
-        )
-
+    def push_data(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -241,7 +229,29 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_3", self.cam_3_image, self.K)
         self.node.assert_message_received("happypose/detections", timeout=60.0)
 
-        self.assertFalse(self.node.can_transform("cam_1", "cam3"))
+    def test_10_dynamic_params_change_frame_id(self) -> None:
+        # cam_3 frame_id
+        self.node.set_params(
+            [
+                Parameter(
+                    "cameras.cam_3.estimated_tf_frame_id",
+                    Parameter.Type.STRING,
+                    "custom_cam_3_frame_id",
+                ),
+            ],
+            10.0,
+        )
+
+        self.push_data()
+
+        self.assertFalse(
+            self.node.can_transform("cam_1", "cam3"),
+            msg="`cam_3` frame_id was was published even thought it shouldn't!",
+        )
+        self.assertTrue(
+            self.node.can_transform("cam_1", "custom_cam_3_frame_id"),
+            msg="`custom_cam_3_frame_id` frame_id was not published!",
+        )
 
         # Based on transformed ground truth
         # Image 1874 camera pose transformed into image 629 camera pose reference frame
@@ -249,17 +259,15 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             translation=Vector3(**dict(zip("xyz", [-0.4790, -0.0166, 0.3517]))),
             rotation=Quaternion(**dict(zip("xyzw", [0.0536, 0.3365, 0.1493, 0.9281]))),
         )
-        cam_3_trans = self.node.get_transform(
-            "cam_1", "custom_estimated_cam_3_frame_id"
-        )
+        cam_3_trans = self.node.get_transform("cam_1", "custom_cam_3_frame_id")
         assert_transform_equal(cam_3_trans, expected_translation)
 
     def test_11_dynamic_params_change_frame_id_to_empty(self) -> None:
-        # cam_3 frame_id
+        # Use default frame_if for cam_3
         self.node.set_params(
             [
                 Parameter(
-                    "cam_3.estimated_tf_frame_id",
+                    "cameras.cam_3.estimated_tf_frame_id",
                     Parameter.Type.STRING,
                     "",
                 ),
@@ -267,17 +275,12 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             10.0,
         )
 
-        # Clear old messages
-        self.node.clear_msg_buffer()
-        # Wait more than the timeout
-        time.sleep(1.0)
-        # Publish three images and expect to pass
-        self.node.publish_image("cam_1", self.cam_1_image, self.K)
-        self.node.publish_image("cam_2", self.cam_2_image, self.K)
-        self.node.publish_image("cam_3", self.cam_3_image, self.K)
-        self.node.assert_message_received("happypose/detections", timeout=60.0)
+        self.push_data()
 
-        self.assertTrue(self.node.can_transform("cam_1", "cam3"))
+        self.assertTrue(
+            self.node.can_transform("cam_1", "cam_3"),
+            msg="`cam_3` frame_id was not published!",
+        )
 
     def set_timeout(self, timeout: float) -> None:
         self.node.set_params(
