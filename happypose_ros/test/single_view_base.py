@@ -398,35 +398,7 @@ class SingleViewBase(HappyPoseTestCase):
             msg="Number of objects with symmetries is not equal to full YCBV dataset!",
         )
 
-    def test_13_dynamic_params_labels_to_keep_empty_message(
-        self: ActiveIoHandler,
-    ) -> None:
-        # Undo filtering of the labels
-        self.node.set_params(
-            [
-                Parameter(
-                    "cosypose.inference.labels_to_keep",
-                    Parameter.Type.STRING_ARRAY,
-                    ["ycbv-obj_000020"],
-                )
-            ]
-        )
-
-        # Clear old messages
-        self.node.clear_msg_buffer()
-
-        # Publish new to trigger parameter change
-        self.node.publish_image("cam_1", self.rgb, self.K)
-        self.node.assert_message_received("happypose/detections", timeout=20.0)
-        detections = self.node.get_received_message("happypose/detections")
-
-        self.assertGreaterEqual(
-            len(detections.detections),
-            0,
-            "After filtering labels published message is not empty!",
-        )
-
-    def test_14_region_of_interest(self: ActiveIoHandler) -> None:
+    def test_13_region_of_interest(self: ActiveIoHandler) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
 

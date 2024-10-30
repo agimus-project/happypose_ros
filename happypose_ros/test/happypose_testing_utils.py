@@ -341,7 +341,7 @@ class HappyPoseTesterNode(Node):
         else:
             # Convert BGR to RGB
             rgb = cropped_bgr[:, :, ::-1]
-            img_msg = self._cvb.cv2_to_compressed_imgmsg(rgb, dst_format="jpg")
+            img_msg = self._cvb.cv2_to_compressed_imgmsg(rgb, dst_format="png")
 
         header = Header(frame_id=cam, stamp=stamp.to_msg())
         img_msg.header = header
