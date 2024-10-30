@@ -91,7 +91,7 @@ class CameraWrapper:
         # Register callback depending on the configuration
         self._image_approx_time_sync.registerCallback(self._on_image_data_cb)
 
-    def data_recieved_guarded(func: Callable[..., RetType]) -> Callable[..., RetType]:
+    def data_received_guarded(func: Callable[..., RetType]) -> Callable[..., RetType]:
         """Decorator, checks if data was already received.
 
         :param func: Function to wrap.
@@ -101,14 +101,14 @@ class CameraWrapper:
         :rtype: Callable[..., RetType]
         """
 
-        def _data_recieved_guarded_inner(self, *args, **kwargs) -> RetType:
+        def _data_received_guarded_inner(self, *args, **kwargs) -> RetType:
             if self._image is None and self._camera_info is None:
                 raise RuntimeError(
                     f"No data received yet from the camera '{self._camera_name}'!"
                 )
             return func(self, *args, **kwargs)
 
-        return _data_recieved_guarded_inner
+        return _data_received_guarded_inner
 
     def _validate_k_matrix(self, k_arr: npt.NDArray[np.float64]) -> bool:
         """Performs basic check of the structure of intrinsic matrix.
@@ -156,7 +156,7 @@ class CameraWrapper:
         """
         return self._image is not None
 
-    @data_recieved_guarded
+    @data_received_guarded
     def get_last_image_frame_id(self) -> str:
         """Returns frame id associated with the last received image.
 
@@ -166,7 +166,7 @@ class CameraWrapper:
         """
         return self._image.header.frame_id
 
-    @data_recieved_guarded
+    @data_received_guarded
     def get_last_image_stamp(self) -> Time:
         """Returns time stamp associated with last received image.
 
@@ -176,7 +176,7 @@ class CameraWrapper:
         """
         return Time.from_msg(self._image.header.stamp)
 
-    @data_recieved_guarded
+    @data_received_guarded
     def get_last_rgb_image(self) -> npt.NDArray[np.uint8]:
         """Returns last received color image.
 
@@ -197,7 +197,7 @@ class CameraWrapper:
         )
         return encoder(self._image, desired_encoding)
 
-    @data_recieved_guarded
+    @data_received_guarded
     def get_last_k_matrix(self) -> npt.NDArray[np.float64]:
         """Returns intrinsic matrix associated with last received camera info message.
 
