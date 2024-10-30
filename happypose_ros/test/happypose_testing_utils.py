@@ -11,7 +11,7 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.time import Time
-from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
+from rclpy.qos import DurabilityPolicy, HistoryPolicy, ReliabilityPolicy, QoSProfile
 
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -91,6 +91,12 @@ class HappyPoseTesterNode(Node):
 
         self._tested_node_name = tested_node_name
 
+        reliable_qos = QoSProfile(
+            reliability=ReliabilityPolicy.RELIABLE,
+            depth=10,
+            history=HistoryPolicy.KEEP_ALL,
+        )
+
         # Create dict with camera topic publishers
         self._cam_pubs = {
             cam[0]: (
@@ -102,12 +108,12 @@ class HappyPoseTesterNode(Node):
                         if isinstance(cam[1], Metaclass_Image)
                         else f"{cam[0]}/image_raw/compressed"
                     ),
-                    10,
+                    qos_profile=reliable_qos,
                 ),
                 self.create_publisher(
                     CameraInfo,
                     (f"{cam[0]}/camera_info"),
-                    10,
+                    qos_profile=reliable_qos,
                 ),
             )
             for cam in cameras
