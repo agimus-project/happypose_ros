@@ -206,7 +206,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
 
     def test_08_check_not_published_transforms(self) -> None:
         self.assertFalse(
-            self.node.can_transform("cam_1", "cam2"),
+            self.node.can_transform("cam_1", "cam_2"),
             msg="`cam_2` frame_id was was published even thought it shouldn't!",
         )
 
@@ -251,7 +251,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.push_data()
 
         self.assertFalse(
-            self.node.can_transform("cam_1", "cam3"),
+            self.node.can_transform("cam_1", "cam_3"),
             msg="`cam_3` frame_id was was published even thought it shouldn't!",
         )
         self.assertTrue(
@@ -283,6 +283,10 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
 
         self.push_data()
 
+        self.assertFalse(
+            self.node.can_transform("cam_1", "custom_cam_3_frame_id"),
+            msg="`custom_cam_3_frame_id` frame_id was was published even thought it shouldn't!",
+        )
         self.assertTrue(
             self.node.can_transform("cam_1", "cam_3"),
             msg="`cam_3` frame_id was not published!",
