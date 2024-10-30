@@ -30,7 +30,7 @@ def launch_setup(
     image_publisher_node = Node(
         package="image_publisher",
         executable="image_publisher_node",
-        namespace="cam_1",
+        namespace="cam_1/uncropped",
         output="screen",
         parameters=[
             {
@@ -41,6 +41,30 @@ def launch_setup(
                 "field_of_view": field_of_view,
                 "camera_info_url": camera_info_url,
             }
+        ],
+    )
+
+    image_cropper = Node(
+        package="image_proc",
+        executable="crop_decimate_node",
+        namespace="cam_1",
+        output="screen",
+        parameters=[
+            {
+                "use_sim_time": False,
+                "decimation_x": 1,
+                "decimation_y": 1,
+                "width": 504,
+                "height": 378,
+                "offset_x": 10,
+                "offset_y": 51,
+            }
+        ],
+        remappings=[
+            ("in/image_raw", "/cam_1/uncropped/image_raw"),
+            ("in/camera_info", "/cam_1/uncropped/camera_info"),
+            ("out/image_raw", "/cam_1/image_raw"),
+            ("out/camera_info", "/cam_1/camera_info"),
         ],
     )
 
@@ -64,7 +88,7 @@ def launch_setup(
         }.items(),
     )
 
-    return [happypose_example_common_launch, image_publisher_node]
+    return [happypose_example_common_launch, image_publisher_node, image_cropper]
 
 
 def generate_launch_description():

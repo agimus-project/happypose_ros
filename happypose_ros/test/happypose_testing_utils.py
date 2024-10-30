@@ -2,7 +2,7 @@ import numpy as np
 import numpy.typing as npt
 import pinocchio as pin
 import time
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 import unittest
 import urllib
 
@@ -109,6 +109,7 @@ class HappyPoseTesterNode(Node):
                     (f"{cam[0]}/camera_info"),
                     10,
                 ),
+                self.create_publisher(CameraInfo, (f"{cam[0]}/camera_info"), 10),
             )
             for cam in cameras
         }
@@ -590,3 +591,27 @@ def assert_bbox(
 
     if abs(msg.center.theta) > 1e-8:
         "Bbox theta is not 0.0!"
+
+
+def create_camera_reliable_qos_config(
+    namespace: str, cam_name: str
+) -> Dict[str, Union[str, int]]:
+    """Creates dictionary with parameters configuring reliability of sensor topics.
+
+    :param topic_name: Name of the topic for which the config has to be created.
+    :type topic_name: str
+    :return: Dictionary with parameters.
+    :rtype: Dict[str, Union[str, int]]
+    """
+
+    qos_settings = {
+        "reliability": "reliable",
+        "depth": 10,
+        "history": "keep_all",
+    }
+
+    return {
+        f"qos_overrides./{namespace}/{cam_name}/{topic}.subscription.{key}": value
+        for topic in ("camera_info", "image_raw")
+        for key, value in qos_settings.items()
+    }
