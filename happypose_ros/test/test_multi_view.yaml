@@ -4,6 +4,7 @@
     pose_estimator_type: "cosypose"
     cosypose:
       dataset_name: "ycbv"
+      model_type: "pbr"
       # reduce memory footprint during tests by reducing number of workers
       renderer:
         n_workers: 1
