@@ -324,8 +324,9 @@ class HappyPoseNode(Node):
             self._params.time_stamp_strategy
         ]
         # Update internal params of cameras
-        for cam in self._cameras.values():
-            cam.update_params(self._params.cameras)
+        if not on_init:
+            for cam in self._cameras.values():
+                cam.update_params(self._params.cameras)
 
         # Clear the queue from old data
         while not self._params_queue.empty():
