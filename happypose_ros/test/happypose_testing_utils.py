@@ -352,13 +352,16 @@ class HappyPoseTesterNode(Node):
             height=bgr.shape[0],
             width=bgr.shape[1],
             k=K.reshape(-1),
-            roi=RegionOfInterest(
+        )
+        if bgr.shape != cropped_bgr.shape:
+            info_msg.roi = RegionOfInterest(
                 width=width,
                 height=height,
                 x_offset=x_offset,
                 y_offset=y_offset,
-            ),
-        )
+                do_rectify=True,
+            )
+
         # Publish messages
         self._cam_pubs[cam][0].publish(img_msg)
         self._cam_pubs[cam][1].publish(info_msg)

@@ -445,12 +445,21 @@ class SingleViewBase(HappyPoseTestCase):
         detections = self.node.get_received_message("happypose/detections")
 
         self.assertGreaterEqual(
-            len(detections.detections), 1, "Incorrect number of detected objects!"
+            len(detections.detections), 2, "Incorrect number of detected objects!"
         )
 
+        # In compressed case pose of 05 object is not reliable
+        ycbv_02 = assert_and_find_detection(detections, "ycbv-obj_000002")
         ycbv_15 = assert_and_find_detection(detections, "ycbv-obj_000015")
 
         # Based on ground truth, object poses for image 629
+        ycbv_02_pose = Pose(
+            position=Point(**dict(zip("xyz", [0.0552, -0.0913, 1.0283]))),
+            orientation=Quaternion(
+                **dict(zip("xyzw", [0.2279, 0.1563, 0.0245, 0.9607]))
+            ),
+        )
+
         ycbv_15_pose = Pose(
             position=Point(**dict(zip("xyz", [-0.1013, 0.0329, 0.9138]))),
             orientation=Quaternion(
@@ -458,4 +467,5 @@ class SingleViewBase(HappyPoseTestCase):
             ),
         )
 
+        assert_pose_equal(ycbv_02.results[0].pose.pose, ycbv_02_pose)
         assert_pose_equal(ycbv_15.results[0].pose.pose, ycbv_15_pose)
