@@ -116,6 +116,26 @@ def test_leading_publish_tf(happypose_params: dict) -> None:
     assert all(par in str(excinfo.value) for par in params_to_check)
 
 
+def test_leading_estimated_tf_frame_id(happypose_params: dict) -> None:
+    with pytest.raises(ParameterException) as excinfo:
+        HappyPoseNode(
+            **happypose_params,
+            parameter_overrides=[
+                Parameter("cosypose.dataset_name", Parameter.Type.STRING, "ycbv"),
+                Parameter("camera_names", Parameter.Type.STRING_ARRAY, ["cam_1"]),
+                Parameter("cameras.cam_1.leading", Parameter.Type.BOOL, True),
+                Parameter(
+                    "cameras.cam_1.estimated_tf_frame_id",
+                    Parameter.Type.STRING,
+                    "arbitrary_frame_name",
+                ),
+            ],
+        )
+    # Check if both parameters are pointed in the exception
+    params_to_check = ("cameras.cam_1.leading", "cameras.cam_1.estimated_tf_frame_id")
+    assert all(par in str(excinfo.value) for par in params_to_check)
+
+
 def test_device_unknown(
     happypose_params: dict, minimal_overwrites: List[Parameter]
 ) -> None:

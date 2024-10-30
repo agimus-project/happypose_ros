@@ -148,10 +148,15 @@ happypose_ros:
         default_value: false
         description: "Publish TF of a given camera relative to the leading camera."
         read_only: true
+      estimated_tf_frame_id:
+        type: string
+        default_value: ""
+        description: "Name of frame_id published for estimated camera poses. If empty string, frame_id of camera is used. Leading camera can not have estimated frame_id."
+        validation:
+          custom_validators::check_tf_valid_name:
       time_sync_slop:
         type: double
         default_value: 0.04
         description: "Delay [seconds] with which incoming messages can be synchronized."
         validation:
           gt<>: [0.0]
-        read_only: true

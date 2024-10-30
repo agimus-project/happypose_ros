@@ -227,11 +227,24 @@ class HappyPoseNode(Node):
             )
         )
 
-        if self._params.cameras.get_entry(self._leading_camera).publish_tf:
+        leading_cam_params = self._params.cameras.get_entry(self._leading_camera)
+
+        if leading_cam_params.publish_tf:
             e = ParameterException(
                 "Leading camera can not publish TF",
                 (
                     f"cameras.{self._leading_camera}.publish_tf",
+                    f"cameras.{self._leading_camera}.leading",
+                ),
+            )
+            self.get_logger().error(str(e))
+            raise e
+
+        if leading_cam_params.estimated_tf_frame_id != "":
+            e = ParameterException(
+                "Leading camera can not have `frame_id` overwritten",
+                (
+                    f"cameras.{self._leading_camera}.estimated_tf_frame_id",
                     f"cameras.{self._leading_camera}.leading",
                 ),
             )
@@ -310,6 +323,10 @@ class HappyPoseNode(Node):
         self._stamp_select_strategy = {"newest": max, "oldest": min, "average": mean}[
             self._params.time_stamp_strategy
         ]
+        # Update internal params of cameras
+        for cam in self._cameras.values():
+            cam.update_params(self._params.cameras)
+
         # Clear the queue from old data
         while not self._params_queue.empty():
             self._params_queue.get()

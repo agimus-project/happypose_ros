@@ -218,6 +218,67 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         cam_3_trans = self.node.get_transform("cam_1", "cam_3")
         assert_transform_equal(cam_3_trans, expected_translation)
 
+    def test_10_dynamic_params_change_frame_id(self) -> None:
+        # cam_3 frame_id
+        self.node.set_params(
+            [
+                Parameter(
+                    "cam_3.estimated_tf_frame_id",
+                    Parameter.Type.STRING,
+                    "custom_estimated_cam_3_frame_id",
+                ),
+            ],
+            10.0,
+        )
+
+        # Clear old messages
+        self.node.clear_msg_buffer()
+        # Wait more than the timeout
+        time.sleep(1.0)
+        # Publish three images and expect to pass
+        self.node.publish_image("cam_1", self.cam_1_image, self.K)
+        self.node.publish_image("cam_2", self.cam_2_image, self.K)
+        self.node.publish_image("cam_3", self.cam_3_image, self.K)
+        self.node.assert_message_received("happypose/detections", timeout=60.0)
+
+        self.assertFalse(self.node.can_transform("cam_1", "cam3"))
+
+        # Based on transformed ground truth
+        # Image 1874 camera pose transformed into image 629 camera pose reference frame
+        expected_translation = Transform(
+            translation=Vector3(**dict(zip("xyz", [-0.4790, -0.0166, 0.3517]))),
+            rotation=Quaternion(**dict(zip("xyzw", [0.0536, 0.3365, 0.1493, 0.9281]))),
+        )
+        cam_3_trans = self.node.get_transform(
+            "cam_1", "custom_estimated_cam_3_frame_id"
+        )
+        assert_transform_equal(cam_3_trans, expected_translation)
+
+    def test_11_dynamic_params_change_frame_id_to_empty(self) -> None:
+        # cam_3 frame_id
+        self.node.set_params(
+            [
+                Parameter(
+                    "cam_3.estimated_tf_frame_id",
+                    Parameter.Type.STRING,
+                    "",
+                ),
+            ],
+            10.0,
+        )
+
+        # Clear old messages
+        self.node.clear_msg_buffer()
+        # Wait more than the timeout
+        time.sleep(1.0)
+        # Publish three images and expect to pass
+        self.node.publish_image("cam_1", self.cam_1_image, self.K)
+        self.node.publish_image("cam_2", self.cam_2_image, self.K)
+        self.node.publish_image("cam_3", self.cam_3_image, self.K)
+        self.node.assert_message_received("happypose/detections", timeout=60.0)
+
+        self.assertTrue(self.node.can_transform("cam_1", "cam3"))
+
     def set_timeout(self, timeout: float) -> None:
         self.node.set_params(
             [
@@ -230,7 +291,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             timeout=10.0,
         )
 
-    def test_10_dynamic_params_camera_no_timeout(self) -> None:
+    def test_12_dynamic_params_camera_no_timeout(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
 
@@ -247,7 +308,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             msg="One image after timeout triggered the pipeline!",
         )
 
-    def test_11_dynamic_params_camera_timeout_one_camera(self) -> None:
+    def test_13_dynamic_params_camera_timeout_one_camera(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -258,7 +319,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_1", self.cam_1_image, self.K)
         self.expect_no_detection()
 
-    def test_12_dynamic_params_camera_timeout_two_cameras(self) -> None:
+    def test_14_dynamic_params_camera_timeout_two_cameras(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -268,7 +329,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_2", self.cam_2_image, self.K)
         self.expect_no_detection()
 
-    def test_13_dynamic_params_camera_timeout_three_cameras_ok(self) -> None:
+    def test_15_dynamic_params_camera_timeout_three_cameras_ok(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -279,7 +340,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_3", self.cam_3_image, self.K)
         self.node.assert_message_received("happypose/detections", timeout=60.0)
 
-    def test_14_dynamic_params_camera_timeout_three_cameras_short(self) -> None:
+    def test_16_dynamic_params_camera_timeout_three_cameras_short(self) -> None:
         # Set timeout to a small value
         timeout = 0.05
         self.set_timeout(timeout)
@@ -297,7 +358,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
                 self.node.publish_image("cam_3", self.cam_3_image, self.K)
             self.expect_no_detection()
 
-    def test_15_dynamic_params_camera_timeout_three_cameras_short_ok(self) -> None:
+    def test_17_dynamic_params_camera_timeout_three_cameras_short_ok(self) -> None:
         # Set timeout to a small value
         self.set_timeout(0.05)
         # Wait more than the timeout
@@ -354,16 +415,16 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             msg=f"Timestamp was not chosen to be '{strategy}'",
         )
 
-    def test_16_dynamic_params_timestamp_strategy(self) -> None:
+    def test_18_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.02]
         self.setup_timestamp_test(offsets, 0.0, "newest")
 
-    def test_17_dynamic_params_timestamp_strategy(self) -> None:
+    def test_19_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.05]
         # Offestes are subtracted from time current time so
         # the result has to be expected in the past
         self.setup_timestamp_test(offsets, -0.05, "oldest")
 
-    def test_18_dynamic_params_timestamp_strategy(self) -> None:
+    def test_20_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.05]
         self.setup_timestamp_test(offsets, -0.02, "average")

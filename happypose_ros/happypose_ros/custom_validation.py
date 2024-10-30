@@ -23,3 +23,19 @@ def torch_check_device(param: Parameter) -> str:
         f"Device {param.name} is not available on this machine."
         f" Available devices: {available_devices}."
     )
+
+
+def check_tf_valid_name(param: Parameter) -> str:
+    """Checks if passed string can be used as a valid frame ID.
+
+    :param param: ROS parameter with a string containing the name of frame ID.
+    :type param: rclpy.Parameter
+    :return: Error explanation. If empty string, everything is correct.
+    :rtype: str
+    """
+    if param.value.startswith("/"):
+        return (
+            f"Invalid param '{param.name}' with value '{param.value}'. "
+            "tf2 frame_ids cannot start with a '/'."
+        )
+    return ""

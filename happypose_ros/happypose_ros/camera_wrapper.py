@@ -50,7 +50,8 @@ class CameraWrapper:
         self._node = node
         self._camera_name = name
 
-        if params.get_entry(self._camera_name).compressed:
+        camera_params = params.get_entry(self._camera_name)
+        if camera_params.compressed:
             img_msg_type = CompressedImage
             topic_postfix = "/image_raw/compressed"
         else:
@@ -59,6 +60,7 @@ class CameraWrapper:
 
         self._image = None
         self._cvb = CvBridge()
+        self._estimated_tf_frame_id = camera_params.estimated_tf_frame_id
 
         sync_topics = [
             Subscriber(self._node, img_msg_type, self._camera_name + topic_postfix),
@@ -69,10 +71,19 @@ class CameraWrapper:
         self._image_approx_time_sync = ApproximateTimeSynchronizer(
             sync_topics,
             queue_size=5,
-            slop=params.get_entry(self._camera_name).time_sync_slop,
+            slop=camera_params.time_sync_slop,
         )
         # Register callback depending on the configuration
         self._image_approx_time_sync.registerCallback(self._on_image_data_cb)
+
+    def update_params(self, params: happypose_ros.Params.cameras) -> None:
+        """Updates internal parameters of given camera
+
+        :param params: ROS parameters created by generate_parameter_library.
+        :type params: happypose_ros.Params.cameras
+        """
+        camera_params = params.get_entry(self._camera_name)
+        self._estimated_tf_frame_id = camera_params.estimated_tf_frame_id
 
     def image_guarded(func: Callable[..., RetType]) -> Callable[..., RetType]:
         """Decorator, checks if image was already received.
@@ -164,13 +175,17 @@ class CameraWrapper:
 
     @image_guarded
     def get_last_image_frame_id(self) -> str:
-        """Returns frame id associated with the last received image.
+        """Returns frame id associated with the camera.
 
         :raises RuntimeError: No images were received yet.
         :return: String with a name of the frame id.
         :rtype: str
         """
-        return self._image.header.frame_id
+        return (
+            self._image.header.frame_id
+            if self._estimated_tf_frame_id == ""
+            else self._estimated_tf_frame_id
+        )
 
     @image_guarded
     def get_last_image_stamp(self) -> Time:
