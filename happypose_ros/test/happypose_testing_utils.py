@@ -109,7 +109,6 @@ class HappyPoseTesterNode(Node):
                     (f"{cam[0]}/camera_info"),
                     10,
                 ),
-                self.create_publisher(CameraInfo, (f"{cam[0]}/camera_info"), 10),
             )
             for cam in cameras
         }
