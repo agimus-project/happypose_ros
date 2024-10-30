@@ -33,6 +33,7 @@ from happypose_testing_utils import (
     assert_and_find_detection,
     assert_pose_equal,
     assert_transform_equal,
+    create_camera_reliable_qos_config,
 )
 
 
@@ -52,13 +53,18 @@ def generate_test_description():
     )
 
     # Spawn the happypose_ros node
+    ns = "test_multi_view"
     happypose_node = launch_ros.actions.Node(
         package="happypose_ros",
         executable="happypose_node",
         name="happypose_node",
-        namespace="test_multi_view",
+        namespace=ns,
         # Dynamically set device
-        parameters=[{"device": device}, happypose_params_path],
+        parameters=[
+            {"device": device},
+            *[create_camera_reliable_qos_config(ns, f"cam_{i}") for i in range(3)],
+            happypose_params_path,
+        ],
     )
 
     return LaunchDescription(

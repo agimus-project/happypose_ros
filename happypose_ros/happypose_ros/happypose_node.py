@@ -13,7 +13,9 @@ from rclpy.exceptions import ParameterException
 import rclpy.logging
 from rclpy.node import Node
 from rclpy.time import Time
+from rclpy.qos import qos_profile_system_default
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
+from rclpy.qos_overriding_options import QoSOverridingOptions
 
 from tf2_ros import TransformBroadcaster
 
@@ -169,20 +171,28 @@ class HappyPoseNode(Node):
         self._last_pipeline_trigger = self.get_clock().now()
 
         self._detections_publisher = self.create_publisher(
-            Detection2DArray, "happypose/detections", 10
+            Detection2DArray,
+            "happypose/detections",
+            qos_profile=qos_profile_system_default,
+            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
         )
         self._vision_info_publisher = self.create_publisher(
-            VisionInfo, "happypose/vision_info", 10
+            VisionInfo,
+            "happypose/vision_info",
+            qos_profile=qos_profile_system_default,
+            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
         )
 
-        # Set the message to be "latched"
-        qos = QoSProfile(
-            depth=1,
-            durability=DurabilityPolicy.TRANSIENT_LOCAL,
-            history=HistoryPolicy.KEEP_LAST,
-        )
         self._symmetries_publisher = self.create_publisher(
-            ObjectSymmetriesArray, "happypose/object_symmetries", qos
+            ObjectSymmetriesArray,
+            "happypose/object_symmetries",
+            # Set the message to be "latched"
+            qos_profile=QoSProfile(
+                depth=1,
+                durability=DurabilityPolicy.TRANSIENT_LOCAL,
+                history=HistoryPolicy.KEEP_LAST,
+            ),
+            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
         )
 
         if self._params.cameras.n_min_cameras > len(self._cameras):
@@ -270,7 +280,10 @@ class HappyPoseNode(Node):
         # Create debug publisher
         if self._params.visualization.publish_markers:
             self._marker_publisher = self.create_publisher(
-                MarkerArray, "happypose/markers", 10
+                MarkerArray,
+                "happypose/markers",
+                qos_profile=qos_profile_system_default,
+                qos_overriding_options=QoSOverridingOptions.with_default_policies(),
             )
 
         # Start the worker when all possible errors are handled
