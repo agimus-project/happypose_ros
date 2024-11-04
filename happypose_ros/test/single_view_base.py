@@ -398,30 +398,46 @@ class SingleViewBase(HappyPoseTestCase):
             msg="Number of objects with symmetries is not equal to full YCBV dataset!",
         )
 
-    def test_13_dynamic_params_labels_to_keep_empty_message(
-        self: ActiveIoHandler,
-    ) -> None:
-        # Undo filtering of the labels
-        self.node.set_params(
-            [
-                Parameter(
-                    "cosypose.inference.labels_to_keep",
-                    Parameter.Type.STRING_ARRAY,
-                    ["ycbv-obj_000020"],
-                )
-            ]
-        )
-
+    def test_13_region_of_interest(self: ActiveIoHandler) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
 
         # Publish new to trigger parameter change
-        self.node.publish_image("cam_1", self.rgb, self.K)
+        self.node.publish_image(
+            "cam_1",
+            self.rgb,
+            self.K,
+            width=504,
+            height=378,
+            x_offset=10,
+            y_offset=51,
+        )
+
         self.node.assert_message_received("happypose/detections", timeout=20.0)
         detections = self.node.get_received_message("happypose/detections")
 
         self.assertGreaterEqual(
-            len(detections.detections),
-            0,
-            "After filtering labels published message is not empty!",
+            len(detections.detections), 2, "Incorrect number of detected objects!"
         )
+
+        # In compressed case pose of 05 object is not reliable
+        ycbv_02 = assert_and_find_detection(detections, "ycbv-obj_000002")
+        ycbv_15 = assert_and_find_detection(detections, "ycbv-obj_000015")
+
+        # Based on ground truth, object poses for image 629
+        ycbv_02_pose = Pose(
+            position=Point(**dict(zip("xyz", [0.0552, -0.0913, 1.0283]))),
+            orientation=Quaternion(
+                **dict(zip("xyzw", [0.2279, 0.1563, 0.0245, 0.9607]))
+            ),
+        )
+
+        ycbv_15_pose = Pose(
+            position=Point(**dict(zip("xyz", [-0.1013, 0.0329, 0.9138]))),
+            orientation=Quaternion(
+                **dict(zip("xyzw", [0.2526, 0.4850, 0.7653, -0.3392]))
+            ),
+        )
+
+        assert_pose_equal(ycbv_02.results[0].pose.pose, ycbv_02_pose)
+        assert_pose_equal(ycbv_15.results[0].pose.pose, ycbv_15_pose)
