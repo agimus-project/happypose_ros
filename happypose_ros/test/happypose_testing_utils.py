@@ -215,9 +215,14 @@ class HappyPoseTesterNode(Node):
         ).transform
 
     def can_transform(
-        self, target_frame: str, source_frame: str, timeout: float = 5.0
+        self,
+        target_frame: str,
+        source_frame: str,
+        stamp: Time = rclpy.time.Time(),
+        timeout: float = 5.0,
     ) -> bool:
-        """Check if transformation is possible between source and target frame.
+        """Check if transformation has been published between source and target frame
+        at a given time stamp. If no ``stamp`` was passed, use the latest transformation.
 
         :param target_frame: Name of the frame to transform into.
         :type target_frame: str
@@ -229,8 +234,9 @@ class HappyPoseTesterNode(Node):
         :return: Transformation between source and target frames.
         :rtype: geometry_msgs.msg.Transform
         """
+
         return self._tf_buffer.can_transform(
-            target_frame, source_frame, rclpy.time.Time(), Duration(seconds=timeout)
+            target_frame, source_frame, stamp, Duration(seconds=timeout)
         )
 
     def get_params(

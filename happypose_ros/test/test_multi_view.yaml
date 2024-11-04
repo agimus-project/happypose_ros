@@ -10,7 +10,7 @@
         n_workers: 1
     camera_names: ["cam_1", "cam_2", "cam_3"]
     cameras:
-      timeout: 0.0
+      timeout: 1.5
       n_min_cameras: 3
       cam_1:
         leading: true

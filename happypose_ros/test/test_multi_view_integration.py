@@ -224,19 +224,17 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         cam_3_trans = self.node.get_transform("cam_1", "cam_3")
         assert_transform_equal(cam_3_trans, expected_translation)
 
-    def push_data(self) -> None:
+    def push_data(self, stamp: Time) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
-        # Wait more than the timeout
-        time.sleep(1.0)
         # Publish three images and expect to pass
-        self.node.publish_image("cam_1", self.cam_1_image, self.K)
-        self.node.publish_image("cam_2", self.cam_2_image, self.K)
-        self.node.publish_image("cam_3", self.cam_3_image, self.K)
+        self.node.publish_image("cam_1", self.cam_1_image, self.K, stamp)
+        self.node.publish_image("cam_2", self.cam_2_image, self.K, stamp)
+        self.node.publish_image("cam_3", self.cam_3_image, self.K, stamp)
         self.node.assert_message_received("happypose/detections", timeout=60.0)
 
     def test_10_dynamic_params_change_frame_id(self) -> None:
-        # cam_3 frame_id
+        # Set cam_3 frame_id
         self.node.set_params(
             [
                 Parameter(
@@ -248,14 +246,18 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             10.0,
         )
 
-        self.push_data()
+        # Wait more than the timeout
+        time.sleep(2.0)
+        # Get fresh timestamp
+        stamp = self.node.get_clock().now()
+        self.push_data(stamp)
 
         self.assertFalse(
-            self.node.can_transform("cam_1", "cam_3"),
+            self.node.can_transform("cam_1", "cam_3", stamp),
             msg="`cam_3` frame_id was was published even thought it shouldn't!",
         )
         self.assertTrue(
-            self.node.can_transform("cam_1", "custom_cam_3_frame_id"),
+            self.node.can_transform("cam_1", "custom_cam_3_frame_id", stamp),
             msg="`custom_cam_3_frame_id` frame_id was not published!",
         )
 
@@ -281,14 +283,18 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             10.0,
         )
 
-        self.push_data()
+        # Wait more than the timeout
+        time.sleep(2.0)
+        # Get fresh timestamp
+        stamp = self.node.get_clock().now()
+        self.push_data(stamp)
 
         self.assertFalse(
-            self.node.can_transform("cam_1", "custom_cam_3_frame_id"),
+            self.node.can_transform("cam_1", "custom_cam_3_frame_id", stamp),
             msg="`custom_cam_3_frame_id` frame_id was was published even thought it shouldn't!",
         )
         self.assertTrue(
-            self.node.can_transform("cam_1", "cam_3"),
+            self.node.can_transform("cam_1", "cam_3", stamp),
             msg="`cam_3` frame_id was not published!",
         )
 
