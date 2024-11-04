@@ -12,7 +12,6 @@ from rclpy.constants import S_TO_NS
 from rclpy.parameter import Parameter
 from rclpy.time import Time
 
-from tf2_ros import LookupException
 
 from geometry_msgs.msg import Point, Pose, Transform, Vector3, Quaternion
 from sensor_msgs.msg import Image, CompressedImage
@@ -205,24 +204,99 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         assert_pose_equal(ycbv_05.results[0].pose.pose, ycbv_05_pose)
         assert_pose_equal(ycbv_15.results[0].pose.pose, ycbv_15_pose)
 
-    def test_8_check_not_published_transforms(self) -> None:
-        with self.assertRaises(LookupException) as excinfo:
-            self.node.get_transform("cam_1", "cam_2")
-        self.assertTrue(
-            '"cam_2" passed to lookupTransform argument source_frame does not exist'
-            in str(excinfo.exception),
-            msg="'cam_2' is published even though it shouldn't!",
+    def test_08_check_not_published_transforms(self) -> None:
+        self.assertFalse(
+            self.node.can_transform("cam_1", "cam_2"),
+            msg="`cam_2` frame_id was was published even thought it shouldn't!",
         )
 
-    def test_9_check_transforms_correct(self) -> None:
+    def test_09_check_transforms_correct(self) -> None:
         # Based on transformed ground truth
         # Image 1874 camera pose transformed into image 629 camera pose reference frame
         expected_translation = Transform(
             translation=Vector3(**dict(zip("xyz", [-0.4790, -0.0166, 0.3517]))),
             rotation=Quaternion(**dict(zip("xyzw", [0.0536, 0.3365, 0.1493, 0.9281]))),
         )
+        self.assertTrue(
+            self.node.can_transform("cam_1", "cam_3"),
+            msg="`cam_3` frame_id was not published!",
+        )
         cam_3_trans = self.node.get_transform("cam_1", "cam_3")
         assert_transform_equal(cam_3_trans, expected_translation)
+
+    def push_data(self, stamp: Time) -> None:
+        # Clear old messages
+        self.node.clear_msg_buffer()
+        # Publish three images and expect to pass
+        self.node.publish_image("cam_1", self.cam_1_image, self.K, stamp)
+        self.node.publish_image("cam_2", self.cam_2_image, self.K, stamp)
+        self.node.publish_image("cam_3", self.cam_3_image, self.K, stamp)
+        self.node.assert_message_received("happypose/detections", timeout=60.0)
+
+    def test_10_dynamic_params_change_frame_id(self) -> None:
+        # Set cam_3 frame_id
+        self.node.set_params(
+            [
+                Parameter(
+                    "cameras.cam_3.estimated_tf_frame_id",
+                    Parameter.Type.STRING,
+                    "custom_cam_3_frame_id",
+                ),
+            ],
+            10.0,
+        )
+
+        # Wait more than the timeout
+        time.sleep(2.0)
+        # Get fresh timestamp
+        stamp = self.node.get_clock().now()
+        self.push_data(stamp)
+
+        self.assertFalse(
+            self.node.can_transform("cam_1", "cam_3", stamp),
+            msg="`cam_3` frame_id was was published even thought it shouldn't!",
+        )
+        self.assertTrue(
+            self.node.can_transform("cam_1", "custom_cam_3_frame_id", stamp),
+            msg="`custom_cam_3_frame_id` frame_id was not published!",
+        )
+
+        # Based on transformed ground truth
+        # Image 1874 camera pose transformed into image 629 camera pose reference frame
+        expected_translation = Transform(
+            translation=Vector3(**dict(zip("xyz", [-0.4790, -0.0166, 0.3517]))),
+            rotation=Quaternion(**dict(zip("xyzw", [0.0536, 0.3365, 0.1493, 0.9281]))),
+        )
+        cam_3_trans = self.node.get_transform("cam_1", "custom_cam_3_frame_id")
+        assert_transform_equal(cam_3_trans, expected_translation)
+
+    def test_11_dynamic_params_change_frame_id_to_empty(self) -> None:
+        # Use default frame_if for cam_3
+        self.node.set_params(
+            [
+                Parameter(
+                    "cameras.cam_3.estimated_tf_frame_id",
+                    Parameter.Type.STRING,
+                    "",
+                ),
+            ],
+            10.0,
+        )
+
+        # Wait more than the timeout
+        time.sleep(2.0)
+        # Get fresh timestamp
+        stamp = self.node.get_clock().now()
+        self.push_data(stamp)
+
+        self.assertFalse(
+            self.node.can_transform("cam_1", "custom_cam_3_frame_id", stamp),
+            msg="`custom_cam_3_frame_id` frame_id was was published even thought it shouldn't!",
+        )
+        self.assertTrue(
+            self.node.can_transform("cam_1", "cam_3", stamp),
+            msg="`cam_3` frame_id was not published!",
+        )
 
     def set_timeout(self, timeout: float) -> None:
         self.node.set_params(
@@ -236,7 +310,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             timeout=10.0,
         )
 
-    def test_10_dynamic_params_camera_no_timeout(self) -> None:
+    def test_12_dynamic_params_camera_no_timeout(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
 
@@ -253,7 +327,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             msg="One image after timeout triggered the pipeline!",
         )
 
-    def test_11_dynamic_params_camera_timeout_one_camera(self) -> None:
+    def test_13_dynamic_params_camera_timeout_one_camera(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -264,7 +338,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_1", self.cam_1_image, self.K)
         self.expect_no_detection()
 
-    def test_12_dynamic_params_camera_timeout_two_cameras(self) -> None:
+    def test_14_dynamic_params_camera_timeout_two_cameras(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -274,7 +348,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_2", self.cam_2_image, self.K)
         self.expect_no_detection()
 
-    def test_13_dynamic_params_camera_timeout_three_cameras_ok(self) -> None:
+    def test_15_dynamic_params_camera_timeout_three_cameras_ok(self) -> None:
         # Clear old messages
         self.node.clear_msg_buffer()
         # Wait more than the timeout
@@ -285,7 +359,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.publish_image("cam_3", self.cam_3_image, self.K)
         self.node.assert_message_received("happypose/detections", timeout=60.0)
 
-    def test_14_dynamic_params_camera_timeout_three_cameras_short(self) -> None:
+    def test_16_dynamic_params_camera_timeout_three_cameras_short(self) -> None:
         # Set timeout to a small value
         timeout = 0.05
         self.set_timeout(timeout)
@@ -303,7 +377,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
                 self.node.publish_image("cam_3", self.cam_3_image, self.K)
             self.expect_no_detection()
 
-    def test_15_dynamic_params_camera_timeout_three_cameras_short_ok(self) -> None:
+    def test_17_dynamic_params_camera_timeout_three_cameras_short_ok(self) -> None:
         # Set timeout to a small value
         self.set_timeout(0.05)
         # Wait more than the timeout
@@ -360,16 +434,16 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             msg=f"Timestamp was not chosen to be '{strategy}'",
         )
 
-    def test_16_dynamic_params_timestamp_strategy(self) -> None:
+    def test_18_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.02]
         self.setup_timestamp_test(offsets, 0.0, "newest")
 
-    def test_17_dynamic_params_timestamp_strategy(self) -> None:
+    def test_19_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.05]
         # Offestes are subtracted from time current time so
         # the result has to be expected in the past
         self.setup_timestamp_test(offsets, -0.05, "oldest")
 
-    def test_18_dynamic_params_timestamp_strategy(self) -> None:
+    def test_20_dynamic_params_timestamp_strategy(self) -> None:
         offsets = [0.0, 0.01, 0.05]
         self.setup_timestamp_test(offsets, -0.02, "average")
