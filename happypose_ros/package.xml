@@ -22,6 +22,7 @@
   <depend>tf2_ros</depend>
   <depend>geometry_msgs</depend>
   <depend>happypose_msgs</depend>
+  <depend>image_geometry</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>vision_msgs</depend>

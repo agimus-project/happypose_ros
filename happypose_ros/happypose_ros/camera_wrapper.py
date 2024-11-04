@@ -11,6 +11,7 @@ from rclpy.qos_overriding_options import QoSOverridingOptions
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 
 from cv_bridge import CvBridge
+from image_geometry.cameramodels import PinholeCameraModel
 
 from message_filters import ApproximateTimeSynchronizer, Subscriber
 
@@ -60,7 +61,9 @@ class CameraWrapper:
             topic_postfix = "/image_raw"
 
         self._image = None
+        self._camera_info = None
         self._cvb = CvBridge()
+        self._cam_model = PinholeCameraModel()
 
         sync_topics = [
             Subscriber(
@@ -88,43 +91,24 @@ class CameraWrapper:
         # Register callback depending on the configuration
         self._image_approx_time_sync.registerCallback(self._on_image_data_cb)
 
-    def image_guarded(func: Callable[..., RetType]) -> Callable[..., RetType]:
-        """Decorator, checks if image was already received.
+    def data_received_guarded(func: Callable[..., RetType]) -> Callable[..., RetType]:
+        """Decorator, checks if data was already received.
 
         :param func: Function to wrap.
         :type func: Callable[..., RetType]
-        :raises RuntimeError: No images were received yet.
+        :raises RuntimeError: No data was received yet.
         :return: Wrapped function.
         :rtype: Callable[..., RetType]
         """
 
-        def _image_guarded_inner(self, *args, **kwargs) -> RetType:
-            if self._image is None:
+        def _data_received_guarded_inner(self, *args, **kwargs) -> RetType:
+            if self._image is None and self._camera_info is None:
                 raise RuntimeError(
-                    f"No images received yet from camera '{self._camera_name}'!"
+                    f"No data received yet from the camera '{self._camera_name}'!"
                 )
             return func(self, *args, **kwargs)
 
-        return _image_guarded_inner
-
-    def k_matrix_guarded(func: Callable[..., RetType]) -> Callable[..., RetType]:
-        """Decorator, checks if an intrinsic matrix was already received.
-
-        :param func: Function to wrap.
-        :type func: Callable[..., RetType]
-        :raises RuntimeError: No images were received yet.
-        :return: Wrapped function.
-        :rtype: Callable[..., RetType]
-        """
-
-        def _k_matrix_guarded_inner(self, *args, **kwargs) -> RetType:
-            if self._camera_k is None:
-                raise RuntimeError(
-                    f"Camera info was not received yet from camera '{self._camera_name}'!"
-                )
-            return func(self, *args, **kwargs)
-
-        return _k_matrix_guarded_inner
+        return _data_received_guarded_inner
 
     def _validate_k_matrix(self, k_arr: npt.NDArray[np.float64]) -> bool:
         """Performs basic check of the structure of intrinsic matrix.
@@ -153,20 +137,16 @@ class CameraWrapper:
         """
 
         if self._validate_k_matrix(info.k):
-            self._camera_k = info.k
+            self._camera_info = info
         else:
             self._node.get_logger().warn(
-                f"K matrix from topic '{self._info_sub.topic_name()}' is incorrect!"
-                f" Fix it or set 'cameras.{self._camera_name}.k_matrix'"
-                f" param for the camera '{self._camera_name}'.",
+                f"K matrix from topic '{self._info_sub.topic_name()}' is incorrect!",
                 throttle_duration_sec=5.0,
             )
             return
 
         self._image = image
-        # Fire the callback only if camera info is available
-        if self._camera_k is not None:
-            self._image_sync_hook()
+        self._image_sync_hook()
 
     def ready(self) -> bool:
         """Checks if the camera has all the data needed to use.
@@ -174,9 +154,9 @@ class CameraWrapper:
         :return: Camera image and intrinsic matrix are available
         :rtype: bool
         """
-        return self._image is not None and self._camera_k is not None
+        return self._image is not None
 
-    @image_guarded
+    @data_received_guarded
     def get_last_image_frame_id(self) -> str:
         """Returns frame id associated with the last received image.
 
@@ -186,7 +166,7 @@ class CameraWrapper:
         """
         return self._image.header.frame_id
 
-    @image_guarded
+    @data_received_guarded
     def get_last_image_stamp(self) -> Time:
         """Returns time stamp associated with last received image.
 
@@ -196,7 +176,7 @@ class CameraWrapper:
         """
         return Time.from_msg(self._image.header.stamp)
 
-    @image_guarded
+    @data_received_guarded
     def get_last_rgb_image(self) -> npt.NDArray[np.uint8]:
         """Returns last received color image.
 
@@ -217,7 +197,7 @@ class CameraWrapper:
         )
         return encoder(self._image, desired_encoding)
 
-    @k_matrix_guarded
+    @data_received_guarded
     def get_last_k_matrix(self) -> npt.NDArray[np.float64]:
         """Returns intrinsic matrix associated with last received camera info message.
 
@@ -225,4 +205,5 @@ class CameraWrapper:
         :return: 3x3 Numpy array with intrinsic matrix.
         :rtype: numpy.typing.NDArray[numpy.float64]
         """
-        return self._camera_k.reshape((3, 3))
+        self._cam_model.fromCameraInfo(self._camera_info)
+        return np.array(self._cam_model.intrinsicMatrix())
