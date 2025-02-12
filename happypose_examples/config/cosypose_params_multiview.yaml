@@ -12,6 +12,8 @@
     verbose_info_logs: true
     # Which image time stamp to use in final detection message
     time_stamp_strategy: "oldest"
+    # Specifies whether to use depth images for pose refinement. If set to `true` all cameras are expected to provide depth images
+    use_depth: false
     # Specifies which pose estimator to use in the pipeline
     pose_estimator_type: "cosypose"
     cosypose:

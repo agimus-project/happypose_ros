@@ -253,6 +253,18 @@ class CameraWrapper:
                 )
                 return
 
+            if (
+                color_image.width != depth_image.width
+                or color_image.height != depth_image.height
+            ):
+                self._node.get_logger().warn(
+                    f"Topics '{connections[0].getTopic()}' and "
+                    + f"'{connections[2].getTopic()}' contain images of a  different size! "
+                    + "Depth and color images should have the same size for ICP to work!",
+                    throttle_duration_sec=5.0,
+                )
+                return
+
         self._color_image = color_image
         self._depth_image = depth_image
 
