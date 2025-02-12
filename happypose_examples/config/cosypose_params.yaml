@@ -6,6 +6,8 @@
     visualization.publish_markers: true
     # Extended verbosity on info logs. Show logs with number of detections and more
     verbose_info_logs: true
+    # Specifies whether to use depth images for pose refinement. If set to `true` all cameras are expected to provide depth images
+    use_depth: false
     # Specifies which pose estimator to use in the pipeline
     pose_estimator_type: "cosypose"
     cosypose:

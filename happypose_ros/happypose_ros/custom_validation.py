@@ -39,3 +39,24 @@ def check_tf_valid_name(param: Parameter) -> str:
             "tf2 frame_ids cannot start with a '/'."
         )
     return ""
+
+
+def check_teaserpp_installed(param: Parameter) -> str:
+    """Checks if value of string is equal to ``teaserpp`` and tries to import the library.
+
+    :param param: ROS parameter with a string containing the name of frame ID.
+    :type param: rclpy.Parameter
+    :return: Error explanation. If empty string, everything is correct.
+    :rtype: str
+    """
+    if param.value == "teaserpp":
+        try:
+            from happypose.pose_estimators.megapose.inference.teaserpp_refiner import (  # noqa: F401
+                TeaserppRefiner,
+            )
+        except Exception:
+            return (
+                f"Can't use '{param.name}' with value '{param.value}'. "
+                "`TeaserppRefiner` was not installed in the system."
+            )
+    return ""

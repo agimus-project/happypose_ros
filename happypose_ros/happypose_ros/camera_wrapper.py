@@ -33,6 +33,7 @@ class CameraWrapper:
         params: happypose_ros.Params.cameras,
         name: str,
         image_sync_hook: Callable,
+        use_depth: bool = False,
     ) -> None:
         """Initializes CameraWrapper object. Checks values of the ROS parameters,
         configures and creates camera image and info subscribers.
@@ -45,6 +46,8 @@ class CameraWrapper:
         :type name: str
         :param image_sync_hook: Callback function when a new image arrives.
         :type image_sync_hook: Callable
+        :param use_depth: Whether to subscribe to depth image topic or not, defaults to True.
+        :type use_depth: bool, optional
         :raises rclpy.ParameterException: Intrinsic matrix is incorrect.
         """
 
@@ -61,8 +64,10 @@ class CameraWrapper:
             img_msg_type = Image
             topic_postfix = "/image_raw"
 
-        self._image = None
-        self._camera_info = None
+        self._color_image: Union[Image, CompressedImage] = None
+        self._color_camera_info: CameraInfo = None
+        self._depth_image: Union[Image, CompressedImage] = None
+        self._depth_camera_info: Union[None, Image, CompressedImage] = None
         self._cvb = CvBridge()
         self._estimated_tf_frame_id = camera_params.estimated_tf_frame_id
         self._cam_model = PinholeCameraModel()
@@ -71,27 +76,47 @@ class CameraWrapper:
             Subscriber(
                 self._node,
                 img_msg_type,
-                self._camera_name + topic_postfix,
+                self._camera_name + "/color" + topic_postfix,
                 qos_profile=qos_profile_sensor_data,
                 qos_overriding_options=QoSOverridingOptions.with_default_policies(),
             ),
             Subscriber(
                 self._node,
                 CameraInfo,
-                self._camera_name + "/camera_info",
+                self._camera_name + "/color" + "/camera_info",
                 qos_profile=qos_profile_sensor_data,
                 qos_overriding_options=QoSOverridingOptions.with_default_policies(),
             ),
         ]
 
+        if use_depth:
+            sync_topics + [
+                Subscriber(
+                    self._node,
+                    img_msg_type,
+                    self._camera_name + "/depth" + topic_postfix,
+                    qos_profile=qos_profile_sensor_data,
+                    qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+                ),
+                Subscriber(
+                    self._node,
+                    CameraInfo,
+                    self._camera_name + "/depth/camera_info",
+                    qos_profile=qos_profile_sensor_data,
+                    qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+                ),
+            ]
+
         # Create time approximate time synchronization
-        self._image_approx_time_sync = ApproximateTimeSynchronizer(
+        self._color_image_approx_time_sync = ApproximateTimeSynchronizer(
             sync_topics,
             queue_size=5,
             slop=camera_params.time_sync_slop,
         )
         # Register callback depending on the configuration
-        self._image_approx_time_sync.registerCallback(self._on_image_data_cb)
+        self._color_image_approx_time_sync.registerCallback(
+            self._on_image_data_cb if use_depth else self._on_image_data_cb
+        )
 
     def update_params(self, params: happypose_ros.Params.cameras) -> None:
         """Updates internal parameters of given camera
@@ -113,7 +138,7 @@ class CameraWrapper:
         """
 
         def _data_received_guarded_inner(self, *args, **kwargs) -> RetType:
-            if self._image is None and self._camera_info is None:
+            if self._color_image is None and self._color_camera_info is None:
                 raise RuntimeError(
                     f"No data received yet from the camera '{self._camera_name}'!"
                 )
@@ -146,17 +171,91 @@ class CameraWrapper:
         :param info: Camera info message
         :type info: sensor_msgs.msg.CameraInfo
         """
+        self._on_image_with_depth_data_cb(image, info, None, None)
 
-        if self._validate_k_matrix(info.k):
-            self._camera_info = info
-        else:
+    def _on_image_with_depth_data_cb(
+        self,
+        color_image: Union[Image, CompressedImage],
+        color_camera_info: CameraInfo,
+        depth_image: Union[None, Image, CompressedImage] = None,
+        depth_camera_info: Union[None, CameraInfo] = None,
+    ) -> None:
+        """Called on every time synchronized image and camera info are received.
+        Saves the image and checks if intrinsics are correct. If all checks pass
+        calls :func:`_image_sync_hook`.
+
+        :param color_image: Image received from the color camera sensor
+        :type color_image: Union[sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]
+        :param color_info: Camera info message for the color camera sensor.
+        :type color_info: sensor_msgs.msg.CameraInfo
+        :param color_image: Image received from the depth camera sensor. None if not used.
+        :type color_image: Union[None, sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]
+        :param color_info: Camera info message for the depth camera sensor. None if not used.
+        :type color_info: Union[None, sensor_msgs.msg.CameraInfo]
+        """
+
+        connections = self._color_image_approx_time_sync.input_connections
+        frame_ids = {color_image.header.frame_id, color_camera_info.header.frame_id}
+        if len(frame_ids) > 1:
             self._node.get_logger().warn(
-                f"K matrix from topic '{self._info_sub.topic_name()}' is incorrect!",
+                "Mismatch in `frame_id` between topics "
+                + f"'{connections[0].getTopic()}' and '{connections[1].getTopic()}'!",
                 throttle_duration_sec=5.0,
             )
             return
 
-        self._image = image
+        if self._validate_k_matrix(color_camera_info.k):
+            self._color_camera_info = color_camera_info
+        else:
+            topic = self._color_image_approx_time_sync.input_connections[1].getTopic()
+            self._node.get_logger().warn(
+                f"K matrix from topic '{topic}' is incorrect!",
+                throttle_duration_sec=5.0,
+            )
+            return
+
+        if depth_camera_info:
+            if not np.allclose(color_camera_info.k, depth_camera_info.k):
+                self._node.get_logger().warn(
+                    f"Topics '{connections[1].getTopic()}' and "
+                    + f"'{connections[3].getTopic()}' contain different intrinsics matrices! "
+                    + "Both color and depth images have to have the same intrinsics for ICP to work!",
+                    throttle_duration_sec=5.0,
+                )
+                return
+
+            depth_frame_ids = {
+                depth_image.header.frame_id,
+                depth_camera_info.header.frame_id,
+            }
+            if len(depth_frame_ids) > 1:
+                self._node.get_logger().warn(
+                    "Mismatch in `frame_id` between topics "
+                    + f"'{connections[2].getTopic()}' and '{connections[3].getTopic()}'!",
+                    throttle_duration_sec=5.0,
+                )
+                return
+
+            if len(depth_frame_ids) > 1:
+                self._node.get_logger().warn(
+                    "Mismatch in `frame_id` between topics "
+                    + f"'{connections[2].getTopic()}' and '{connections[3].getTopic()}'!",
+                    throttle_duration_sec=5.0,
+                )
+                return
+
+            if len(frame_ids | depth_frame_ids) > 1:
+                self._node.get_logger().warn(
+                    f"Topics '{connections[0].getTopic()}' and "
+                    + f"'{connections[2].getTopic()}' contain images with different `frame_id`! "
+                    + "Depth image should be projected to mach frame of the color image for ICP to work!",
+                    throttle_duration_sec=5.0,
+                )
+                return
+
+        self._color_image = color_image
+        self._depth_image = depth_image
+
         self._image_sync_hook()
 
     def ready(self) -> bool:
@@ -165,7 +264,7 @@ class CameraWrapper:
         :return: Camera image and intrinsic matrix are available
         :rtype: bool
         """
-        return self._image is not None
+        return self._color_image is not None
 
     @data_received_guarded
     def get_last_image_frame_id(self) -> str:
@@ -176,7 +275,7 @@ class CameraWrapper:
         :rtype: str
         """
         return (
-            self._image.header.frame_id
+            self._color_image.header.frame_id
             if self._estimated_tf_frame_id == ""
             else self._estimated_tf_frame_id
         )
@@ -189,7 +288,7 @@ class CameraWrapper:
         :return: Timestamp of the last received image.
         :rtype: rclpy.Time
         """
-        return Time.from_msg(self._image.header.stamp)
+        return Time.from_msg(self._color_image.header.stamp)
 
     @data_received_guarded
     def get_last_rgb_image(self) -> npt.NDArray[np.uint8]:
@@ -201,24 +300,57 @@ class CameraWrapper:
         """
         encoder = (
             self._cvb.imgmsg_to_cv2
-            if isinstance(self._image, Image)
+            if isinstance(self._color_image, Image)
             else self._cvb.compressed_imgmsg_to_cv2
         )
         desired_encoding = (
             "passthrough"
             # Compressed image has no attribute "encoding"
-            if hasattr(self._image, "encoding") and self._image.encoding == "rgb8"
+            if hasattr(self._color_image, "encoding")
+            and self._color_image.encoding == "rgb8"
             else "rgb8"
         )
-        return encoder(self._image, desired_encoding)
+        return encoder(self._color_image, desired_encoding)
 
     @data_received_guarded
     def get_last_k_matrix(self) -> npt.NDArray[np.float64]:
-        """Returns intrinsic matrix associated with last received camera info message.
+        """Returns intrinsic matrix associated with last received color camera info message.
+        If depth is used, both color and depth intrinsics matrices have to be equal.
 
         :raises RuntimeError: No camera info messages were received yet.
         :return: 3x3 Numpy array with intrinsic matrix.
         :rtype: numpy.typing.NDArray[numpy.float64]
         """
-        self._cam_model.fromCameraInfo(self._camera_info)
+        self._cam_model.fromCameraInfo(self._color_camera_info)
         return np.array(self._cam_model.intrinsicMatrix())
+
+    @data_received_guarded
+    def get_last_depth_image(self) -> Union[None, npt.NDArray[np.uint16]]:
+        """Returns last received depth image.
+
+        :raises RuntimeError: No images were received yet.
+        :return: Image converted to OpenCV format in '16UC1' encoding.
+            If depth is not used None is returned.
+        :rtype: Union[None, numpy.typing.NDArray[numpy.uint8]]
+        """
+        if self._depth_image is None:
+            return None
+
+        encoder = (
+            self._cvb.imgmsg_to_cv2
+            if isinstance(self._depth_image, Image)
+            else self._cvb.compressed_imgmsg_to_cv2
+        )
+        desired_encoding = (
+            "passthrough"
+            # Compressed image has no attribute "encoding"
+            if hasattr(self._depth_image, "encoding")
+            and self._depth_image.encoding == "16UC1"
+            else "16UC1"
+        )
+        depth_image = encoder(self._depth_image, desired_encoding)
+        return (
+            depth_image.astype(np.uint16)
+            if desired_encoding == "passthrough"
+            else depth_image
+        )

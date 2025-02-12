@@ -164,7 +164,13 @@ class HappyPoseNode(Node):
 
         # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
-            name: CameraWrapper(self, self._params.cameras, name, self._on_image_cb)
+            name: CameraWrapper(
+                self,
+                self._params.cameras,
+                name,
+                self._on_image_cb,
+                self._params.use_depth,
+            )
             for name in self._params.camera_names
         }
 
@@ -194,6 +200,19 @@ class HappyPoseNode(Node):
             ),
             qos_overriding_options=QoSOverridingOptions.with_default_policies(),
         )
+
+        if (
+            self._params.pose_estimator_type == "cosypose"
+            and self._params.use_depth
+            and self._params.cosypose.renderer.renderer_type != "panda3d"
+        ):
+            e = ParameterException(
+                "Use of any other renderer than `panda3d` is not supported when "
+                + "depth refinement is enabled!",
+                ("pose_estimator_type", "use_depth", "cosypose.renderer"),
+            )
+            self.get_logger().error(str(e))
+            raise e
 
         if self._params.cameras.n_min_cameras > len(self._cameras):
             e = ParameterException(
@@ -434,22 +453,35 @@ class HappyPoseNode(Node):
                 )
             return
 
-        # TODO implement depth info
         rgb_tensor = torch.as_tensor(
             np.stack([cam.get_last_rgb_image() for cam in processed_cameras.values()])
         )
+
+        if self._params.use_depth:
+            depth_tensor = torch.as_tensor(
+                np.stack(
+                    [cam.get_last_rgb_image() for cam in processed_cameras.values()]
+                )
+            )
+        else:
+            depth_tensor = None
+
         K_tensor = torch.as_tensor(
             np.stack([cam.get_last_k_matrix() for cam in processed_cameras.values()])
         )
         if rgb_tensor.shape[-1] == 3:
             rgb_tensor = rgb_tensor.permute(0, 3, 1, 2)
+        if self._params.use_depth and depth_tensor.shape[-1] == 3:
+            depth_tensor = depth_tensor.permute(0, 3, 1, 2)
 
         # Enable shared memory to increase performance
         rgb_tensor.to(self._device).share_memory_()
         K_tensor.to(self._device).share_memory_()
+        if self._params.use_depth:
+            depth_tensor.to(self._device).share_memory_()
 
         observation = ObservationTensor.from_torch_batched(
-            rgb=rgb_tensor, depth=None, K=K_tensor
+            rgb=rgb_tensor, depth=depth_tensor, K=K_tensor
         )
         observation.to(self._device)
         self._observation_tensor_queue.put(observation)
