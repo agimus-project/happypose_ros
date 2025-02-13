@@ -106,7 +106,7 @@ class HappyPosePipeline:
         if len(detections.infos) == 0:
             return None
 
-        object_predictions, _ = self._wrapper.pose_predictor.run_inference_pipeline(
+        cosypose_predictions, _ = self._wrapper.pose_predictor.run_inference_pipeline(
             observation,
             detections=detections,
             run_detector=False,
@@ -116,14 +116,22 @@ class HappyPosePipeline:
 
         if self._params["use_depth"]:
             object_predictions, _ = self._wrapper.depth_refiner.refine_poses(
-                predictions=object_predictions, depth=observation.depth, K=observation.K
+                predictions=cosypose_predictions,
+                depth=observation.depth,
+                K=observation.K,
             )
+        else:
+            object_predictions = cosypose_predictions
 
         if not self._multiview:
             object_predictions.cpu()
+            # TODO remove. This is debug
+            cosypose_predictions.cpu()
             return {
                 "infos": object_predictions.infos,
                 "poses": object_predictions.poses,
+                # TODO remove. This is debug
+                "cosypose_poses": cosypose_predictions.poses,
                 "bboxes": detections.tensors["bboxes"].int().cpu(),
             }
 
