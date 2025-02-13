@@ -455,24 +455,20 @@ class HappyPoseNode(Node):
 
         rgb_tensor = torch.as_tensor(
             np.stack([cam.get_last_rgb_image() for cam in processed_cameras.values()])
-        )
+        ).permute(0, 3, 1, 2)
 
         if self._params.use_depth:
             depth_tensor = torch.as_tensor(
                 np.stack(
-                    [cam.get_last_rgb_image() for cam in processed_cameras.values()]
+                    [cam.get_last_depth_image() for cam in processed_cameras.values()]
                 )
-            )
+            ).unsqueeze(1)
         else:
             depth_tensor = None
 
         K_tensor = torch.as_tensor(
             np.stack([cam.get_last_k_matrix() for cam in processed_cameras.values()])
         )
-        if rgb_tensor.shape[-1] == 3:
-            rgb_tensor = rgb_tensor.permute(0, 3, 1, 2)
-        if self._params.use_depth and depth_tensor.shape[-1] == 3:
-            depth_tensor = depth_tensor.permute(0, 3, 1, 2)
 
         # Enable shared memory to increase performance
         rgb_tensor.to(self._device).share_memory_()

@@ -90,7 +90,7 @@ class CameraWrapper:
         ]
 
         if use_depth:
-            sync_topics + [
+            sync_topics += [
                 Subscriber(
                     self._node,
                     img_msg_type,
@@ -115,7 +115,7 @@ class CameraWrapper:
         )
         # Register callback depending on the configuration
         self._color_image_approx_time_sync.registerCallback(
-            self._on_image_data_cb if use_depth else self._on_image_data_cb
+            self._on_image_with_depth_data_cb if use_depth else self._on_image_data_cb
         )
 
     def update_params(self, params: happypose_ros.Params.cameras) -> None:
@@ -193,13 +193,16 @@ class CameraWrapper:
         :param color_info: Camera info message for the depth camera sensor. None if not used.
         :type color_info: Union[None, sensor_msgs.msg.CameraInfo]
         """
-
+        image_discarded_log = (
+            f"Image from camera '{self._camera_name}' will be discarded!"
+        )
         connections = self._color_image_approx_time_sync.input_connections
         frame_ids = {color_image.header.frame_id, color_camera_info.header.frame_id}
         if len(frame_ids) > 1:
             self._node.get_logger().warn(
                 "Mismatch in `frame_id` between topics "
-                + f"'{connections[0].getTopic()}' and '{connections[1].getTopic()}'!",
+                + f"'{connections[0].getTopic()}' and '{connections[1].getTopic()}'! "
+                + image_discarded_log,
                 throttle_duration_sec=5.0,
             )
             return
@@ -209,7 +212,7 @@ class CameraWrapper:
         else:
             topic = self._color_image_approx_time_sync.input_connections[1].getTopic()
             self._node.get_logger().warn(
-                f"K matrix from topic '{topic}' is incorrect!",
+                f"K matrix from topic '{topic}' is incorrect! " + image_discarded_log,
                 throttle_duration_sec=5.0,
             )
             return
@@ -219,7 +222,8 @@ class CameraWrapper:
                 self._node.get_logger().warn(
                     f"Topics '{connections[1].getTopic()}' and "
                     + f"'{connections[3].getTopic()}' contain different intrinsics matrices! "
-                    + "Both color and depth images have to have the same intrinsics for ICP to work!",
+                    + "Both color and depth images have to have the same intrinsics for ICP to work! "
+                    + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
                 return
@@ -231,15 +235,8 @@ class CameraWrapper:
             if len(depth_frame_ids) > 1:
                 self._node.get_logger().warn(
                     "Mismatch in `frame_id` between topics "
-                    + f"'{connections[2].getTopic()}' and '{connections[3].getTopic()}'!",
-                    throttle_duration_sec=5.0,
-                )
-                return
-
-            if len(depth_frame_ids) > 1:
-                self._node.get_logger().warn(
-                    "Mismatch in `frame_id` between topics "
-                    + f"'{connections[2].getTopic()}' and '{connections[3].getTopic()}'!",
+                    + f"'{connections[2].getTopic()}' and '{connections[3].getTopic()}'! "
+                    + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
                 return
@@ -248,7 +245,8 @@ class CameraWrapper:
                 self._node.get_logger().warn(
                     f"Topics '{connections[0].getTopic()}' and "
                     + f"'{connections[2].getTopic()}' contain images with different `frame_id`! "
-                    + "Depth image should be projected to mach frame of the color image for ICP to work!",
+                    + "Depth image should be projected to mach frame of the color image for ICP to work! "
+                    + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
                 return
@@ -260,7 +258,20 @@ class CameraWrapper:
                 self._node.get_logger().warn(
                     f"Topics '{connections[0].getTopic()}' and "
                     + f"'{connections[2].getTopic()}' contain images of a  different size! "
-                    + "Depth and color images should have the same size for ICP to work!",
+                    + "Depth and color images should have the same size for ICP to work! "
+                    + image_discarded_log,
+                    throttle_duration_sec=5.0,
+                )
+                return
+
+            if hasattr(depth_image, "encoding") and depth_image.encoding not in (
+                "16UC1",
+                "32FC1",
+            ):
+                self._node.get_logger().warn(
+                    f"Unsupported encoding '{depth_image.encoding}' on topic "
+                    + f"'{connections[2].getTopic()}'. "
+                    + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
                 return
@@ -337,32 +348,23 @@ class CameraWrapper:
         return np.array(self._cam_model.intrinsicMatrix())
 
     @data_received_guarded
-    def get_last_depth_image(self) -> Union[None, npt.NDArray[np.uint16]]:
+    def get_last_depth_image(self) -> Union[None, npt.NDArray[np.float32]]:
         """Returns last received depth image.
 
         :raises RuntimeError: No images were received yet.
-        :return: Image converted to OpenCV format in '16UC1' encoding.
+        :return: Image converted to OpenCV format in 'float32' format.
             If depth is not used None is returned.
-        :rtype: Union[None, numpy.typing.NDArray[numpy.uint8]]
+        :rtype: Union[None, numpy.typing.NDArray[numpy.float32]]
         """
         if self._depth_image is None:
             return None
 
-        encoder = (
-            self._cvb.imgmsg_to_cv2
-            if isinstance(self._depth_image, Image)
-            else self._cvb.compressed_imgmsg_to_cv2
-        )
-        desired_encoding = (
-            "passthrough"
-            # Compressed image has no attribute "encoding"
-            if hasattr(self._depth_image, "encoding")
-            and self._depth_image.encoding == "16UC1"
-            else "16UC1"
-        )
-        depth_image = encoder(self._depth_image, desired_encoding)
-        return (
-            depth_image.astype(np.uint16)
-            if desired_encoding == "passthrough"
-            else depth_image
-        )
+        # Uncompressed image
+        if hasattr(self._depth_image, "encoding"):
+            scale = 0.001 if self._depth_image.encoding == "16UC1" else 1.0
+            depth_image = self._cvb.imgmsg_to_cv2(self._depth_image, "passthrough")
+        # Compressed image
+        else:
+            scale = 1.0
+            depth_image = self._cvb.compressed_imgmsg_to_cv2(self._depth_image, "F32C1")
+        return depth_image.astype(np.float32) * scale

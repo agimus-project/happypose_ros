@@ -40,7 +40,11 @@ class HappyPosePipeline:
         self._wrapper = CosyPoseWrapper(
             dataset_name=self._params["cosypose"]["dataset_name"],
             model_type=self._params["cosypose"]["model_type"],
-            depth_refiner_type=self._params["cosypose"]["depth_refiner_type"],
+            depth_refiner_type=(
+                self._params["cosypose"]["depth_refiner_type"]
+                if self._params["use_depth"]
+                else None
+            ),
             **self._params["cosypose"]["renderer"],
         )
 
@@ -110,6 +114,11 @@ class HappyPosePipeline:
             **self._inference_args["pose_estimator"],
         )
 
+        if self._params["use_depth"]:
+            object_predictions, _ = self._wrapper.depth_refiner.refine_poses(
+                predictions=object_predictions, depth=observation.depth, K=observation.K
+            )
+
         if not self._multiview:
             object_predictions.cpu()
             return {
@@ -121,6 +130,7 @@ class HappyPosePipeline:
         object_predictions.infos = object_predictions.infos.rename(
             columns={"batch_im_id": "view_id"}
         )
+        # Arbitrary scene_id and group_id
         object_predictions.infos["scene_id"] = 42
         object_predictions.infos["group_id"] = 0
 
