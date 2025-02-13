@@ -119,6 +119,8 @@ class HappyPosePipeline:
                 predictions=cosypose_predictions,
                 depth=observation.depth,
                 K=observation.K,
+                # TODO uncomment when added to implemented in happypose
+                # **self._inference_args[self._params["cosypose"]["depth_refiner_type"]],
             )
         else:
             object_predictions = cosypose_predictions

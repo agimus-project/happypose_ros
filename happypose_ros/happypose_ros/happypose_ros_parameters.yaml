@@ -65,7 +65,7 @@ happypose_ros:
       default_value: "icp"
       description: "TODO @mfoumy dosctring"
       validation:
-        one_of<>: [["icp", "teaserpp"]]
+        one_of<>: [["icp"]]
         custom_validators::check_teaserpp_installed:
       read_only: true
     renderer:
@@ -102,6 +102,50 @@ happypose_ros:
           type: int
           default_value: 1
           description: "Number of iterations for the coarse estimate."
+          validation:
+            gt_eq<>: [1]
+      icp:
+        n_min_points:
+          type: int
+          default_value: 1000
+          # @Mfoumy please check it
+          description: "Minimum number of matching depth points to consider detection valid."
+          validation:
+            gt_eq<>: [1]
+        min_measured_depth:
+          type: double
+          default_value: 0.2
+          description: "Minimum clipping distance of depth point from the camera to be considered valid."
+          validation:
+            gt_eq<>: [0.0]
+        max_measured_depth:
+          type: double
+          default_value: 5.0
+          description: "Maximum clipping distance of depth point from the camera to be considered valid."
+          validation:
+            gt_eq<>: [0.0]
+        iterations:
+          type: int
+          default_value: 100
+          description: "Number of iterations of ICP algorithm."
+          validation:
+            gt_eq<>: [1]
+        tolerance:
+          type: double
+          default_value: 0.05
+          description: "Controls the accuracy of registration at each iteration of ICP."
+          validation:
+            gt_eq<>: [0.0]
+        rejection_scale:
+          type: double
+          default_value: 2.5
+          description: "Robust outlier rejection is applied for robustness. This value actually corresponds to the standard deviation coefficient. Points with rejectionScale * &sigma are ignored during registration."
+          validation:
+            gt_eq<>: [0.0]
+        num_levels:
+          type: int
+          default_value: 4
+          description: "Number of pyramid levels to proceed. Deep pyramids increase speed but decrease accuracy. Too coarse pyramids might have computational overhead on top of the inaccurate registrtaion. This parameter should be chosen to optimize a balance. Typical values range from 4 to 10."
           validation:
             gt_eq<>: [1]
       multiview:
