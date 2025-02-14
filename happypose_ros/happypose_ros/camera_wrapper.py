@@ -188,10 +188,10 @@ class CameraWrapper:
         :type color_image: Union[sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]
         :param color_info: Camera info message for the color camera sensor.
         :type color_info: sensor_msgs.msg.CameraInfo
-        :param color_image: Image received from the depth camera sensor. None if not used.
-        :type color_image: Union[None, sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]
-        :param color_info: Camera info message for the depth camera sensor. None if not used.
-        :type color_info: Union[None, sensor_msgs.msg.CameraInfo]
+        :param depth_image: Image received from the depth camera sensor. None if not used.
+        :type depth_image: Union[None, sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]
+        :param depth_camera_info: Camera info message for the depth camera sensor. None if not used.
+        :type depth_camera_info: Union[None, sensor_msgs.msg.CameraInfo]
         """
         image_discarded_log = (
             f"Image from camera '{self._camera_name}' will be discarded!"
