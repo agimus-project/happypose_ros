@@ -254,8 +254,8 @@ class CameraWrapper:
                 return
 
             if (
-                color_image.width != depth_image.width
-                or color_image.height != depth_image.height
+                color_camera_info.width != depth_camera_info.width
+                or color_camera_info.height != depth_camera_info.height
             ):
                 self._node.get_logger().warn(
                     f"Topics '{connections[0].getTopic()}' and "
@@ -266,10 +266,7 @@ class CameraWrapper:
                 )
                 return
 
-            if hasattr(depth_image, "encoding") and depth_image.encoding not in (
-                "16UC1",
-                "32FC1",
-            ):
+            if depth_image.encoding not in ("16UC1", "32FC1"):
                 self._node.get_logger().warn(
                     f"Unsupported encoding '{depth_image.encoding}' on topic "
                     + f"'{connections[2].getTopic()}'. "
@@ -361,12 +358,8 @@ class CameraWrapper:
         if self._depth_image is None:
             return None
 
-        # Uncompressed image
-        if hasattr(self._depth_image, "encoding"):
-            scale = 0.001 if self._depth_image.encoding == "16UC1" else 1.0
-            depth_image = self._cvb.imgmsg_to_cv2(self._depth_image, "passthrough")
-        # Compressed image
-        else:
-            scale = 1.0
-            depth_image = self._cvb.compressed_imgmsg_to_cv2(self._depth_image, "F32C1")
-        return depth_image.astype(np.float32) * scale
+        scale = 0.001 if self._depth_image.encoding == "16UC1" else 1.0
+        return (
+            self._cvb.imgmsg_to_cv2(self._depth_image, "passthrough").astype(np.float32)
+            * scale
+        )

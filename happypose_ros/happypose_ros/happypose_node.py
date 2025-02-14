@@ -228,6 +228,22 @@ class HappyPoseNode(Node):
             self.get_logger().error(str(e))
             raise e
 
+        compressed_cam = next(
+            (
+                name
+                for name in self._cameras.keys()
+                if self._params.cameras.get_entry(name).compressed
+            ),
+            None,
+        )
+        if self._params.use_depth and compressed_cam is not None:
+            e = ParameterException(
+                "Use of depth pose refinement with compressed images is not supported!",
+                ("use_depth", f"cameras.{compressed_cam}.compressed"),
+            )
+            self.get_logger().error(str(e))
+            raise e
+
         if self._params.cameras.n_min_cameras > len(self._cameras):
             e = ParameterException(
                 "Minimum number of cameras to trigger the pipeline is"
