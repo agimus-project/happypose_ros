@@ -90,22 +90,24 @@ class CameraWrapper:
         ]
 
         if use_depth:
-            sync_topics += [
-                Subscriber(
-                    self._node,
-                    img_msg_type,
-                    self._camera_name + "/depth" + topic_postfix,
-                    qos_profile=qos_profile_sensor_data,
-                    qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-                ),
-                Subscriber(
-                    self._node,
-                    CameraInfo,
-                    self._camera_name + "/depth/camera_info",
-                    qos_profile=qos_profile_sensor_data,
-                    qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-                ),
-            ]
+            sync_topics.extend(
+                [
+                    Subscriber(
+                        self._node,
+                        img_msg_type,
+                        self._camera_name + "/depth" + topic_postfix,
+                        qos_profile=qos_profile_sensor_data,
+                        qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+                    ),
+                    Subscriber(
+                        self._node,
+                        CameraInfo,
+                        self._camera_name + "/depth/camera_info",
+                        qos_profile=qos_profile_sensor_data,
+                        qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+                    ),
+                ]
+            )
 
         # Create time approximate time synchronization
         self._color_image_approx_time_sync = ApproximateTimeSynchronizer(
