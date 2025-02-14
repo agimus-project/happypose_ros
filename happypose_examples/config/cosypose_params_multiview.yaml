@@ -52,15 +52,15 @@
           max_measured_depth: 5.0
           # Number of iterations of ICP algorithm
           iterations: 100
-          # Controls the accuracy of registration at each iteration of ICP
+          # Tells the algorithm to stop when the norm of the error vector makes less improvement in percent,
+          # than tolerance value. The error function is the norm of the difference of the matched 3D points
           tolerance: 0.05
           # Robust outlier rejection is applied for robustness.
           # This value actually corresponds to the standard deviation coefficient.
           # Points with rejectionScale * &sigma are ignored during registration
           rejection_scale: 2.5
-          # Number of pyramid levels to proceed. Deep pyramids increase speed but decrease accuracy.
-          # Too coarse pyramids might have computational overhead on top of the inaccurate registrtaion.
-          # This parameter should be chosen to optimize a balance. Typical values range from 4 to 10
+          # Corresponds to iterative ICP, where the original point cloud is subsampled.
+          # Note that if the output of CosyPose is considered good, ``num_levels`` does not have to be high
           num_levels: 4
         multiview:
           # Number of ransac iterations when matching views

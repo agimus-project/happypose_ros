@@ -133,7 +133,7 @@ happypose_ros:
         tolerance:
           type: double
           default_value: 0.05
-          description: "Controls the accuracy of registration at each iteration of ICP."
+          description: "Tells the algorithm to stop when the norm of the error vector makes less improvement in percent, than tolerance value. The error function is the norm of the difference of the matched 3D points."
           validation:
             gt_eq<>: [0.0]
         rejection_scale:
@@ -145,7 +145,7 @@ happypose_ros:
         num_levels:
           type: int
           default_value: 4
-          description: "Number of pyramid levels to proceed. Deep pyramids increase speed but decrease accuracy. Too coarse pyramids might have computational overhead on top of the inaccurate registrtaion. This parameter should be chosen to optimize a balance. Typical values range from 4 to 10."
+          description: "Corresponds to iterative ICP, where the original point cloud is subsampled. Note that if the output of CosyPose is considered good, ``num_levels`` does not have to be high."
           validation:
             gt_eq<>: [1]
       multiview:
