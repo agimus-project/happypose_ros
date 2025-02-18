@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import pandas as pd
 from typing import Union
@@ -93,11 +94,17 @@ class HappyPosePipeline:
             was detected None is returned
         :rtype: Union[None, dict]
         """
+        timings = {}
+        t1 = time.perf_counter()
+
         detections = self._wrapper.pose_predictor.detector_model.get_detections(
             observation,
             output_masks=False,
             **self._inference_args["detector"],
         )
+
+        t2 = time.perf_counter()
+        timings["detections"] = t2 - t1
 
         detections = filter_detections(
             detections, self._inference_args["labels_to_keep"]
@@ -113,28 +120,38 @@ class HappyPosePipeline:
             data_TCO_init=None,
             **self._inference_args["pose_estimator"],
         )
+        t3 = time.perf_counter()
+        timings["single_view"] = t3 - t2
 
         if self._params["use_depth"]:
-            object_predictions, _ = self._wrapper.depth_refiner.refine_poses(
+            object_predictions, extra_data_depth_ref = self._wrapper.depth_refiner.refine_poses(
                 predictions=cosypose_predictions,
                 depth=observation.depth,
                 K=observation.K,
                 # TODO uncomment when added to implemented in happypose
                 # **self._inference_args[self._params["cosypose"]["depth_refiner_type"]],
             )
+
+            valid_icp_ids = [extra_data_depth_ref["retvals_icp"][i] == 0 for i in range(len(object_predictions))]
+            object_predictions = object_predictions[valid_icp_ids]
         else:
             object_predictions = cosypose_predictions
+
+        t4 = time.perf_counter()
+        timings["depth_refinement"] = t4 - t3
 
         if not self._multiview:
             object_predictions.cpu()
             # TODO remove. This is debug
             cosypose_predictions.cpu()
+            timings['total'] = time.perf_counter() - t1
             return {
                 "infos": object_predictions.infos,
                 "poses": object_predictions.poses,
                 # TODO remove. This is debug
                 "cosypose_poses": cosypose_predictions.poses,
                 "bboxes": detections.tensors["bboxes"].int().cpu(),
+                "timings": timings,
             }
 
         object_predictions.infos = object_predictions.infos.rename(
@@ -179,6 +196,10 @@ class HappyPosePipeline:
             "scene/objects"
         ].infos["n_cand"]
 
+        t5 = time.perf_counter()
+        timings["depth_refinement"] = t5 - t4
+        timings["total"] = t5 - t1
+
         return {
             "infos": object_predictions.infos,
             "poses": object_predictions.TWO,
@@ -186,4 +207,5 @@ class HappyPosePipeline:
             "camera_infos": cameras_pred.infos,
             "camera_poses": cameras_pred.TWC,
             "camera_K": cameras_pred.K,
+            "timings": timings,
         }
