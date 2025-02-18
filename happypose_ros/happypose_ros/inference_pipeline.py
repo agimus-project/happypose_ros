@@ -124,15 +124,20 @@ class HappyPosePipeline:
         timings["single_view"] = t3 - t2
 
         if self._params["use_depth"]:
-            object_predictions, extra_data_depth_ref = self._wrapper.depth_refiner.refine_poses(
-                predictions=cosypose_predictions,
-                depth=observation.depth,
-                K=observation.K,
-                # TODO uncomment when added to implemented in happypose
-                # **self._inference_args[self._params["cosypose"]["depth_refiner_type"]],
+            object_predictions, extra_data_depth_ref = (
+                self._wrapper.depth_refiner.refine_poses(
+                    predictions=cosypose_predictions,
+                    depth=observation.depth,
+                    K=observation.K,
+                    # TODO uncomment when added to implemented in happypose
+                    # **self._inference_args[self._params["cosypose"]["depth_refiner_type"]],
+                )
             )
 
-            valid_icp_ids = [extra_data_depth_ref["retvals_icp"][i] == 0 for i in range(len(object_predictions))]
+            valid_icp_ids = [
+                extra_data_depth_ref["retvals_icp"][i] == 0
+                for i in range(len(object_predictions))
+            ]
             object_predictions = object_predictions[valid_icp_ids]
         else:
             object_predictions = cosypose_predictions
@@ -144,7 +149,7 @@ class HappyPosePipeline:
             object_predictions.cpu()
             # TODO remove. This is debug
             cosypose_predictions.cpu()
-            timings['total'] = time.perf_counter() - t1
+            timings["total"] = time.perf_counter() - t1
             return {
                 "infos": object_predictions.infos,
                 "poses": object_predictions.poses,

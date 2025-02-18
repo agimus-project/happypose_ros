@@ -496,16 +496,15 @@ class HappyPoseNode(Node):
             )
             raise e
 
-
         if self._params.use_depth:
             try:
                 depth_tensor = torch.as_tensor(
-                    np.stack(
-                        [cam.get_last_depth_image() for cam in cameras]
-                    )
+                    np.stack([cam.get_last_depth_image() for cam in cameras])
                 ).unsqueeze(1)
             except ValueError as e:
-                depth_resolutions = [cam.get_last_depth_image().shape for cam in cameras]
+                depth_resolutions = [
+                    cam.get_last_depth_image().shape for cam in cameras
+                ]
                 self.get_logger().error(
                     f"Verify: Image resolutions {depth_resolutions}",
                     once=True,
@@ -580,7 +579,9 @@ class HappyPoseNode(Node):
             if results is not None:
                 if self._params.verbose_info_logs:
                     self.get_logger().info(f"Detected {len(results['infos'])} objects.")
-                    rounded_timings = {k: round(v,4) for k, v in results['timings'].items()}
+                    rounded_timings = {
+                        k: round(v, 4) for k, v in results["timings"].items()
+                    }
                     self.get_logger().info(f"Timings {rounded_timings}")
 
                 if self._multiview:
