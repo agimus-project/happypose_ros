@@ -196,14 +196,14 @@ class CameraWrapper:
         :type depth_camera_info: Union[None, sensor_msgs.msg.CameraInfo]
         """
         image_discarded_log = (
-            f"Image from camera '{self._camera_name}' will be discarded!"
+            f" Image from camera '{self._camera_name}' will be discarded!"
         )
         connections = self._color_image_approx_time_sync.input_connections
         frame_ids = {color_image.header.frame_id, color_camera_info.header.frame_id}
         if len(frame_ids) > 1:
             self._node.get_logger().warn(
-                "Mismatch in `frame_id` between topics "
-                + f"'{connections[0].getTopic()}' and '{connections[1].getTopic()}'! "
+                "Mismatch in `frame_id` between topics"
+                f" '{connections[0].getTopic()}' and '{connections[1].getTopic()}'!"
                 + image_discarded_log,
                 throttle_duration_sec=5.0,
             )
@@ -214,7 +214,7 @@ class CameraWrapper:
         else:
             topic = self._color_image_approx_time_sync.input_connections[1].getTopic()
             self._node.get_logger().warn(
-                f"K matrix from topic '{topic}' is incorrect! " + image_discarded_log,
+                f"K matrix from topic '{topic}' is incorrect!" + image_discarded_log,
                 throttle_duration_sec=5.0,
             )
             return
@@ -223,8 +223,8 @@ class CameraWrapper:
             if not np.allclose(color_camera_info.k, depth_camera_info.k):
                 self._node.get_logger().warn(
                     f"Topics '{connections[1].getTopic()}' and "
-                    + f"'{connections[3].getTopic()}' contain different intrinsics matrices! "
-                    + "Both color and depth images have to have the same intrinsics for ICP to work! "
+                    f" '{connections[3].getTopic()}' contain different intrinsics matrices!"
+                    " Both color and depth images have to have the same intrinsics for ICP to work!"
                     + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
@@ -236,8 +236,8 @@ class CameraWrapper:
             }
             if len(depth_frame_ids) > 1:
                 self._node.get_logger().warn(
-                    "Mismatch in `frame_id` between topics "
-                    + f"'{connections[2].getTopic()}' and '{connections[3].getTopic()}'! "
+                    "Mismatch in `frame_id` between topics"
+                    f" '{connections[2].getTopic()}' and '{connections[3].getTopic()}'!"
                     + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
@@ -245,9 +245,9 @@ class CameraWrapper:
 
             if len(frame_ids | depth_frame_ids) > 1:
                 self._node.get_logger().warn(
-                    f"Topics '{connections[0].getTopic()}' and "
-                    + f"'{connections[2].getTopic()}' contain images with different `frame_id`! "
-                    + "Depth image should be projected to mach frame of the color image for ICP to work! "
+                    f"Topics '{connections[0].getTopic()}' and"
+                    f" '{connections[2].getTopic()}' contain images with different `frame_id`!"
+                    " Depth image should be projected to mach frame of the color image for ICP to work!"
                     + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
@@ -258,9 +258,9 @@ class CameraWrapper:
                 or color_camera_info.height != depth_camera_info.height
             ):
                 self._node.get_logger().warn(
-                    f"Topics '{connections[0].getTopic()}' and "
-                    + f"'{connections[2].getTopic()}' contain images of a  different size! "
-                    + "Depth and color images should have the same size for ICP to work! "
+                    f"Topics '{connections[0].getTopic()}' and"
+                    f" '{connections[2].getTopic()}' contain images of a  different size!"
+                    " Depth and color images should have the same size for ICP to work!"
                     + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
@@ -268,9 +268,8 @@ class CameraWrapper:
 
             if depth_image.encoding not in ("16UC1", "32FC1"):
                 self._node.get_logger().warn(
-                    f"Unsupported encoding '{depth_image.encoding}' on topic "
-                    + f"'{connections[2].getTopic()}'. "
-                    + image_discarded_log,
+                    f"Unsupported encoding '{depth_image.encoding}' on topic"
+                    f" '{connections[2].getTopic()}'." + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
                 return
@@ -345,6 +344,16 @@ class CameraWrapper:
         """
         self._cam_model.fromCameraInfo(self._color_camera_info)
         return np.array(self._cam_model.intrinsicMatrix())
+
+    @data_received_guarded
+    def get_last_image_shape(self) -> tuple[int]:
+        """Returns shape of the last received image in a tuple (height, width).
+
+        :raises RuntimeError: No images were received yet.
+        :return: Tuple with values (height, width).
+        :rtype: tuple[int]
+        """
+        return (self._color_image.height, self._color_image.width)
 
     @data_received_guarded
     def get_last_depth_image(self) -> Union[None, npt.NDArray[np.float32]]:

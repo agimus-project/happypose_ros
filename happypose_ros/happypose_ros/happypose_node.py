@@ -463,6 +463,36 @@ class HappyPoseNode(Node):
             )
         )
 
+        if self._leading_camera not in processed_cameras.keys():
+            if (now - self._last_pipeline_trigger) > Duration(seconds=20):
+                self.get_logger().warn(
+                    "Failed to include leading camera in"
+                    " the pipeline for past 20 seconds.",
+                    throttle_duration_sec=20.0,
+                )
+            return
+
+        leading_cam_shape = processed_cameras.values(
+            self._leading_camera
+        ).get_last_image_shape()
+
+        def __check_shape_and_log(name: str, cam: CameraWrapper) -> bool:
+            image_shape = cam.get_last_image_shape()
+            if image_shape != leading_cam_shape:
+                self.get_logger().warn(
+                    f"Mismatch in image shapes for camera '{name}' and leading camera!"
+                    f" Has shape '{image_shape}', while expected '{leading_cam_shape}'!",
+                    throttle_duration_sec=5.0,
+                )
+                return False
+            return True
+
+        processed_cameras = {
+            name: cam
+            for name, cam in processed_cameras.items()
+            if __check_shape_and_log(name, cam)
+        }
+
         if len(processed_cameras) < self._params.cameras.n_min_cameras:
             # Throttle logs to either 5 times the timeout or 10 seconds
             timeout = max(5.0 * self._params.cameras.timeout, 10.0)
@@ -474,48 +504,21 @@ class HappyPoseNode(Node):
                 )
             return
 
-        if self._leading_camera not in processed_cameras.keys():
-            if (now - self._last_pipeline_trigger) > Duration(seconds=20):
-                self.get_logger().warn(
-                    "Failed to include leading camera in"
-                    " the pipeline for past 20 seconds.",
-                    throttle_duration_sec=20.0,
-                )
-            return
-
-        cameras = processed_cameras.values()
-        try:
-            rgb_tensor = torch.as_tensor(
-                np.stack([cam.get_last_rgb_image() for cam in cameras])
-            ).permute(0, 3, 1, 2)
-        except ValueError as e:
-            rgb_resolutions = [cam.get_last_rgb_image().shape for cam in cameras]
-            self.get_logger().error(
-                f"Verify: Image resolutions {rgb_resolutions}",
-                once=True,
-            )
-            raise e
+        rgb_tensor = torch.as_tensor(
+            np.stack([cam.get_last_rgb_image() for cam in processed_cameras.values()])
+        ).permute(0, 3, 1, 2)
 
         if self._params.use_depth:
-            try:
-                depth_tensor = torch.as_tensor(
-                    np.stack([cam.get_last_depth_image() for cam in cameras])
-                ).unsqueeze(1)
-            except ValueError as e:
-                depth_resolutions = [
-                    cam.get_last_depth_image().shape for cam in cameras
-                ]
-                self.get_logger().error(
-                    f"Verify: Image resolutions {depth_resolutions}",
-                    once=True,
+            depth_tensor = torch.as_tensor(
+                np.stack(
+                    [cam.get_last_depth_image() for cam in processed_cameras.values()]
                 )
-                raise e
-
+            ).unsqueeze(1)
         else:
             depth_tensor = None
 
         K_tensor = torch.as_tensor(
-            np.stack([cam.get_last_k_matrix() for cam in cameras])
+            np.stack([cam.get_last_k_matrix() for cam in processed_cameras.values()])
         )
 
         # Enable shared memory to increase performance
