@@ -472,9 +472,7 @@ class HappyPoseNode(Node):
                 )
             return
 
-        leading_cam_shape = processed_cameras.values(
-            self._leading_camera
-        ).get_last_image_shape()
+        leading_cam_shape = processed_cameras[self._leading_camera].get_last_image_shape()
 
         def __check_shape_and_log(name: str, cam: CameraWrapper) -> bool:
             image_shape = cam.get_last_image_shape()
