@@ -135,13 +135,10 @@ class HappyPosePipeline:
                 )
             )
 
-            object_predictions = [
-                prediction
-                for prediction, retval in zip(
-                    object_predictions, extra_data_depth_ref["retvals_icp"]
-                )
-                if retval
-            ]
+            # Select only valid ICP results (retval of value 0)
+            valid_icp_ids = np.logical_not(extra_data_depth_ref["retvals_icp"])
+            object_predictions = object_predictions[valid_icp_ids]
+
         else:
             object_predictions = cosypose_predictions
 
