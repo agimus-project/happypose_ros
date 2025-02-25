@@ -481,7 +481,8 @@ class HappyPoseNode(Node):
             if image_shape != leading_cam_shape:
                 self.get_logger().warn(
                     f"Mismatch in image shapes for camera '{name}' and leading camera!"
-                    f" Has shape '{image_shape}', while expected '{leading_cam_shape}'!",
+                    f" Has shape '{image_shape}', while expected '{leading_cam_shape}'!"
+                    f" Image from camera '{name}' will be discarded!",
                     throttle_duration_sec=5.0,
                 )
                 return False
