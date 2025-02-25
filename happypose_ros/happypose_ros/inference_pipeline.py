@@ -135,13 +135,11 @@ class HappyPosePipeline:
                 )
             )
 
-            object_predictions = [
-                prediction
-                for prediction, retval in zip(
-                    object_predictions, extra_data_depth_ref["retvals_icp"]
-                )
-                if retval
+            valid_icp_ids = [
+                extra_data_depth_ref["retvals_icp"][i] == 0
+                for i in range(len(object_predictions))
             ]
+            object_predictions = object_predictions[valid_icp_ids]
         else:
             object_predictions = cosypose_predictions
 
