@@ -613,6 +613,19 @@ class HappyPoseNode(Node):
                         leading_cam_pose_inv @ results["camera_poses"][cams_to_tf]
                     )
 
+                    # Publish non-leading estimated camera poses in tf
+                    # Assume HappyPose is returning cameras in the same order it received them
+                    for pose, (name, cam) in zip(
+                        results["camera_poses"], cam_data.items()
+                    ):
+                        if (
+                            not self._params.cameras.get_entry(name).leading
+                            and self._params.cameras.get_entry(name).publish_tf
+                        ):
+                            self._tf_broadcaster.sendTransform(
+                                get_camera_transform(pose, header, cam["frame_id"])
+                            )
+
                 # In case of multi-view, do not use bounding boxes
                 detections = get_detection_array_msg(
                     results, header, has_bbox=not self._multiview
@@ -643,16 +656,6 @@ class HappyPoseNode(Node):
                 )
                 self._marker_publisher.publish(markers)
 
-            if self._multiview:
-                # Assume HappyPose is already returning cameras in the same order it received them
-                for pose, (name, cam) in zip(results["camera_poses"], cam_data.items()):
-                    if (
-                        not self._params.cameras.get_entry(name).leading
-                        and self._params.cameras.get_entry(name).publish_tf
-                    ):
-                        self._tf_broadcaster.sendTransform(
-                            get_camera_transform(pose, header, cam["frame_id"])
-                        )
         # Queue was closed
         except ValueError:
             return
