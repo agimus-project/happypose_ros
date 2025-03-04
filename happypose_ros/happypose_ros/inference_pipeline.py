@@ -147,14 +147,10 @@ class HappyPosePipeline:
 
         if not self._multiview:
             object_predictions.cpu()
-            # TODO remove. This is debug
-            cosypose_predictions.cpu()
             timings["total"] = time.perf_counter() - t1
             return {
                 "infos": object_predictions.infos,
                 "poses": object_predictions.poses,
-                # TODO remove. This is debug
-                "cosypose_poses": cosypose_predictions.poses,
                 "bboxes": detections.tensors["bboxes"].int().cpu(),
                 "timings": timings,
             }

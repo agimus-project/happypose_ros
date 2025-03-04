@@ -182,23 +182,9 @@ class HappyPoseNode(Node):
             qos_profile=qos_profile_system_default,
             qos_overriding_options=QoSOverridingOptions.with_default_policies(),
         )
-        # TODO remove. This is debug
-        self._detections_cosypose_publisher = self.create_publisher(
-            Detection2DArray,
-            "cosypose/detections",
-            qos_profile=qos_profile_system_default,
-            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-        )
         self._vision_info_publisher = self.create_publisher(
             VisionInfo,
             "happypose/vision_info",
-            qos_profile=qos_profile_system_default,
-            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
-        )
-        # TODO remove. This is debug
-        self._vision_info_cosypose_publisher = self.create_publisher(
-            VisionInfo,
-            "cosypose/vision_info",
             qos_profile=qos_profile_system_default,
             qos_overriding_options=QoSOverridingOptions.with_default_policies(),
         )
@@ -632,14 +618,6 @@ class HappyPoseNode(Node):
                     results, header, has_bbox=not self._multiview
                 )
 
-                # TODO remove. This is debug
-                cosypose_detections = get_detection_array_msg(
-                    results,
-                    header,
-                    has_bbox=not self._multiview,
-                    result="cosypose_poses",
-                )
-
             else:
                 if self._params.verbose_info_logs:
                     self.get_logger().info("No objects detected.")
@@ -649,19 +627,10 @@ class HappyPoseNode(Node):
                     detections=[],
                 )
 
-                # TODO remove. This is debug
-                cosypose_detections = Detection2DArray(
-                    header=header,
-                    detections=[],
-                )
-
             self._detections_publisher.publish(detections)
-            # TODO remove. This is debug
-            self._detections_cosypose_publisher.publish(cosypose_detections)
 
             self._vision_info_msg.header = header
             self._vision_info_publisher.publish(self._vision_info_msg)
-            self._vision_info_cosypose_publisher.publish(self._vision_info_msg)
 
             if self._params.visualization.publish_markers:
                 # TODO consider better path handling
