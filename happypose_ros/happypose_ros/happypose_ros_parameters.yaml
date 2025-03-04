@@ -63,7 +63,7 @@ happypose_ros:
     depth_refiner_type:
       type: string
       default_value: "icp"
-      description: "TODO @mfoumy dosctring"
+      description: "Type of happypose depth refinement. Available: 'icp'"
       validation:
         one_of<>: [["icp"]]
         custom_validators::check_teaserpp_installed:
@@ -108,7 +108,6 @@ happypose_ros:
         n_min_points:
           type: int
           default_value: 1000
-          # @Mfoumy please check it
           description: "Minimum number of matching depth points to consider detection valid."
           validation:
             gt_eq<>: [1]
