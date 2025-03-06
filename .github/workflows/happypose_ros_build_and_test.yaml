@@ -51,8 +51,6 @@ jobs:
           unzip -n -qq ycbv_models.zip
       - name: Remove incompatible PyTest version
         run: pip uninstall -y pytest
-      - name: Enforce setuptools version to make unittests working
-        run: pip install setuptools==58.2.0
       - name: Install ROS 2 Humble
         uses: ros-tooling/setup-ros@v0.7
         with:
