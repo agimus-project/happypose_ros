@@ -572,7 +572,7 @@ class HappyPoseNode(Node):
                     rounded_timings = {
                         k: round(v, 4) for k, v in results["timings"].items()
                     }
-                    self.get_logger().info(f"Timings {rounded_timings}")
+                    self.get_logger().info(f" Inference timings [s]: {rounded_timings}")
 
                 if self._multiview:
                     missing_cameras = len(cam_data) - len(results["camera_infos"])
