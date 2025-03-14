@@ -104,15 +104,15 @@ class HappyPoseTesterNode(Node):
                     cam[1],
                     # Choose topic name based on the type
                     (
-                        f"{cam[0]}/image_raw"
+                        f"{cam[0]}/color/image_raw"
                         if isinstance(cam[1], Metaclass_Image)
-                        else f"{cam[0]}/image_raw/compressed"
+                        else f"{cam[0]}/color/image_raw/compressed"
                     ),
                     qos_profile=reliable_qos,
                 ),
                 self.create_publisher(
                     CameraInfo,
-                    (f"{cam[0]}/camera_info"),
+                    (f"{cam[0]}/color/camera_info"),
                     qos_profile=reliable_qos,
                 ),
             )
@@ -672,6 +672,6 @@ def create_camera_reliable_qos_config(
 
     return {
         f"qos_overrides./{namespace}/{cam_name}/{topic}.subscription.{key}": value
-        for topic in ("camera_info", "image_raw")
+        for topic in ("color/camera_info", "color/image_raw")
         for key, value in qos_settings.items()
     }

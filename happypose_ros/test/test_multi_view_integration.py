@@ -99,12 +99,14 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
 
     def test_02_check_topics(self) -> None:
         # Check if node subscribes to correct topics
-        self.node.assert_node_is_subscriber("cam_1/image_raw", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_1/camera_info", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_2/image_raw/compressed", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_2/camera_info", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_3/image_raw", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_3/camera_info", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_1/color/image_raw", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_1/color/camera_info", timeout=3.0)
+        self.node.assert_node_is_subscriber(
+            "cam_2/color/image_raw/compressed", timeout=3.0
+        )
+        self.node.assert_node_is_subscriber("cam_2/color/camera_info", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_3/color/image_raw", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_3/color/camera_info", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/detections", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/vision_info", timeout=3.0)
         self.node.assert_node_is_publisher("/tf", timeout=3.0)
