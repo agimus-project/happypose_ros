@@ -89,9 +89,9 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         )
 
         image_path = get_package_share_directory("happypose_ros") + "/test"
-        cls.cam_1_image = np.asarray(PIL.Image.open(image_path + "/000629.png"))
-        cls.cam_2_image = np.asarray(PIL.Image.open(image_path + "/001130.png"))
-        cls.cam_3_image = np.asarray(PIL.Image.open(image_path + "/001874.png"))
+        cls.cam_1_image = np.asarray(PIL.Image.open(image_path + "/rgb/000629.png"))
+        cls.cam_2_image = np.asarray(PIL.Image.open(image_path + "/rgb/001130.png"))
+        cls.cam_3_image = np.asarray(PIL.Image.open(image_path + "/rgb/001874.png"))
 
     def test_01_node_startup(self, proc_output: ActiveIoHandler) -> None:
         # Check if the node outputs correct initialization

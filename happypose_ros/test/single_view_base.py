@@ -48,7 +48,7 @@ class SingleViewBase(HappyPoseTestCase):
         )
         cls.compressed = use_compressed
         image_path = get_package_share_directory("happypose_ros") + "/test"
-        cls.rgb = np.asarray(PIL.Image.open(image_path + "/000629.png"))
+        cls.rgb = np.asarray(PIL.Image.open(image_path + "/rgb/000629.png"))
         cls.K = np.array(
             [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
         )
