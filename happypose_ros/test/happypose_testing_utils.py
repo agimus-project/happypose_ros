@@ -654,7 +654,7 @@ def assert_bbox(
 
 
 def create_camera_reliable_qos_config(
-    namespace: str, cam_name: str
+    namespace: str, cam_name: str, compressed: bool
 ) -> Dict[str, Union[str, int]]:
     """Creates dictionary with parameters configuring reliability of sensor topics.
 
@@ -672,6 +672,9 @@ def create_camera_reliable_qos_config(
 
     return {
         f"qos_overrides./{namespace}/{cam_name}/{topic}.subscription.{key}": value
-        for topic in ("color/camera_info", "color/image_raw")
+        for topic in (
+            "color/camera_info",
+            "color/image_raw" if not compressed else "color/image_raw/compressed",
+        )
         for key, value in qos_settings.items()
     }

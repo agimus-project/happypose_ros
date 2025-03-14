@@ -52,6 +52,8 @@ def generate_test_description():
         ]
     )
 
+    # Camera names with information if compressed or not
+    cameras = ("cam_1", False), ("cam_2", True), ("cam_3", False)
     # Spawn the happypose_ros node
     ns = "test_multi_view"
     happypose_node = launch_ros.actions.Node(
@@ -62,7 +64,10 @@ def generate_test_description():
         # Dynamically set device
         parameters=[
             {"device": device},
-            *[create_camera_reliable_qos_config(ns, f"cam_{i}") for i in range(3)],
+            *[
+                create_camera_reliable_qos_config(ns, name, compressed)
+                for name, compressed in cameras
+            ],
             happypose_params_path,
         ],
     )
