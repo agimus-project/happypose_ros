@@ -275,7 +275,7 @@ class HappyPoseTesterNode(Node):
 
         assert (
             future.result() is not None
-        ), f"Filed to call the service the service {self._set_param_cli.srv_name}!"
+        ), f"Failed to call the service the service {self._set_param_cli.srv_name}!"
 
         return [
             Parameter.from_parameter_msg(RCL_Parameter(name=name, value=param))
@@ -316,7 +316,7 @@ class HappyPoseTesterNode(Node):
 
         assert (
             future.result() is not None
-        ), f"Filed to call the service the service {self._set_param_cli.srv_name}!"
+        ), f"Failed to call the service the service {self._set_param_cli.srv_name}!"
 
         if not future.result().result.successful:
             "Failed to set parameters!"
