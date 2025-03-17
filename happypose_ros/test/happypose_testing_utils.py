@@ -11,7 +11,13 @@ from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.time import Time
-from rclpy.qos import DurabilityPolicy, HistoryPolicy, ReliabilityPolicy, QoSProfile
+from rclpy.qos import (
+    DurabilityPolicy,
+    HistoryPolicy,
+    ReliabilityPolicy,
+    QoSProfile,
+    qos_profile_system_default,
+)
 
 from tf2_ros.buffer import Buffer
 from tf2_ros.transform_listener import TransformListener
@@ -127,13 +133,22 @@ class HappyPoseTesterNode(Node):
             "happypose/object_symmetries": [],
         }
         self._markers_sub = self.create_subscription(
-            MarkerArray, "happypose/markers", self._markers_cb, 5
+            MarkerArray,
+            "happypose/markers",
+            self._markers_cb,
+            qos_profile=qos_profile_system_default,
         )
         self._detections_sub = self.create_subscription(
-            Detection2DArray, "happypose/detections", self._detections_cb, 5
+            Detection2DArray,
+            "happypose/detections",
+            self._detections_cb,
+            qos_profile=qos_profile_system_default,
         )
         self._vision_info_sub = self.create_subscription(
-            VisionInfo, "happypose/vision_info", self._vision_info_cb, 5
+            VisionInfo,
+            "happypose/vision_info",
+            self._vision_info_cb,
+            qos_profile=qos_profile_system_default,
         )
 
         qos = QoSProfile(

@@ -174,7 +174,7 @@ class HappyPoseNode(Node):
             for name in self._params.camera_names
         }
 
-        self._last_pipeline_trigger = self.get_clock().now()
+        self._last_pipeline_trigger = Time()
 
         self._detections_publisher = self.create_publisher(
             Detection2DArray,
