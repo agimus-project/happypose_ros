@@ -137,7 +137,9 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             self.node.publish_image("cam_1", self.cam_1_image, self.K)
             self.node.publish_image("cam_2", self.cam_2_image, self.K)
             self.node.publish_image("cam_3", self.cam_3_image, self.K)
-            ready = proc_output.waitFor("HappyPose initialized", timeout=0.5)
+            ready = proc_output.waitFor(
+                "First inference might take longer", timeout=0.5
+            )
         if not ready:
             self.fail("Failed to trigger the pipeline!")
 
