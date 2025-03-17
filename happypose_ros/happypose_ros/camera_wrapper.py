@@ -353,7 +353,7 @@ class CameraWrapper:
         :return: Tuple with values (height, width).
         :rtype: tuple[int]
         """
-        return (self._color_image.height, self._color_image.width)
+        return (self._color_camera_info.height, self._color_camera_info.width)
 
     @data_received_guarded
     def get_last_depth_image(self) -> Union[None, npt.NDArray[np.float32]]:
