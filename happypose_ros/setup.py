@@ -34,6 +34,10 @@ setup(
             get_files(project_source_dir / "test/rgb", "*.png"),
         ),
         (
+            f"share/{package_name}/test/depth",
+            get_files(project_source_dir / "test/depth", "*.png"),
+        ),
+        (
             f"share/{package_name}/test",
             get_files(project_source_dir / "test", "*.png"),
         ),

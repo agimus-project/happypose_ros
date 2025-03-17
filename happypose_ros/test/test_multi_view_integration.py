@@ -53,7 +53,7 @@ def generate_test_description():
     )
 
     # Camera names with information if compressed or not
-    cameras = ("cam_1", False), ("cam_2", True), ("cam_3", False)
+    cameras = ("cam_1", False, False), ("cam_2", True, False), ("cam_3", False, False)
     # Spawn the happypose_ros node
     ns = "test_multi_view"
     happypose_node = launch_ros.actions.Node(
@@ -65,8 +65,8 @@ def generate_test_description():
         parameters=[
             {"device": device},
             *[
-                create_camera_reliable_qos_config(ns, name, compressed)
-                for name, compressed in cameras
+                create_camera_reliable_qos_config(ns, name, compressed, is_depth)
+                for name, compressed, is_depth in cameras
             ],
             happypose_params_path,
         ],
@@ -85,7 +85,11 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
     def setUpClass(cls) -> None:
         # Test both multiview and compressed images
         super().setUpClass(
-            [("cam_1", Image), ("cam_2", CompressedImage), ("cam_3", Image)],
+            [
+                ("cam_1", Image, False),
+                ("cam_2", CompressedImage, False),
+                ("cam_3", Image, False),
+            ],
             "test_multi_view",
         )
 

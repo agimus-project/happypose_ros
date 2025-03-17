@@ -45,12 +45,12 @@ class HappyPoseTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(
         cls,
-        cameras: List[Tuple[str, Union[Image, CompressedImage]]],
+        cameras: List[Tuple[str, Union[Image, CompressedImage], bool]],
         namespace: str,
     ) -> None:
         """Sets up test case class
 
-        :param cameras: List of tuples of camera names and Image message types.
+        :param cameras: List of tuples of camera names, Image message types and "use_depth" boolean.
         :type cameras: List[Tuple[str, Union[sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]]]
         :param namespace: Namespace into which node will be put.
         :type namespace: str
@@ -79,15 +79,16 @@ class HappyPoseTestCase(unittest.TestCase):
 class HappyPoseTesterNode(Node):
     def __init__(
         self,
-        cameras: List[Tuple[str, Union[Image, CompressedImage]]],
+        cameras: List[Tuple[str, Union[Image, CompressedImage], bool]],
         tested_node_name: str,
         node_name: str = "happypose_tester_node",
         **kwargs,
     ) -> None:
         """Class wrapping all ROS IO with the tested happypose_ros node.
 
-        :param cameras: List of tuples of camera names and Image message types.
-        :type cameras: List[Tuple[str, Union[sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]]]
+        :param cameras: List of tuples of camera names, Image message types and "use_depth" boolean.
+        If use_depth is true, create additional <cam_name>_depth publishers.
+        :type cameras: List[Tuple[str, Union[sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage], bool]]
         :param tested_node_name: Name of the node to be tested
         :type tested_node_name: str
         :param node_name: Name of the testing node, defaults to "happypose_tester_node"
@@ -103,27 +104,36 @@ class HappyPoseTesterNode(Node):
             history=HistoryPolicy.KEEP_ALL,
         )
 
-        # Create dict with camera topic publishers
-        self._cam_pubs = {
-            cam[0]: (
-                self.create_publisher(
-                    cam[1],
-                    # Choose topic name based on the type
-                    (
-                        f"{cam[0]}/color/image_raw"
-                        if isinstance(cam[1], Metaclass_Image)
-                        else f"{cam[0]}/color/image_raw/compressed"
-                    ),
-                    qos_profile=reliable_qos,
-                ),
-                self.create_publisher(
-                    CameraInfo,
-                    (f"{cam[0]}/color/camera_info"),
-                    qos_profile=reliable_qos,
-                ),
+        def camera_topics(
+            cam_name: str, msg_type: Union[Image, CompressedImage], is_depth: bool
+        ):
+            cam_type = "depth" if is_depth else "color"
+            img_topic = (
+                f"{cam_name}/{cam_type}/image_raw"
+                if isinstance(msg_type, Metaclass_Image)
+                else f"{cam_name}/{cam_type}/image_raw/compressed"
             )
-            for cam in cameras
-        }
+            info_topic = f"{cam_name}/{cam_type}/camera_info"
+
+            return img_topic, info_topic
+
+        self._cam_pubs = {}
+        for cam_name, msg_type, use_depth in cameras:
+            img_topic, info_topic = camera_topics(cam_name, msg_type, False)
+            self._cam_pubs[cam_name] = (
+                self.create_publisher(msg_type, img_topic, qos_profile=reliable_qos),
+                self.create_publisher(CameraInfo, info_topic, qos_profile=reliable_qos),
+            )
+            if use_depth:
+                img_topic, info_topic = camera_topics(cam_name, msg_type, True)
+                self._cam_pubs[cam_name + "_depth"] = (
+                    self.create_publisher(
+                        msg_type, img_topic, qos_profile=reliable_qos
+                    ),
+                    self.create_publisher(
+                        CameraInfo, info_topic, qos_profile=reliable_qos
+                    ),
+                )
 
         # Initialize topic subscribers
         self._sub_topic = {
@@ -341,6 +351,7 @@ class HappyPoseTesterNode(Node):
         cam: str,
         bgr: npt.NDArray[np.uint8],
         K: npt.NDArray[np.float32],
+        depth: npt.NDArray[np.uint32] = None,
         stamp: Optional[Time] = None,
         width: int = 0,
         height: int = 0,
@@ -405,6 +416,45 @@ class HappyPoseTesterNode(Node):
         # Publish messages
         self._cam_pubs[cam][0].publish(img_msg)
         self._cam_pubs[cam][1].publish(info_msg)
+
+        # TODO: refactor this
+        if depth is not None:
+            height = depth.shape[0] if height == 0 else height
+            width = depth.shape[1] if width == 0 else width
+            cropped_depth = depth[
+                y_offset : y_offset + height,
+                x_offset : x_offset + width,
+            ]
+
+            if isinstance(self._cam_pubs[cam + "_depth"][0].msg_type, Metaclass_Image):
+                depth_msg = self._cvb.cv2_to_imgmsg(
+                    cropped_depth, encoding="passthrough"
+                )
+            else:
+                depth_msg = self._cvb.cv2_to_compressed_imgmsg(rgb, dst_format="png")
+
+            header = Header(frame_id=cam, stamp=stamp.to_msg())
+            depth_msg.header = header
+            info_msg = CameraInfo(
+                header=header,
+                # Resized dimensions are specified in ROI message.
+                # Here shape before resizing is expected.
+                height=depth.shape[0],
+                width=depth.shape[1],
+                k=K.reshape(-1),
+            )
+            if depth.shape != cropped_depth.shape:
+                info_msg.roi = RegionOfInterest(
+                    width=width,
+                    height=height,
+                    x_offset=x_offset,
+                    y_offset=y_offset,
+                    do_rectify=True,
+                )
+
+            # Publish messages
+            self._cam_pubs[cam + "_depth"][0].publish(depth_msg)
+            self._cam_pubs[cam + "_depth"][1].publish(info_msg)
 
     def clear_msg_buffer(self, topics: Optional[List[str]] = None) -> None:
         """Clears received message buffer.
@@ -669,12 +719,18 @@ def assert_bbox(
 
 
 def create_camera_reliable_qos_config(
-    namespace: str, cam_name: str, compressed: bool
+    namespace: str, cam_name: str, compressed: bool, is_depth: bool
 ) -> Dict[str, Union[str, int]]:
     """Creates dictionary with parameters configuring reliability of sensor topics.
 
-    :param topic_name: Name of the topic for which the config has to be created.
-    :type topic_name: str
+    :param namespace: Namespace of the sensor topic.
+    :type namespace: str
+    :param cam_name: Name of the camera associated to the topic.
+    :type cam_name: str
+    :param compressed: true if compressed topic.
+    :type compressed: str
+    :param is_depth: true if depth image topic.
+    :type is_depth: str
     :return: Dictionary with parameters.
     :rtype: Dict[str, Union[str, int]]
     """
@@ -685,11 +741,17 @@ def create_camera_reliable_qos_config(
         "history": "keep_all",
     }
 
+    def _topics_camera(compressed, is_depth):
+        cam_type = "depth" if is_depth else "color"
+        return (
+            f"{cam_type}/camera_info",
+            f"{cam_type}/image_raw"
+            if not compressed
+            else f"{cam_type}/image_raw/compressed",
+        )
+
     return {
         f"qos_overrides./{namespace}/{cam_name}/{topic}.subscription.{key}": value
-        for topic in (
-            "color/camera_info",
-            "color/image_raw" if not compressed else "color/image_raw/compressed",
-        )
+        for topic in _topics_camera(compressed, is_depth)
         for key, value in qos_settings.items()
     }
