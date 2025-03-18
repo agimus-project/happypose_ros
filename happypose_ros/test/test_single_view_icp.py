@@ -3,7 +3,6 @@
 import numpy as np
 import PIL.Image
 import time
-import unittest
 import pytest
 import torch
 
@@ -33,28 +32,18 @@ from happypose_testing_utils import (
 )
 
 
-class SingleViewICPBase(HappyPoseTestCase):
-    """Base class for the single view test cases."""
-
+class TestHappyposeSingleViewNode(HappyPoseTestCase):
     @classmethod
-    def setUpClass(cls, namespace: str = "", use_compressed: bool = False) -> None:
-        """Wraps the HappyPoseTestCase.setUpClass by configuring single camera
-        and reading test image.
+    def setUpClass(cls) -> None:
+        """
 
-        :param namespace: Namespace to apply to the node, defaults to "".
-        :type namespace: str, optional
-        :param use_compressed: Whether to use compressed images during the test, defaults to False.
-        :type use_compressed: bool, optional
         :raises unittest.SkipTest: Used to prevent the base class from executing as a separate test case.
         """
-        if cls.__name__ == SingleViewICPBase.__name__:
-            raise unittest.SkipTest("Skipping because of case class")
 
         super().setUpClass(
             [("cam_1", Image, True)],
-            namespace,
+            "test_single_view_icp",
         )
-        cls.compressed = use_compressed
         image_path = get_package_share_directory("happypose_ros") + "/test"
         cls.rgb = np.asarray(PIL.Image.open(image_path + "/rgb/000629.png"))
         # https://github.com/thodan/bop_toolkit/blob/master/docs/bop_datasets_format.md
@@ -199,10 +188,3 @@ def generate_test_description():
             launch_testing.actions.ReadyToTest(),
         ]
     )
-
-
-class TestHappyposeSingleViewNode(SingleViewICPBase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        # Setup the test case to run with compressed images
-        super().setUpClass(namespace="test_single_view_icp", use_compressed=False)
