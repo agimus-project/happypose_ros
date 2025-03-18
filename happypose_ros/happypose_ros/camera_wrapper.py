@@ -46,7 +46,7 @@ class CameraWrapper:
         :type name: str
         :param image_sync_hook: Callback function when a new image arrives.
         :type image_sync_hook: Callable
-        :param use_depth: Whether to subscribe to depth image topic or not, defaults to True.
+        :param use_depth: Whether to subscribe to depth image topic or not, defaults to False.
         :type use_depth: bool, optional
         :raises rclpy.ParameterException: Intrinsic matrix is incorrect.
         """
