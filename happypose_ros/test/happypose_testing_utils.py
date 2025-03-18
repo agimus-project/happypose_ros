@@ -419,8 +419,9 @@ class HappyPoseTesterNode(Node):
 
         # TODO: refactor this
         if depth is not None:
-            height = depth.shape[0] if height == 0 else height
-            width = depth.shape[1] if width == 0 else width
+            assert (
+                depth.shape[:1] == bgr.shape[:1]
+            ), "color and depth test images should have same resolution"
             cropped_depth = depth[
                 y_offset : y_offset + height,
                 x_offset : x_offset + width,
