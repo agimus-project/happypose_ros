@@ -426,12 +426,7 @@ class HappyPoseTesterNode(Node):
                 x_offset : x_offset + width,
             ]
 
-            if isinstance(self._cam_pubs[cam + "_depth"][0].msg_type, Metaclass_Image):
-                depth_msg = self._cvb.cv2_to_imgmsg(
-                    cropped_depth, encoding="passthrough"
-                )
-            else:
-                depth_msg = self._cvb.cv2_to_compressed_imgmsg(rgb, dst_format="png")
+            depth_msg = self._cvb.cv2_to_imgmsg(cropped_depth, encoding="passthrough")
 
             header = Header(frame_id=cam, stamp=stamp.to_msg())
             depth_msg.header = header
@@ -734,6 +729,8 @@ def create_camera_reliable_qos_config(
     :return: Dictionary with parameters.
     :rtype: Dict[str, Union[str, int]]
     """
+
+    assert not (compressed and is_depth), "Compressed depth images are not supported"
 
     qos_settings = {
         "reliability": "reliable",

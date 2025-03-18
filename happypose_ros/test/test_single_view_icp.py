@@ -19,7 +19,7 @@ from happypose_testing_utils import create_camera_reliable_qos_config
 
 
 from geometry_msgs.msg import Point, Pose, Quaternion
-from sensor_msgs.msg import Image, CompressedImage
+from sensor_msgs.msg import Image
 
 from ament_index_python.packages import get_package_share_directory
 
@@ -51,7 +51,7 @@ class SingleViewICPBase(HappyPoseTestCase):
             raise unittest.SkipTest("Skipping because of case class")
 
         super().setUpClass(
-            [("cam_1", CompressedImage if use_compressed else Image, True)],
+            [("cam_1", Image, True)],
             namespace,
         )
         cls.compressed = use_compressed
