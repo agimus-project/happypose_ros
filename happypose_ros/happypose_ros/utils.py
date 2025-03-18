@@ -117,6 +117,9 @@ def get_detection_array_msg(
     :param has_bbox: Indicates if bounding box has to be populated
         or left empty, defaults to True.
     :type has_bbox: bool, optional
+    :param result: Type of results to extract from results dictionary,
+        defaults to ``poses``.
+    :type result: str, optional
     :return: ROS message with detection.
     :rtype: vision_msgs.msg.Detection2DArray
     """
