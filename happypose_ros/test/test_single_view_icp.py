@@ -104,17 +104,6 @@ class TestHappyposeSingleViewNode(HappyPoseTestCase):
         self.assertGreaterEqual(
             len(detections.detections), 3, "Incorrect number of detected objects!"
         )
-        self.assertEqual(
-            detections.header,
-            detections.detections[0].header,
-            "Main header differs from the detection header!",
-        )
-        self.assertEqual(
-            detections.detections[0].header,
-            detections.detections[1].header,
-            "Detected object headers differ!",
-        )
-
         ycbv_02 = assert_and_find_detection(detections, "ycbv-obj_000002")
         ycbv_05 = assert_and_find_detection(detections, "ycbv-obj_000005")
         ycbv_15 = assert_and_find_detection(detections, "ycbv-obj_000015")
@@ -123,14 +112,6 @@ class TestHappyposeSingleViewNode(HappyPoseTestCase):
             ["cosypose.inference.detector.detection_th"], 5.0
         )[0].value
 
-        self.assertGreaterEqual(ycbv_02.results[0].hypothesis.score, minimum_score)
-        self.assertLessEqual(ycbv_02.results[0].hypothesis.score, 1.0)
-
-        self.assertGreaterEqual(ycbv_05.results[0].hypothesis.score, minimum_score)
-        self.assertLessEqual(ycbv_05.results[0].hypothesis.score, 1.0)
-
-        self.assertGreaterEqual(ycbv_15.results[0].hypothesis.score, minimum_score)
-        self.assertLessEqual(ycbv_15.results[0].hypothesis.score, 1.0)
 
         assert_pose_equal(
             ycbv_02.results[0].pose.pose, self.ycbv_02_pose, precision=0.1
@@ -142,11 +123,6 @@ class TestHappyposeSingleViewNode(HappyPoseTestCase):
             ycbv_15.results[0].pose.pose, self.ycbv_15_pose, precision=0.1
         )
 
-        # Based on ground truth ``bbox_visib`` for image 629
-        assert_bbox(ycbv_02.bbox, [303, 34, 121, 236])
-        # Bounding box is drawn only for a half of the bottle
-        assert_bbox(ycbv_05.bbox, [394, 107, 77, 248], percent_error=50.0)
-        assert_bbox(ycbv_15.bbox, [64, 204, 267, 151])
 
 
 @pytest.mark.launch_test

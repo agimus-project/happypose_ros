@@ -51,7 +51,7 @@ class HappyPoseTestCase(unittest.TestCase):
         """Sets up test case class
 
         :param cameras: List of tuples of camera names, Image message types and "use_depth" boolean.
-        :type cameras: List[Tuple[str, Union[sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage]]]
+        :type cameras: List[Tuple[str, Union[sensor_msgs.msg.Image, sensor_msgs.msg.CompressedImage], bool]]
         :param namespace: Namespace into which node will be put.
         :type namespace: str
         """
@@ -722,10 +722,10 @@ def create_camera_reliable_qos_config(
     :type namespace: str
     :param cam_name: Name of the camera associated to the topic.
     :type cam_name: str
-    :param compressed: true if compressed topic.
-    :type compressed: str
-    :param is_depth: true if depth image topic.
-    :type is_depth: str
+    :param compressed: Expected topic are compressed.
+    :type compressed: bool
+    :param is_depth: Expected topic are of a type depth image.
+    :type is_depth: bool.
     :return: Dictionary with parameters.
     :rtype: Dict[str, Union[str, int]]
     """
