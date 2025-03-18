@@ -31,6 +31,47 @@ from happypose_testing_utils import (
 )
 
 
+@pytest.mark.launch_test
+@launch_testing.markers.keep_alive
+def generate_test_description():
+    # Assume testing machine has only one GPU
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+
+    # Find parameters file
+    happypose_params_path = PathJoinSubstitution(
+        [
+            FindPackageShare("happypose_ros"),
+            "test",
+            "test_single_view_icp.yaml",
+        ]
+    )
+
+    # Spawn the happypose_ros node
+    ns = "test_single_view_icp"
+    happypose_node = launch_ros.actions.Node(
+        package="happypose_ros",
+        executable="happypose_node",
+        name="happypose_node",
+        namespace=ns,
+        parameters=[
+            # Dynamically set device and expect raw images
+            {"device": device, "cameras.cam_1.compressed": False},
+            create_camera_reliable_qos_config(ns, "cam_1", False, False),
+            create_camera_reliable_qos_config(
+                ns, "cam_1", False, True
+            ),  # create qos config for depth cam too
+            happypose_params_path,
+        ],
+    )
+
+    return LaunchDescription(
+        [
+            happypose_node,
+            launch_testing.actions.ReadyToTest(),
+        ]
+    )
+
+
 class TestHappyposeSingleViewNode(HappyPoseTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -107,10 +148,6 @@ class TestHappyposeSingleViewNode(HappyPoseTestCase):
         ycbv_05 = assert_and_find_detection(detections, "ycbv-obj_000005")
         ycbv_15 = assert_and_find_detection(detections, "ycbv-obj_000015")
 
-        minimum_score = self.node.get_params(
-            ["cosypose.inference.detector.detection_th"], 5.0
-        )[0].value
-
         assert_pose_equal(
             ycbv_02.results[0].pose.pose, self.ycbv_02_pose, precision=0.1
         )
@@ -120,44 +157,3 @@ class TestHappyposeSingleViewNode(HappyPoseTestCase):
         assert_pose_equal(
             ycbv_15.results[0].pose.pose, self.ycbv_15_pose, precision=0.1
         )
-
-
-@pytest.mark.launch_test
-@launch_testing.markers.keep_alive
-def generate_test_description():
-    # Assume testing machine has only one GPU
-    device = "cuda:0" if torch.cuda.is_available() else "cpu"
-
-    # Find parameters file
-    happypose_params_path = PathJoinSubstitution(
-        [
-            FindPackageShare("happypose_ros"),
-            "test",
-            "test_single_view_icp.yaml",
-        ]
-    )
-
-    # Spawn the happypose_ros node
-    ns = "test_single_view_icp"
-    happypose_node = launch_ros.actions.Node(
-        package="happypose_ros",
-        executable="happypose_node",
-        name="happypose_node",
-        namespace=ns,
-        parameters=[
-            # Dynamically set device and expect raw images
-            {"device": device, "cameras.cam_1.compressed": False},
-            create_camera_reliable_qos_config(ns, "cam_1", False, False),
-            create_camera_reliable_qos_config(
-                ns, "cam_1", False, True
-            ),  # create qos config for depth cam too
-            happypose_params_path,
-        ],
-    )
-
-    return LaunchDescription(
-        [
-            happypose_node,
-            launch_testing.actions.ReadyToTest(),
-        ]
-    )
