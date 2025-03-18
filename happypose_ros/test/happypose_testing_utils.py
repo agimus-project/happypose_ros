@@ -417,7 +417,6 @@ class HappyPoseTesterNode(Node):
         self._cam_pubs[cam][0].publish(img_msg)
         self._cam_pubs[cam][1].publish(info_msg)
 
-        # TODO: refactor this
         if depth is not None:
             assert (
                 depth.shape[:1] == bgr.shape[:1]
