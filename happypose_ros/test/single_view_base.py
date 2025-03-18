@@ -43,14 +43,34 @@ class SingleViewBase(HappyPoseTestCase):
             raise unittest.SkipTest("Skipping because of case class")
 
         super().setUpClass(
-            [("cam_1", CompressedImage if use_compressed else Image)],
+            [("cam_1", CompressedImage if use_compressed else Image, False)],
             namespace,
         )
         cls.compressed = use_compressed
         image_path = get_package_share_directory("happypose_ros") + "/test"
-        cls.rgb = np.asarray(PIL.Image.open(image_path + "/000629.png"))
+        cls.rgb = np.asarray(PIL.Image.open(image_path + "/rgb/000629.png"))
         cls.K = np.array(
             [1066.778, 0.0, 312.9869, 0.0, 1067.487, 241.3109, 0.0, 0.0, 1.0]
+        )
+
+        # Based on ground truth, object poses for image 629
+        cls.ycbv_02_pose = Pose(
+            position=Point(**dict(zip("xyz", [0.0552, -0.0913, 1.0283]))),
+            orientation=Quaternion(
+                **dict(zip("xyzw", [0.2279, 0.1563, 0.0245, 0.9607]))
+            ),
+        )
+        cls.ycbv_05_pose = Pose(
+            position=Point(**dict(zip("xyz", [0.0946, -0.0123, 0.8399]))),
+            orientation=Quaternion(
+                **dict(zip("xyzw", [-0.4171, 0.7404, -0.4506, -0.273]))
+            ),
+        )
+        cls.ycbv_15_pose = Pose(
+            position=Point(**dict(zip("xyz", [-0.1013, 0.0329, 0.9138]))),
+            orientation=Quaternion(
+                **dict(zip("xyzw", [0.2526, 0.4850, 0.7653, -0.3392]))
+            ),
         )
 
     def setUp(self) -> None:
@@ -71,15 +91,15 @@ class SingleViewBase(HappyPoseTestCase):
         # Check if node subscribes to correct topics
         if self.compressed:
             self.node.assert_node_is_subscriber(
-                "cam_1/image_raw/compressed",
+                "cam_1/color/image_raw/compressed",
                 timeout=3.0,
             )
         else:
             self.node.assert_node_is_subscriber(
-                "cam_1/image_raw",
+                "cam_1/color/image_raw",
                 timeout=3.0,
             )
-        self.node.assert_node_is_subscriber("cam_1/camera_info", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_1/color/camera_info", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/detections", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/markers", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/vision_info", timeout=3.0)
@@ -167,29 +187,9 @@ class SingleViewBase(HappyPoseTestCase):
         self.assertGreaterEqual(ycbv_15.results[0].hypothesis.score, minimum_score)
         self.assertLessEqual(ycbv_15.results[0].hypothesis.score, 1.0)
 
-        # Based on ground truth, object poses for image 629
-        ycbv_02_pose = Pose(
-            position=Point(**dict(zip("xyz", [0.0552, -0.0913, 1.0283]))),
-            orientation=Quaternion(
-                **dict(zip("xyzw", [0.2279, 0.1563, 0.0245, 0.9607]))
-            ),
-        )
-        ycbv_05_pose = Pose(
-            position=Point(**dict(zip("xyz", [0.0946, -0.0123, 0.8399]))),
-            orientation=Quaternion(
-                **dict(zip("xyzw", [-0.4171, 0.7404, -0.4506, -0.273]))
-            ),
-        )
-        ycbv_15_pose = Pose(
-            position=Point(**dict(zip("xyz", [-0.1013, 0.0329, 0.9138]))),
-            orientation=Quaternion(
-                **dict(zip("xyzw", [0.2526, 0.4850, 0.7653, -0.3392]))
-            ),
-        )
-
-        assert_pose_equal(ycbv_02.results[0].pose.pose, ycbv_02_pose)
-        assert_pose_equal(ycbv_05.results[0].pose.pose, ycbv_05_pose)
-        assert_pose_equal(ycbv_15.results[0].pose.pose, ycbv_15_pose)
+        assert_pose_equal(ycbv_02.results[0].pose.pose, self.ycbv_02_pose)
+        assert_pose_equal(ycbv_05.results[0].pose.pose, self.ycbv_05_pose)
+        assert_pose_equal(ycbv_15.results[0].pose.pose, self.ycbv_15_pose)
 
         # Based on ground truth ``bbox_visib`` for image 629
         assert_bbox(ycbv_02.bbox, [303, 34, 121, 236])
@@ -424,20 +424,5 @@ class SingleViewBase(HappyPoseTestCase):
         ycbv_02 = assert_and_find_detection(detections, "ycbv-obj_000002")
         ycbv_15 = assert_and_find_detection(detections, "ycbv-obj_000015")
 
-        # Based on ground truth, object poses for image 629
-        ycbv_02_pose = Pose(
-            position=Point(**dict(zip("xyz", [0.0552, -0.0913, 1.0283]))),
-            orientation=Quaternion(
-                **dict(zip("xyzw", [0.2279, 0.1563, 0.0245, 0.9607]))
-            ),
-        )
-
-        ycbv_15_pose = Pose(
-            position=Point(**dict(zip("xyz", [-0.1013, 0.0329, 0.9138]))),
-            orientation=Quaternion(
-                **dict(zip("xyzw", [0.2526, 0.4850, 0.7653, -0.3392]))
-            ),
-        )
-
-        assert_pose_equal(ycbv_02.results[0].pose.pose, ycbv_02_pose)
-        assert_pose_equal(ycbv_15.results[0].pose.pose, ycbv_15_pose)
+        assert_pose_equal(ycbv_02.results[0].pose.pose, self.ycbv_02_pose)
+        assert_pose_equal(ycbv_15.results[0].pose.pose, self.ycbv_15_pose)

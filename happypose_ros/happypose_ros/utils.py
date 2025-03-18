@@ -106,7 +106,7 @@ def create_bounding_box_msg(
 
 
 def get_detection_array_msg(
-    results: dict, header: Header, has_bbox: bool = True
+    results: dict, header: Header, has_bbox: bool = True, result: str = "poses"
 ) -> Detection2DArray:
     """Converts results dictionary to a Detection2DArray message.
 
@@ -123,7 +123,7 @@ def get_detection_array_msg(
 
     def generate_detection_msg(i: int) -> Detection2D:
         # Convert SE3 tensor to [x, y, z, qx, qy, qz, qw] pose representations
-        pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results["poses"][i].numpy()))
+        pose_vec = pin.SE3ToXYZQUAT(pin.SE3(results[result][i].numpy()))
         detection = Detection2D(
             header=header,
             # HappyPose supports only one result per detection, so the array
