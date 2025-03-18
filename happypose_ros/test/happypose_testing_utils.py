@@ -296,9 +296,9 @@ class HappyPoseTesterNode(Node):
         assert future.done, (
             f"Timeout reached when spinning the service {self._get_param_cli.srv_name}!"
         )
-        assert (
-            future.result() is not None
-        ), f"Failed to call the service {self._set_param_cli.srv_name}!"
+        assert future.result() is not None, (
+            f"Failed to call the service {self._set_param_cli.srv_name}!"
+        )
         return [
             Parameter.from_parameter_msg(RCL_Parameter(name=name, value=param))
             for name, param in zip(param_names, future.result().values)
@@ -334,9 +334,9 @@ class HappyPoseTesterNode(Node):
         assert future.done, (
             f"Timeout reached when spinning the service {self._set_param_cli.srv_name}!"
         )
-        assert (
-            future.result() is not None
-        ), f"Failed to call the service {self._set_param_cli.srv_name}!"
+        assert future.result() is not None, (
+            f"Failed to call the service {self._set_param_cli.srv_name}!"
+        )
         if not future.result().result.successful:
             "Failed to set parameters!"
 
@@ -412,9 +412,9 @@ class HappyPoseTesterNode(Node):
         self._cam_pubs[cam][1].publish(info_msg)
 
         if depth is not None:
-            assert (
-                depth.shape[:1] == bgr.shape[:1]
-            ), "color and depth test images should have same resolution"
+            assert depth.shape[:1] == bgr.shape[:1], (
+                "color and depth test images should have same resolution"
+            )
             cropped_depth = depth[
                 y_offset : y_offset + height,
                 x_offset : x_offset + width,
