@@ -93,21 +93,33 @@ The node provides the following ROS topics:
 
 ### Subscribers
 
-- **\<camera name\>/image_raw** [sensor_msgs/msg/Image]
+- **\<camera name\>/color/image_raw** [sensor_msgs/msg/Image]
 
-    Video stream from a given camera. This is a default topic subscribed by a given camera. Can be changed to compressed image via parameters.
+    Video stream from a given color camera. This is a default topic subscribed by a given camera. Can be changed to compressed image via parameters.
 
     Disabled by the parameter **cameras.\<camera name\>.compressed**.
 
-- **\<camera name\>/image_raw/compressed** [sensor_msgs/msg/CompressedImage]
+- **\<camera name\>/color/image_raw/compressed** [sensor_msgs/msg/CompressedImage]
 
-    Compressed video stream from a given camera.
+    Compressed video stream from a given color camera.
 
     Enabled by the parameter **cameras.\<camera name\>.compressed**.
 
-- **\<camera name\>/camera_info** [sensor_msgs/msg/CameraInfo]
+- **\<camera name\>/color/camera_info** [sensor_msgs/msg/CameraInfo]
 
-    Topic used to obtain intrinsic matrix of a given camera.
+    Topic used to obtain intrinsic matrix and RoI of a given color camera.
+
+    Disabled by the parameter **cameras.\<camera name\>.k_matrix**.
+
+- **\<camera name\>/depth/image_raw** [sensor_msgs/msg/Image]
+
+    Video stream from a given depth camera.
+
+    Enables by the parameter **use_depth**.
+
+- **\<camera name\>/depth/camera_info** [sensor_msgs/msg/CameraInfo]
+
+    Topic used to obtain intrinsic matrix and RoI of a given compressed camera.
 
     Disabled by the parameter **cameras.\<camera name\>.k_matrix**.
 

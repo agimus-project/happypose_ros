@@ -1,0 +1,22 @@
+/**:
+  ros__parameters:
+    # device is set from launch file
+    verbose_info_logs: true
+    pose_estimator_type: "cosypose"
+    visualization.publish_markers: true
+    use_depth: true
+    cosypose:
+      dataset_name: "ycbv"
+      model_type: "pbr"
+      # reduce memory footprint during tests by reducing number of workers
+      renderer:
+        n_workers: 1
+        renderer_type: "panda3d"
+    camera_names: ["cam_1"]
+    cameras:
+      timeout: 0.0
+      n_min_cameras: 1
+      cam_1:
+        leading: true
+        publish_tf: false
+        # compressed is set from launch file

@@ -164,11 +164,17 @@ class HappyPoseNode(Node):
 
         # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
-            name: CameraWrapper(self, self._params.cameras, name, self._on_image_cb)
+            name: CameraWrapper(
+                self,
+                self._params.cameras,
+                name,
+                self._on_image_cb,
+                self._params.use_depth,
+            )
             for name in self._params.camera_names
         }
 
-        self._last_pipeline_trigger = self.get_clock().now()
+        self._last_pipeline_trigger = Time()
 
         self._detections_publisher = self.create_publisher(
             Detection2DArray,
@@ -194,6 +200,35 @@ class HappyPoseNode(Node):
             ),
             qos_overriding_options=QoSOverridingOptions.with_default_policies(),
         )
+
+        if (
+            self._params.pose_estimator_type == "cosypose"
+            and self._params.use_depth
+            and self._params.cosypose.renderer.renderer_type != "panda3d"
+        ):
+            e = ParameterException(
+                "Use of any other renderer than `panda3d` is not supported when "
+                + "depth refinement is enabled!",
+                ("pose_estimator_type", "use_depth", "cosypose.renderer"),
+            )
+            self.get_logger().error(str(e))
+            raise e
+
+        compressed_cam = next(
+            (
+                name
+                for name in self._cameras.keys()
+                if self._params.cameras.get_entry(name).compressed
+            ),
+            None,
+        )
+        if self._params.use_depth and compressed_cam is not None:
+            e = ParameterException(
+                "Use of depth pose refinement with compressed images is not supported!",
+                ("use_depth", f"cameras.{compressed_cam}.compressed"),
+            )
+            self.get_logger().error(str(e))
+            raise e
 
         if self._params.cameras.n_min_cameras > len(self._cameras):
             e = ParameterException(
@@ -414,6 +449,37 @@ class HappyPoseNode(Node):
             )
         )
 
+        if self._leading_camera not in processed_cameras.keys():
+            if (now - self._last_pipeline_trigger) > Duration(seconds=20):
+                self.get_logger().warn(
+                    "Failed to include leading camera in"
+                    " the pipeline for past 20 seconds.",
+                    throttle_duration_sec=20.0,
+                )
+            return
+
+        leading_cam_shape = processed_cameras[
+            self._leading_camera
+        ].get_last_image_shape()
+
+        def __check_shape_and_log(name: str, cam: CameraWrapper) -> bool:
+            image_shape = cam.get_last_image_shape()
+            if image_shape != leading_cam_shape:
+                self.get_logger().warn(
+                    f"Mismatch in image shapes for camera '{name}' and leading camera!"
+                    f" Has shape '{image_shape}', while expected '{leading_cam_shape}'!"
+                    f" Image from camera '{name}' will be discarded!",
+                    throttle_duration_sec=5.0,
+                )
+                return False
+            return True
+
+        processed_cameras = {
+            name: cam
+            for name, cam in processed_cameras.items()
+            if __check_shape_and_log(name, cam)
+        }
+
         if len(processed_cameras) < self._params.cameras.n_min_cameras:
             # Throttle logs to either 5 times the timeout or 10 seconds
             timeout = max(5.0 * self._params.cameras.timeout, 10.0)
@@ -425,31 +491,31 @@ class HappyPoseNode(Node):
                 )
             return
 
-        if self._leading_camera not in processed_cameras.keys():
-            if (now - self._last_pipeline_trigger) > Duration(seconds=20):
-                self.get_logger().warn(
-                    "Failed to include leading camera in"
-                    " the pipeline for past 20 seconds.",
-                    throttle_duration_sec=20.0,
-                )
-            return
-
-        # TODO implement depth info
         rgb_tensor = torch.as_tensor(
             np.stack([cam.get_last_rgb_image() for cam in processed_cameras.values()])
-        )
+        ).permute(0, 3, 1, 2)
+
+        if self._params.use_depth:
+            depth_tensor = torch.as_tensor(
+                np.stack(
+                    [cam.get_last_depth_image() for cam in processed_cameras.values()]
+                )
+            ).unsqueeze(1)
+        else:
+            depth_tensor = None
+
         K_tensor = torch.as_tensor(
             np.stack([cam.get_last_k_matrix() for cam in processed_cameras.values()])
         )
-        if rgb_tensor.shape[-1] == 3:
-            rgb_tensor = rgb_tensor.permute(0, 3, 1, 2)
 
         # Enable shared memory to increase performance
         rgb_tensor.to(self._device).share_memory_()
         K_tensor.to(self._device).share_memory_()
+        if self._params.use_depth:
+            depth_tensor.to(self._device).share_memory_()
 
         observation = ObservationTensor.from_torch_batched(
-            rgb=rgb_tensor, depth=None, K=K_tensor
+            rgb=rgb_tensor, depth=depth_tensor, K=K_tensor
         )
         observation.to(self._device)
         self._observation_tensor_queue.put(observation)
@@ -503,6 +569,10 @@ class HappyPoseNode(Node):
             if results is not None:
                 if self._params.verbose_info_logs:
                     self.get_logger().info(f"Detected {len(results['infos'])} objects.")
+                    rounded_timings = {
+                        k: round(v, 4) for k, v in results["timings"].items()
+                    }
+                    self.get_logger().info(f" Inference timings [s]: {rounded_timings}")
 
                 if self._multiview:
                     missing_cameras = len(cam_data) - len(results["camera_infos"])
@@ -543,6 +613,19 @@ class HappyPoseNode(Node):
                         leading_cam_pose_inv @ results["camera_poses"][cams_to_tf]
                     )
 
+                    # Publish non-leading estimated camera poses in tf
+                    # Assume HappyPose is returning cameras in the same order it received them
+                    for pose, (name, cam) in zip(
+                        results["camera_poses"], cam_data.items()
+                    ):
+                        if (
+                            not self._params.cameras.get_entry(name).leading
+                            and self._params.cameras.get_entry(name).publish_tf
+                        ):
+                            self._tf_broadcaster.sendTransform(
+                                get_camera_transform(pose, header, cam["frame_id"])
+                            )
+
                 # In case of multi-view, do not use bounding boxes
                 detections = get_detection_array_msg(
                     results, header, has_bbox=not self._multiview
@@ -573,16 +656,6 @@ class HappyPoseNode(Node):
                 )
                 self._marker_publisher.publish(markers)
 
-            if self._multiview:
-                # Assume HappyPose is already returning cameras in the same order it received them
-                for pose, (name, cam) in zip(results["camera_poses"], cam_data.items()):
-                    if (
-                        not self._params.cameras.get_entry(name).leading
-                        and self._params.cameras.get_entry(name).publish_tf
-                    ):
-                        self._tf_broadcaster.sendTransform(
-                            get_camera_transform(pose, header, cam["frame_id"])
-                        )
         # Queue was closed
         except ValueError:
             return

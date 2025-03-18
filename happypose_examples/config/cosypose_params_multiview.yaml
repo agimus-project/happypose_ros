@@ -12,6 +12,8 @@
     verbose_info_logs: true
     # Which image time stamp to use in final detection message
     time_stamp_strategy: "oldest"
+    # Specifies whether to use depth images for pose refinement. If set to `true` all cameras are expected to provide depth images
+    use_depth: false
     # Specifies which pose estimator to use in the pipeline
     pose_estimator_type: "cosypose"
     cosypose:
@@ -40,6 +42,26 @@
         # Labels of detected objects to keep. If not specyfied, all objects are kept
         # labels_to_keep:
         #   - "ycbv-obj_000001"
+        # Depth pose refiner
+        icp:
+          # Minimum number of matching depth points to consider detection valid
+          n_min_points: 1000
+          # Minimum clipping distance of depth point from the camera to be considered valid
+          min_measured_depth: 0.2
+          # Maximum clipping distance of depth point from the camera to be considered valid
+          max_measured_depth: 5.0
+          # Number of iterations of ICP algorithm
+          iterations: 100
+          # Tells the algorithm to stop when the norm of the error vector makes less improvement in percent,
+          # than tolerance value. The error function is the norm of the difference of the matched 3D points
+          tolerance: 0.05
+          # Robust outlier rejection is applied for robustness.
+          # This value actually corresponds to the standard deviation coefficient.
+          # Points with rejectionScale * &sigma are ignored during registration
+          rejection_scale: 2.5
+          # Corresponds to iterative ICP, where the original point cloud is subsampled.
+          # Note that if the output of CosyPose is considered good, ``num_levels`` does not have to be high
+          num_levels: 4
         multiview:
           # Number of ransac iterations when matching views
           ransac_n_iter: 2000

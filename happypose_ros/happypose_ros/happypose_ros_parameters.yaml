@@ -33,6 +33,11 @@ happypose_ros:
         description: "Lifetime of a published marker."
         validation:
           gt<>: [0.0]
+  use_depth:
+    type: bool
+    default_value: false
+    description: "Specifies whether to use depth images for pose refinement. If set to `true` all cameras are expected to provide depth images."
+    read_only: true
   pose_estimator_type:
     type: string
     default_value: "cosypose"
@@ -54,6 +59,14 @@ happypose_ros:
       description: "Type of neural network model to use. Available: 'pbr'|'synth+real'"
       validation:
         one_of<>: [["pbr", "synth+real"]]
+      read_only: true
+    depth_refiner_type:
+      type: string
+      default_value: "icp"
+      description: "Type of happypose depth refinement. Available: 'icp'"
+      validation:
+        one_of<>: [["icp"]]
+        custom_validators::check_teaserpp_installed:
       read_only: true
     renderer:
       renderer_type:
@@ -89,6 +102,49 @@ happypose_ros:
           type: int
           default_value: 1
           description: "Number of iterations for the coarse estimate."
+          validation:
+            gt_eq<>: [1]
+      icp:
+        n_min_points:
+          type: int
+          default_value: 1000
+          description: "Minimum number of matching depth points to consider detection valid."
+          validation:
+            gt_eq<>: [1]
+        min_measured_depth:
+          type: double
+          default_value: 0.2
+          description: "Minimum clipping distance of depth point from the camera to be considered valid."
+          validation:
+            gt_eq<>: [0.0]
+        max_measured_depth:
+          type: double
+          default_value: 5.0
+          description: "Maximum clipping distance of depth point from the camera to be considered valid."
+          validation:
+            gt_eq<>: [0.0]
+        iterations:
+          type: int
+          default_value: 100
+          description: "Number of iterations of ICP algorithm."
+          validation:
+            gt_eq<>: [1]
+        tolerance:
+          type: double
+          default_value: 0.05
+          description: "Tells the algorithm to stop when the norm of the error vector makes less improvement in percent, than tolerance value. The error function is the norm of the difference of the matched 3D points."
+          validation:
+            gt_eq<>: [0.0]
+        rejection_scale:
+          type: double
+          default_value: 2.5
+          description: "Robust outlier rejection is applied for robustness. This value actually corresponds to the standard deviation coefficient. Points with rejectionScale * &sigma are ignored during registration."
+          validation:
+            gt_eq<>: [0.0]
+        num_levels:
+          type: int
+          default_value: 4
+          description: "Corresponds to iterative ICP, where the original point cloud is subsampled. Note that if the output of CosyPose is considered good, ``num_levels`` does not have to be high."
           validation:
             gt_eq<>: [1]
       multiview:

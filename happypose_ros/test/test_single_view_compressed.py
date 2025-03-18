@@ -40,7 +40,7 @@ def generate_test_description():
         parameters=[
             # Dynamically set device and expect compressed images
             {"device": device, "cameras.cam_1.compressed": True},
-            create_camera_reliable_qos_config(ns, "cam_1"),
+            create_camera_reliable_qos_config(ns, "cam_1", True, False),
             happypose_params_path,
         ],
     )

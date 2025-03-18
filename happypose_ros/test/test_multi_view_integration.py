@@ -52,6 +52,8 @@ def generate_test_description():
         ]
     )
 
+    # Camera names with information if compressed or not
+    cameras = ("cam_1", False, False), ("cam_2", True, False), ("cam_3", False, False)
     # Spawn the happypose_ros node
     ns = "test_multi_view"
     happypose_node = launch_ros.actions.Node(
@@ -62,7 +64,10 @@ def generate_test_description():
         # Dynamically set device
         parameters=[
             {"device": device},
-            *[create_camera_reliable_qos_config(ns, f"cam_{i}") for i in range(3)],
+            *[
+                create_camera_reliable_qos_config(ns, name, compressed, is_depth)
+                for name, compressed, is_depth in cameras
+            ],
             happypose_params_path,
         ],
     )
@@ -80,7 +85,11 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
     def setUpClass(cls) -> None:
         # Test both multiview and compressed images
         super().setUpClass(
-            [("cam_1", Image), ("cam_2", CompressedImage), ("cam_3", Image)],
+            [
+                ("cam_1", Image, False),
+                ("cam_2", CompressedImage, False),
+                ("cam_3", Image, False),
+            ],
             "test_multi_view",
         )
 
@@ -89,9 +98,9 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         )
 
         image_path = get_package_share_directory("happypose_ros") + "/test"
-        cls.cam_1_image = np.asarray(PIL.Image.open(image_path + "/000629.png"))
-        cls.cam_2_image = np.asarray(PIL.Image.open(image_path + "/001130.png"))
-        cls.cam_3_image = np.asarray(PIL.Image.open(image_path + "/001874.png"))
+        cls.cam_1_image = np.asarray(PIL.Image.open(image_path + "/rgb/000629.png"))
+        cls.cam_2_image = np.asarray(PIL.Image.open(image_path + "/rgb/001130.png"))
+        cls.cam_3_image = np.asarray(PIL.Image.open(image_path + "/rgb/001874.png"))
 
     def test_01_node_startup(self, proc_output: ActiveIoHandler) -> None:
         # Check if the node outputs correct initialization
@@ -99,12 +108,14 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
 
     def test_02_check_topics(self) -> None:
         # Check if node subscribes to correct topics
-        self.node.assert_node_is_subscriber("cam_1/image_raw", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_1/camera_info", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_2/image_raw/compressed", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_2/camera_info", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_3/image_raw", timeout=3.0)
-        self.node.assert_node_is_subscriber("cam_3/camera_info", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_1/color/image_raw", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_1/color/camera_info", timeout=3.0)
+        self.node.assert_node_is_subscriber(
+            "cam_2/color/image_raw/compressed", timeout=3.0
+        )
+        self.node.assert_node_is_subscriber("cam_2/color/camera_info", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_3/color/image_raw", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_3/color/camera_info", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/detections", timeout=3.0)
         self.node.assert_node_is_publisher("happypose/vision_info", timeout=3.0)
         self.node.assert_node_is_publisher("/tf", timeout=3.0)
@@ -130,7 +141,9 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
             self.node.publish_image("cam_1", self.cam_1_image, self.K)
             self.node.publish_image("cam_2", self.cam_2_image, self.K)
             self.node.publish_image("cam_3", self.cam_3_image, self.K)
-            ready = proc_output.waitFor("HappyPose initialized", timeout=0.5)
+            ready = proc_output.waitFor(
+                "First inference might take longer", timeout=0.5
+            )
         if not ready:
             self.fail("Failed to trigger the pipeline!")
 

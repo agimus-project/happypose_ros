@@ -1,3 +1,4 @@
+import time
 import numpy as np
 import pandas as pd
 from typing import Union
@@ -40,6 +41,11 @@ class HappyPosePipeline:
         self._wrapper = CosyPoseWrapper(
             dataset_name=self._params["cosypose"]["dataset_name"],
             model_type=self._params["cosypose"]["model_type"],
+            depth_refiner_type=(
+                self._params["cosypose"]["depth_refiner_type"]
+                if self._params["use_depth"]
+                else None
+            ),
             **self._params["cosypose"]["renderer"],
         )
 
@@ -88,11 +94,17 @@ class HappyPosePipeline:
             was detected None is returned
         :rtype: Union[None, dict]
         """
+        timings = {}
+        t1 = time.perf_counter()
+
         detections = self._wrapper.pose_predictor.detector_model.get_detections(
             observation,
             output_masks=False,
             **self._inference_args["detector"],
         )
+
+        t2 = time.perf_counter()
+        timings["detections"] = t2 - t1
 
         detections = filter_detections(
             detections, self._inference_args["labels_to_keep"]
@@ -101,25 +113,52 @@ class HappyPosePipeline:
         if len(detections.infos) == 0:
             return None
 
-        object_predictions, _ = self._wrapper.pose_predictor.run_inference_pipeline(
+        cosypose_predictions, _ = self._wrapper.pose_predictor.run_inference_pipeline(
             observation,
             detections=detections,
             run_detector=False,
             data_TCO_init=None,
             **self._inference_args["pose_estimator"],
         )
+        t3 = time.perf_counter()
+        timings["single_view"] = t3 - t2
+
+        if self._params["use_depth"]:
+            object_predictions, extra_data_depth_ref = (
+                self._wrapper.depth_refiner.refine_poses(
+                    predictions=cosypose_predictions,
+                    depth=observation.depth,
+                    K=observation.K,
+                    **self._inference_args[
+                        self._params["cosypose"]["depth_refiner_type"]
+                    ],
+                )
+            )
+
+            # Select only valid ICP results (retval of value 0)
+            valid_icp_ids = np.logical_not(extra_data_depth_ref["retvals_icp"])
+            object_predictions = object_predictions[valid_icp_ids]
+
+        else:
+            object_predictions = cosypose_predictions
+
+        t4 = time.perf_counter()
+        timings["depth_refinement"] = t4 - t3
 
         if not self._multiview:
             object_predictions.cpu()
+            timings["total"] = time.perf_counter() - t1
             return {
                 "infos": object_predictions.infos,
                 "poses": object_predictions.poses,
                 "bboxes": detections.tensors["bboxes"].int().cpu(),
+                "timings": timings,
             }
 
         object_predictions.infos = object_predictions.infos.rename(
             columns={"batch_im_id": "view_id"}
         )
+        # Arbitrary scene_id and group_id
         object_predictions.infos["scene_id"] = 42
         object_predictions.infos["group_id"] = 0
 
@@ -158,6 +197,10 @@ class HappyPosePipeline:
             "scene/objects"
         ].infos["n_cand"]
 
+        t5 = time.perf_counter()
+        timings["depth_refinement"] = t5 - t4
+        timings["total"] = t5 - t1
+
         return {
             "infos": object_predictions.infos,
             "poses": object_predictions.TWO,
@@ -165,4 +208,5 @@ class HappyPosePipeline:
             "camera_infos": cameras_pred.infos,
             "camera_poses": cameras_pred.TWC,
             "camera_K": cameras_pred.K,
+            "timings": timings,
         }
