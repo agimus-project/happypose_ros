@@ -26,7 +26,6 @@ from launch_testing.io_handler import ActiveIoHandler
 
 from happypose_testing_utils import (
     HappyPoseTestCase,
-    assert_bbox,
     assert_and_find_detection,
     assert_pose_equal,
 )
@@ -112,7 +111,6 @@ class TestHappyposeSingleViewNode(HappyPoseTestCase):
             ["cosypose.inference.detector.detection_th"], 5.0
         )[0].value
 
-
         assert_pose_equal(
             ycbv_02.results[0].pose.pose, self.ycbv_02_pose, precision=0.1
         )
@@ -122,7 +120,6 @@ class TestHappyposeSingleViewNode(HappyPoseTestCase):
         assert_pose_equal(
             ycbv_15.results[0].pose.pose, self.ycbv_15_pose, precision=0.1
         )
-
 
 
 @pytest.mark.launch_test
