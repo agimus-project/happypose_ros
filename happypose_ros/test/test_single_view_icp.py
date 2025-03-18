@@ -157,3 +157,20 @@ class TestHappyposeSingleViewNode(HappyPoseTestCase):
         assert_pose_equal(
             ycbv_15.results[0].pose.pose, self.ycbv_15_pose, precision=0.1
         )
+
+    def test_02_check_topics(self) -> None:
+        # Check if node subscribes to correct topics
+        self.node.assert_node_is_subscriber(
+            "cam_1/color/image_raw",
+            timeout=3.0,
+        )
+        self.node.assert_node_is_subscriber(
+            "cam_1/depth/image_raw",
+            timeout=3.0,
+        )
+        self.node.assert_node_is_subscriber("cam_1/color/camera_info", timeout=3.0)
+        self.node.assert_node_is_subscriber("cam_1/depth/camera_info", timeout=3.0)
+        self.node.assert_node_is_publisher("happypose/detections", timeout=3.0)
+        self.node.assert_node_is_publisher("happypose/markers", timeout=3.0)
+        self.node.assert_node_is_publisher("happypose/vision_info", timeout=3.0)
+        self.node.assert_node_is_publisher("happypose/object_symmetries", timeout=3.0)
