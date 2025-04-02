@@ -6,6 +6,7 @@ from threading import Thread
 import torch
 import torch.multiprocessing as mp
 import queue
+import pairing
 
 import rclpy
 from rclpy.duration import Duration
@@ -22,6 +23,8 @@ from tf2_ros import TransformBroadcaster
 from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray
 from vision_msgs.msg import Detection2DArray, VisionInfo
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 from happypose.toolbox.datasets.datasets_cfg import make_object_dataset
 from happypose.toolbox.inference.types import ObservationTensor
@@ -188,6 +191,12 @@ class HappyPoseNode(Node):
             qos_profile=qos_profile_system_default,
             qos_overriding_options=QoSOverridingOptions.with_default_policies(),
         )
+        self._seg_masks_publisher = self.create_publisher(
+            Image,
+            "happypose/seg_masks",
+            qos_profile=qos_profile_system_default,
+            qos_overriding_options=QoSOverridingOptions.with_default_policies(),
+        )
 
         self._symmetries_publisher = self.create_publisher(
             ObjectSymmetriesArray,
@@ -331,6 +340,8 @@ class HappyPoseNode(Node):
         self.get_logger().info(
             "Node initialized. Waiting for HappyPose worker to initialize...",
         )
+
+        self.bridge = CvBridge()
 
     def destroy_node(self) -> None:
         """Destroys the node and closes all queues."""
@@ -630,6 +641,26 @@ class HappyPoseNode(Node):
                 detections = get_detection_array_msg(
                     results, header, has_bbox=not self._multiview
                 )
+
+                ##################
+                # for contact_graspnet_ros
+                masks = results["masks"].numpy()
+                merged_mask = np.zeros(masks[0].shape, dtype=np.uint16)
+                for instance_id in range(len(masks)):
+                    # label format: tless-obj_000021
+                    label = results["infos"].iloc[instance_id].label
+                    label_id = int(label[-6:])
+                    seg_id = pairing.pair(
+                        label_id, instance_id
+                    )  # reversible NxN -> N function
+                    merged_mask[masks[instance_id]] = seg_id
+
+                masks_msg = self.bridge.cv2_to_imgmsg(merged_mask, encoding="mono16")
+                masks_msg.header = header
+
+                # Publish the image
+                self._seg_masks_publisher.publish(masks_msg)
+                ##################
 
             else:
                 if self._params.verbose_info_logs:
