@@ -14,6 +14,7 @@ def torch_check_device(param: Parameter) -> str:
     """
     if torch.cuda.is_available():
         available_devices = [f"cuda:{num}" for num in range(torch.cuda.device_count())]
+        available_devices.append("cuda")
     else:
         available_devices = []
     available_devices.append("cpu")
