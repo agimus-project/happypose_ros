@@ -641,26 +641,25 @@ class HappyPoseNode(Node):
                 detections = get_detection_array_msg(
                     results, header, has_bbox=not self._multiview
                 )
+                
+                if self._params.publish_seg_masks:
+                    masks = results["masks"].numpy()
+                    merged_mask = np.zeros(masks[0].shape, dtype=np.uint16)
+                    for instance_id in range(len(masks)):
+                        # label format: <ds_name>-obj_000021
+                        label = results["infos"].iloc[instance_id].label
+                        label_id = int(label[-6:])
+                        # Store instance id and label in a single integer using an invertible pairing function (NxN -> N)
+                        # On client side, do: label_id, instance_id = pairing.depair(seg_id)
+                        seg_id = pairing.pair(
+                            label_id, instance_id
+                        )  
+                        merged_mask[masks[instance_id]] = seg_id
 
-                ##################
-                # for contact_graspnet_ros
-                masks = results["masks"].numpy()
-                merged_mask = np.zeros(masks[0].shape, dtype=np.uint16)
-                for instance_id in range(len(masks)):
-                    # label format: tless-obj_000021
-                    label = results["infos"].iloc[instance_id].label
-                    label_id = int(label[-6:])
-                    seg_id = pairing.pair(
-                        label_id, instance_id
-                    )  # reversible NxN -> N function
-                    merged_mask[masks[instance_id]] = seg_id
+                    masks_msg = self.bridge.cv2_to_imgmsg(merged_mask, encoding="mono16")
+                    masks_msg.header = header
 
-                masks_msg = self.bridge.cv2_to_imgmsg(merged_mask, encoding="mono16")
-                masks_msg.header = header
-
-                # Publish the image
-                self._seg_masks_publisher.publish(masks_msg)
-                ##################
+                    self._seg_masks_publisher.publish(masks_msg)
 
             else:
                 if self._params.verbose_info_logs:
