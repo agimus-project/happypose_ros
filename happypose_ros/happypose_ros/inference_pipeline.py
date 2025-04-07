@@ -99,7 +99,7 @@ class HappyPosePipeline:
 
         detections = self._wrapper.pose_predictor.detector_model.get_detections(
             observation,
-            output_masks=False,
+            output_masks=self._params["publish_seg_masks"],
             **self._inference_args["detector"],
         )
 
@@ -152,6 +152,7 @@ class HappyPosePipeline:
                 "infos": object_predictions.infos,
                 "poses": object_predictions.poses,
                 "bboxes": detections.tensors["bboxes"].int().cpu(),
+                "masks": detections.masks.cpu(),
                 "timings": timings,
             }
 

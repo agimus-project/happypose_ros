@@ -8,6 +8,8 @@
     verbose_info_logs: true
     # Specifies whether to use depth images for pose refinement. If set to `true` all cameras are expected to provide depth images
     use_depth: false
+    # Specifies if the combined segmentation mask should be published.
+    publish_seg_masks: true
     # Specifies which pose estimator to use in the pipeline
     pose_estimator_type: "cosypose"
     cosypose:
