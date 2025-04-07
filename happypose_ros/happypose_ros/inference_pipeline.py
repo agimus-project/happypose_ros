@@ -99,7 +99,7 @@ class HappyPosePipeline:
 
         detections = self._wrapper.pose_predictor.detector_model.get_detections(
             observation,
-            output_masks=self._params.publish_seg_masks,
+            output_masks=self._params["publish_seg_masks"],
             **self._inference_args["detector"],
         )
 
