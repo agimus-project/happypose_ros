@@ -137,9 +137,9 @@ def test_only_discrete_np() -> None:
     assert res.shape == (2, 4, 4), "Result shape is incorrect!"
 
     for i, t in enumerate(res):
-        assert is_transform_in_se3_list(
-            t, [t1, t2]
-        ), f"Discrete symmetry at index {i} did not match any of the initial ones!"
+        assert is_transform_in_se3_list(t, [t1, t2]), (
+            f"Discrete symmetry at index {i} did not match any of the initial ones!"
+        )
 
 
 def test_only_discrete_ros() -> None:
@@ -159,18 +159,18 @@ def test_only_discrete_ros() -> None:
 
     res = discretize_symmetries(msg, return_ros_msg=True)
 
-    assert len(res) == len(
-        msg.symmetries_discrete
-    ), "Results list does not have all discrete symmetries from message received!"
+    assert len(res) == len(msg.symmetries_discrete), (
+        "Results list does not have all discrete symmetries from message received!"
+    )
 
-    assert all(
-        isinstance(r, Transform) for r in res
-    ), "Returned type of elements in the list is not geometry_msgs.msg.Transform!"
+    assert all(isinstance(r, Transform) for r in res), (
+        "Returned type of elements in the list is not geometry_msgs.msg.Transform!"
+    )
 
     for i, t in enumerate(res):
-        assert is_transform_msg_in_list(
-            t, msg.symmetries_discrete
-        ), f"Discrete symmetry at index {i} did not match any initial ones in the message!"
+        assert is_transform_msg_in_list(t, msg.symmetries_discrete), (
+            f"Discrete symmetry at index {i} did not match any initial ones in the message!"
+        )
 
 
 def test_only_continuous_np() -> None:
@@ -201,9 +201,9 @@ def test_only_continuous_np() -> None:
     res = discretize_symmetries(msg, n_symmetries_continuous=n_symmetries)
     assert res.shape == (n_symmetries, 4, 4), "Result shape is incorrect!"
     for i, t in enumerate(res):
-        assert is_transform_in_se3_list(
-            t, t_list
-        ), f"Discrete symmetry at index {i} did not match any symmetry from generated list!"
+        assert is_transform_in_se3_list(t, t_list), (
+            f"Discrete symmetry at index {i} did not match any symmetry from generated list!"
+        )
 
 
 def test_only_continuous_ros() -> None:
@@ -235,16 +235,16 @@ def test_only_continuous_ros() -> None:
         msg, n_symmetries_continuous=n_symmetries, return_ros_msg=True
     )
 
-    assert len(res) == len(
-        t_list
-    ), "Results list does not have all discrete symmetries from message received!"
+    assert len(res) == len(t_list), (
+        "Results list does not have all discrete symmetries from message received!"
+    )
 
     t_msgs = [pin_to_msg(t) for t in t_list]
 
     for i, t in enumerate(res):
-        assert is_transform_msg_in_list(
-            t, t_msgs
-        ), f"Discrete symmetry at index {i} did not match any symmetry from generated list!"
+        assert is_transform_msg_in_list(t, t_msgs), (
+            f"Discrete symmetry at index {i} did not match any symmetry from generated list!"
+        )
 
 
 def test_mixed_np() -> None:
@@ -299,9 +299,9 @@ def test_mixed_np() -> None:
     print(res, flush=True)
 
     for i, t in enumerate(res):
-        assert is_transform_in_se3_list(
-            t, t_test
-        ), f"Discrete symmetry at index {i} did not match any symmetry from generated list!"
+        assert is_transform_in_se3_list(t, t_test), (
+            f"Discrete symmetry at index {i} did not match any symmetry from generated list!"
+        )
 
 
 def test_mixed_ros() -> None:
@@ -354,6 +354,6 @@ def test_mixed_ros() -> None:
     ]
 
     for i, t in enumerate(res):
-        assert is_transform_msg_in_list(
-            t, t_test
-        ), f"Discrete symmetry at index {i} did not match any symmetry from generated list!"
+        assert is_transform_msg_in_list(t, t_test), (
+            f"Discrete symmetry at index {i} did not match any symmetry from generated list!"
+        )
