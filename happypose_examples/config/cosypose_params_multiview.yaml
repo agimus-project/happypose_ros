@@ -27,6 +27,8 @@
         renderer_type: "panda3d"
         # Number of CPU cores to use during rendering
         n_workers: 8
+        # Use antialiasing in the rendering process, slower and does not increase much performance. Only for panda3d.
+        use_antialiasing: true
       # Parameters expected on the runtime
       inference:
         # 2D image detection parameters
