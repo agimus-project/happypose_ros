@@ -86,7 +86,7 @@ happypose_ros:
       use_antialiasing:
         type: bool
         default_value: true
-        description: "Use antialiasing in the rendering process. Slower and does not increase much performance. Only for panda3d. Enabled by default for backwards compatibilty."
+        description: "Use antialiasing in the rendering process. Slower and does not increase much performance. Only for panda3d. Enabled by default for backwards compatibility."
         read_only: true
     inference:
       detector:
