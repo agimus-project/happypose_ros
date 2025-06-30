@@ -294,13 +294,12 @@ class HappyPoseTesterNode(Node):
             time.sleep(0.1)
 
         assert future.done, (
-            "Timeout reached when spinning the service "
-            f"{self._get_param_cli.srv_name}!"
+            f"Timeout reached when spinning the service {self._get_param_cli.srv_name}!"
         )
 
-        assert (
-            future.result() is not None
-        ), f"Failed to call the service the service {self._set_param_cli.srv_name}!"
+        assert future.result() is not None, (
+            f"Failed to call the service the service {self._set_param_cli.srv_name}!"
+        )
 
         return [
             Parameter.from_parameter_msg(RCL_Parameter(name=name, value=param))
@@ -335,13 +334,12 @@ class HappyPoseTesterNode(Node):
             time.sleep(0.1)
 
         assert future.done, (
-            "Timeout reached when spinning "
-            f"the service {self._set_param_cli.srv_name}!"
+            f"Timeout reached when spinning the service {self._set_param_cli.srv_name}!"
         )
 
-        assert (
-            future.result() is not None
-        ), f"Failed to call the service the service {self._set_param_cli.srv_name}!"
+        assert future.result() is not None, (
+            f"Failed to call the service the service {self._set_param_cli.srv_name}!"
+        )
 
         if not future.result().result.successful:
             "Failed to set parameters!"
@@ -418,9 +416,9 @@ class HappyPoseTesterNode(Node):
         self._cam_pubs[cam][1].publish(info_msg)
 
         if depth is not None:
-            assert (
-                depth.shape[:1] == bgr.shape[:1]
-            ), "color and depth test images should have same resolution"
+            assert depth.shape[:1] == bgr.shape[:1], (
+                "color and depth test images should have same resolution"
+            )
             cropped_depth = depth[
                 y_offset : y_offset + height,
                 x_offset : x_offset + width,
@@ -630,9 +628,9 @@ def assert_pose_equal(
         for p in (pose_1, pose_2)
     ]
     diff = poses[0].inverse() * poses[1]
-    assert (
-        np.linalg.norm(pin.log6(diff).vector) < precision
-    ), "Detected pose is not within specified precision!"
+    assert np.linalg.norm(pin.log6(diff).vector) < precision, (
+        "Detected pose is not within specified precision!"
+    )
 
 
 def assert_transform_equal(
@@ -662,9 +660,9 @@ def assert_transform_equal(
         for t in (transform_1, transform_2)
     ]
     diff = poses[0].inverse() * poses[1]
-    assert (
-        np.linalg.norm(pin.log6(diff).vector) < precision
-    ), "Given transformations are is not within specified precision!"
+    assert np.linalg.norm(pin.log6(diff).vector) < precision, (
+        "Given transformations are is not within specified precision!"
+    )
 
 
 def assert_bbox(
@@ -693,21 +691,21 @@ def assert_bbox(
     def _almost_equal(x: float, y: float, delta: float) -> bool:
         return abs(x - y) < delta
 
-    assert _almost_equal(
-        msg.size_x, size_x, pixel_error_x
-    ), "Bbox size in X is incorrect!"
+    assert _almost_equal(msg.size_x, size_x, pixel_error_x), (
+        "Bbox size in X is incorrect!"
+    )
 
-    assert _almost_equal(
-        msg.size_y, size_y, pixel_error_y
-    ), "Bbox size in Y is incorrect!"
+    assert _almost_equal(msg.size_y, size_y, pixel_error_y), (
+        "Bbox size in Y is incorrect!"
+    )
 
-    assert _almost_equal(
-        msg.center.position.x, center_x, pixel_error_x
-    ), "Bbox center in X is incrrect!"
+    assert _almost_equal(msg.center.position.x, center_x, pixel_error_x), (
+        "Bbox center in X is incrrect!"
+    )
 
-    assert _almost_equal(
-        msg.center.position.y, center_y, pixel_error_y
-    ), "Bbox center in Y is incorrect!"
+    assert _almost_equal(msg.center.position.y, center_y, pixel_error_y), (
+        "Bbox center in Y is incorrect!"
+    )
 
     if abs(msg.center.theta) > 1e-8:
         "Bbox theta is not 0.0!"
