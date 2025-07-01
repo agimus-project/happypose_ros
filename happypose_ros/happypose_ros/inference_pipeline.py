@@ -2,10 +2,22 @@ import time
 import numpy as np
 import pandas as pd
 from typing import Union
+from pathlib import Path
+from abc import ABC, abstractmethod
+from typing import final
+import math
+# from ultralytics import YOLO
 
-from happypose.toolbox.inference.types import ObservationTensor
-from happypose.toolbox.inference.utils import filter_detections
-from happypose.toolbox.datasets.object_dataset import RigidObjectDataset
+#! debug
+import matplotlib
+matplotlib.use('TKAgg')
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+
+
+from happypose.toolbox.inference.types import ObservationTensor, DetectionsType
+from happypose.toolbox.inference.utils import filter_detections , make_detections_from_object_data
+from happypose.toolbox.datasets.object_dataset import RigidObject, RigidObjectDataset
 
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
     CosyPoseWrapper,
@@ -23,8 +35,56 @@ from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database impor
     MeshDataBase,
 )
 
+from happypose.toolbox.utils.load_model import NAMED_MODELS, load_named_model
+from happypose.toolbox.datasets.scene_dataset import ObjectData
 
-class HappyPosePipeline:
+from happypose.pose_estimators.megapose.scripts.run_inference_on_example import setup_pose_estimator, run_inference
+
+#! ==============================================================================
+# #! ros2 logger
+from rclpy.impl import rcutils_logger
+
+# self.logger = rcutils_logger.RcutilsLogger(name="HHPose-pipeline")
+# self.logger.info("Starting")
+# !==============================================================================
+
+class InferencePipeline(ABC):
+    """TODO"""
+    def __init__(self, params: dict) -> None:
+        """TODO"""
+        self.logger = rcutils_logger.RcutilsLogger(name="General-pipeline")
+        
+        return 0
+
+    @final
+    def update_params(self, params: dict) -> None:
+        """Updates parameters used by the HappyPose.
+
+        :param params: Parameters used to initialize the HappyPose pipeline.
+            On runtime to update inference parameters.
+        :type params: dict
+        """
+        self.logger.info("Updating parameters")
+
+        self._inference_args = params["cosypose"]["inference"]
+        self._inference_args["labels_to_keep"] = (
+            self._inference_args["labels_to_keep"]
+            if self._inference_args["labels_to_keep"] != [""]
+            else None
+        )
+
+    @abstractmethod
+    def get_dataset(self) -> RigidObjectDataset:
+        """TODO"""
+        pass
+
+    @abstractmethod
+    def __call__(self, observation: ObservationTensor) -> Union[None,dict]:
+        """TODO"""
+        pass
+    
+
+class CosyPosePipeline(InferencePipeline):
     """Object wrapping HappyPose pipeline extracting its calls from the main ROS node."""
 
     def __init__(self, params: dict) -> None:
@@ -33,7 +93,10 @@ class HappyPosePipeline:
         :param params: Parameters used to initialize the HappyPose pipeline.
         :type params: dict
         """
-        super().__init__()
+        self.logger = rcutils_logger.RcutilsLogger(name="CHPose-pipeline")
+        self.logger.info("Starting CosyPose inference pipeline")
+
+        super().__init__(params)
         self._params = params
         self._device = self._params["device"]
 
@@ -59,20 +122,6 @@ class HappyPosePipeline:
             mesh_db = MeshDataBase.from_object_ds(object_ds)
             self._mv_predictor = MultiviewScenePredictor(mesh_db)
 
-    def update_params(self, params: dict) -> None:
-        """Updates parameters used by the HappyPose.
-
-        :param params: Parameters used to initialize the HappyPose pipeline.
-            On runtime to update inference parameters.
-        :type params: dict
-        """
-        self._inference_args = params["cosypose"]["inference"]
-        self._inference_args["labels_to_keep"] = (
-            self._inference_args["labels_to_keep"]
-            if self._inference_args["labels_to_keep"] != [""]
-            else None
-        )
-
     def get_dataset(self) -> RigidObjectDataset:
         """Returns rigid object dataset used by HappyPose pose estimator
 
@@ -94,6 +143,7 @@ class HappyPosePipeline:
             was detected None is returned
         :rtype: Union[None, dict]
         """
+        self.logger.info("Cosypose called")
         timings = {}
         t1 = time.perf_counter()
 
@@ -120,6 +170,7 @@ class HappyPosePipeline:
             data_TCO_init=None,
             **self._inference_args["pose_estimator"],
         )
+
         t3 = time.perf_counter()
         timings["single_view"] = t3 - t2
 
@@ -148,6 +199,10 @@ class HappyPosePipeline:
         if not self._multiview:
             object_predictions.cpu()
             timings["total"] = time.perf_counter() - t1
+
+            self.logger.info("prédictions:")
+            self.logger.info(str(object_predictions.infos.to_string()))
+
             return {
                 "infos": object_predictions.infos,
                 "poses": object_predictions.poses,
@@ -210,3 +265,202 @@ class HappyPosePipeline:
             "camera_K": cameras_pred.K,
             "timings": timings,
         }
+
+
+class MegaPosePipeline(InferencePipeline):
+    """TODO"""
+    def __init__(self, params : dict) -> None:
+        """Creates MegaPosePipeline object and starts loading Torch models to the memory.
+
+        :param params: Parameters used to initialize the HappyPose pipeline.
+        :type params: dict
+        """
+
+        self.logger = rcutils_logger.RcutilsLogger(name="MHPose-pipeline")
+        self.logger.info("Starting MegaPose inference pipeline")
+
+        super().__init__(params)
+        self._params = params
+        self._device = self._params["device"]
+
+        self.update_params(self._params)
+
+        object_dataset = self.get_dataset()
+ 
+        #! load megapose model ==================================================
+        model_name = "megapose-1.0-RGB-multi-hypothesis" # TODO: pass as param
+        self.logger.info(f"Loading model {model_name}.")
+        self.model_info = NAMED_MODELS[model_name]
+        self.pose_estimator = load_named_model(model_name, object_dataset).to(self._device)
+        self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[::8]
+
+
+        # load yolo model
+        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt" #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"
+        # self.yolo_model = YOLO(yolo_model_path)
+
+        self.logger.info("MegaposePipeline initialisation finished")
+
+        # self._multiview = len(self._params["camera_names"]) > 1s
+        # if self._multiview:
+        #     # TODO Raise error
+        #     pass
+
+    def get_dataset(self) -> RigidObjectDataset:
+        """Returns rigid object dataset used by MegaPose pose estimator
+
+        :return: Dataset used by MegaPose pose estimator
+        :rtype: RigidObjectDataset
+        """
+        self.logger.info("Megapose get dataset called")
+        rigid_objects = []
+        mesh_units = "mm"
+        # TODO: find a better way to get path
+        mesh_dir = Path("/docker_files/happypose_ros_data/meshes") 
+        assert mesh_dir.exists(), f"Missing mesh directory {mesh_dir}"
+
+        for mesh_path in mesh_dir.iterdir():
+            if mesh_path.suffix in {".obj", ".ply"}:
+                obj_name = mesh_path.with_suffix("").name
+                rigid_objects.append(
+                    RigidObject(label=obj_name, mesh_path=mesh_path, mesh_units=mesh_units),
+                )
+        rigid_object_dataset = RigidObjectDataset(rigid_objects)
+        return rigid_object_dataset
+        
+    def __call__(self, observation: ObservationTensor) -> Union[None,dict]:
+        """TODO"""
+
+        """Performs sequence of actions to estimate pose and optionally merge
+        multiview results.
+
+        :param observation: Tensor containing camera information and incoming images.
+        :type observation: happypose.toolbox.inference.types.ObservationTensor
+        :return: Dictionary with final detections. If pipeline failed or nothing
+            was detected None is returned
+        :rtype: Union[None, dict]
+        """
+        self.logger.info("Megapose called")
+        timings = {}
+        t1 = time.perf_counter()
+
+        # replace by a yolo for now
+        # get detections with a yolo
+        # rgb_tensor = observation.rgb # TODO: add to toolbox
+        rgb_tensor = observation.images[:,0:3].cpu() #* copy to cpu before doing operations on it
+        rgb_image = rgb_tensor.numpy()
+        rgb_image = rgb_image[0,:,:,:]
+        rgb_image = np.moveaxis(rgb_image, [0,1] , [2,0])
+
+       
+
+
+        # detections = self.yolo_detector(rgb_image) #! runs but does not return a detection
+
+        # temp replacement =====================================================
+        x1 = int(392)
+        y1 = int(217)
+        x2 = int(782)
+        y2 = int(434)
+        label = 'bar-holder-stripped-bi-v3'
+
+        object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
+        object_data = [object_data]
+        detections = make_detections_from_object_data(object_data).to(self._device) 
+
+        self.logger.info("finished making fake detection")
+        # end of temp remplacement =============================================
+
+        if detections is None:
+            return None
+        
+
+        t2 = time.perf_counter()
+        timings["detections"] = t2 - t1
+
+        if len(detections.infos) == 0: #? redundant ?
+            return None
+
+        observation.to(self._device)
+
+        # PB HERE ==============================================================
+        data_TCO_final, extra_data = self.pose_estimator.run_inference_pipeline(
+                                                                                observation,
+                                                                                detections=detections,
+                                                                                **self.model_info["inference_parameters"]
+                                                                                )
+        # END OF PB? ===========================================================
+        self.logger.info("After inference")
+
+        object_predictions = data_TCO_final #.cpu() #? not sure why there is a .cpu here
+        # self.logger.info(str(object_predictions.infos))
+
+        t3 = time.perf_counter()
+        timings["single_view"] = t3 - t2
+
+        object_predictions.cpu()
+        timings["total"] = time.perf_counter() - t1
+        self.logger.info(str(object_predictions.infos.to_string()))
+        
+
+        object_predictions.infos.rename(columns={'pose_score':'score'}, inplace=True)
+        object_predictions.infos['score'] = object_predictions.infos['score'].astype(float)
+
+
+        return {
+            "infos": object_predictions.infos,
+            "poses": object_predictions.poses,
+            "bboxes": detections.tensors["bboxes"].int().cpu(),
+            "timings": timings,
+        }
+        
+
+
+    # def yolo_detector(self, color_image ) -> DetectionsType:
+    #     """
+    #     TODO
+    #     """
+    #     yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt" #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"
+    #     yolo_model = YOLO(yolo_model_path)
+    #     yolo_results = yolo_model(color_image, stream=True)
+        
+    #     for r in yolo_results:
+    #         boxes = r.boxes
+    #         min_confidence = 0
+    #         box_w_max_conf = 0
+    #         self.logger.info("boxes len:" + str(len(boxes)))
+
+    #         if len(boxes) > 0:
+    #             # self.logger.info("yolo found something")
+    #             for box in boxes:
+    #                 confidence = math.ceil((box.conf[0]*100))/100
+
+    #                 if confidence > min_confidence :
+    #                     box_w_max_conf = box
+    #                     min_confidence = confidence
+
+    #                 # bounding box coordinates
+    #                 x1, y1, x2, y2 = box_w_max_conf.xyxy[0]
+    #                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+    #                 # Create a Rectangle patch
+    #                 rect = patches.Rectangle((x1, y2), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
+
+    #                 # Add the patch to the Axes
+    #                 color_image.add_patch(rect)
+    #                 plt.imshow(color_image)
+    #                 plt.show()
+                
+    #         else:
+    #             self.logger.info("No detection")
+    #             return None
+            
+
+    #     label = "bar-holder" 
+    #     object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
+    #     self.logger.info("Data: " + str(object_data))
+
+    #     object_data = [object_data]
+
+    #     detections = make_detections_from_object_data(object_data).to(self._device) 
+    #     return detections
+        

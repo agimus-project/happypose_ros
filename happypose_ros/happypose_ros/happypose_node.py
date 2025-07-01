@@ -30,7 +30,7 @@ from happypose.toolbox.utils.logging import get_logger
 logger = get_logger(__name__)
 
 from happypose_ros.camera_wrapper import CameraWrapper  # noqa: E402
-from happypose_ros.inference_pipeline import HappyPosePipeline  # noqa: E402
+from happypose_ros.inference_pipeline import CosyPosePipeline, MegaPosePipeline  # noqa: E402
 from happypose_ros.utils import (  # noqa: E402
     params_to_dict,
     get_camera_transform,
@@ -44,6 +44,13 @@ from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
+#! ==============================================================================
+# #! ros2 logger
+from rclpy.impl import rcutils_logger
+
+# self.logger = rcutils_logger.RcutilsLogger(name="HHPose-pipeline")
+# self.logger.info("Starting")
+# !==============================================================================
 
 def happypose_worker_proc(
     worker_free: mp.Value,
@@ -64,7 +71,13 @@ def happypose_worker_proc(
     :type params_queue: multiprocessing.Queue
     """
     # Initialize the pipeline
-    pipeline = HappyPosePipeline(params_queue.get())
+
+    logger = rcutils_logger.RcutilsLogger(name="happypose_worker_proc")
+    logger.info("Starting")
+    #TODO: change to have a switch
+    # pipeline = CosyPosePipeline(params_queue.get())
+    pipeline = MegaPosePipeline(params_queue.get())
+
     # Inform ROS node about the dataset
     symmetries_queue.put(pipeline.get_dataset())
 
@@ -149,16 +162,30 @@ class HappyPoseNode(Node):
                 self._params_queue,
             ),
         )
+
         self._await_results_task = None
+
+
+        self.get_logger().info("markers file:")
+        self.get_logger().info(str(type(make_object_dataset(self._params.cosypose.dataset_name).ds_dir.as_posix())))
+
+
 
         # TODO once MegaPose is available initialization
         # should be handled better
+        # self._vision_info_msg = VisionInfo(
+        #     method=self._params.pose_estimator_type,
+        #     # TODO set this parameter to something more meaningful
+        #     database_location=make_object_dataset(
+        #         self._params.cosypose.dataset_name
+        #     ).ds_dir.as_posix(),
+        #     database_version=0,
+        # )
+
         self._vision_info_msg = VisionInfo(
             method=self._params.pose_estimator_type,
             # TODO set this parameter to something more meaningful
-            database_location=make_object_dataset(
-                self._params.cosypose.dataset_name
-            ).ds_dir.as_posix(),
+            database_location="/docker_files/happypose_ros_data/meshes",
             database_version=0,
         )
 
@@ -626,6 +653,9 @@ class HappyPoseNode(Node):
                                 get_camera_transform(pose, header, cam["frame_id"])
                             )
 
+
+                self.get_logger().info(str(results.keys()))
+                self.get_logger().info(str(header))
                 # In case of multi-view, do not use bounding boxes
                 detections = get_detection_array_msg(
                     results, header, has_bbox=not self._multiview
@@ -640,6 +670,8 @@ class HappyPoseNode(Node):
                     detections=[],
                 )
 
+            # self.get_logger().info("start of publishing")
+            # self.get_logger().info("detections")
             self._detections_publisher.publish(detections)
 
             self._vision_info_msg.header = header
@@ -650,6 +682,7 @@ class HappyPoseNode(Node):
                 markers = get_marker_array_msg(
                     detections,
                     f"file://{self._vision_info_msg.database_location}",
+                    mesh_file_extension="obj",
                     prefix=self._params.cosypose.dataset_name + "-",
                     dynamic_opacity=self._params.visualization.markers.dynamic_opacity,
                     marker_lifetime=self._params.visualization.markers.lifetime,
