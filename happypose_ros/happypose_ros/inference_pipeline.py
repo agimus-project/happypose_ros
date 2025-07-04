@@ -8,13 +8,6 @@ from typing import final
 import math
 # from ultralytics import YOLO
 
-#! debug
-import matplotlib
-matplotlib.use('TKAgg')
-import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-
-
 from happypose.toolbox.inference.types import ObservationTensor, DetectionsType
 from happypose.toolbox.inference.utils import filter_detections , make_detections_from_object_data
 from happypose.toolbox.datasets.object_dataset import RigidObject, RigidObjectDataset
@@ -100,7 +93,6 @@ class CosyPosePipeline(InferencePipeline):
         self._params = params
         self._device = self._params["device"]
 
-        # Currently only cosypose is supported
         self._wrapper = CosyPoseWrapper(
             dataset_name=self._params["cosypose"]["dataset_name"],
             model_type=self._params["cosypose"]["model_type"],
@@ -143,7 +135,6 @@ class CosyPosePipeline(InferencePipeline):
             was detected None is returned
         :rtype: Union[None, dict]
         """
-        self.logger.info("Cosypose called")
         timings = {}
         t1 = time.perf_counter()
 
@@ -199,9 +190,6 @@ class CosyPosePipeline(InferencePipeline):
         if not self._multiview:
             object_predictions.cpu()
             timings["total"] = time.perf_counter() - t1
-
-            self.logger.info("prédictions:")
-            self.logger.info(str(object_predictions.infos.to_string()))
 
             return {
                 "infos": object_predictions.infos,
@@ -287,11 +275,9 @@ class MegaPosePipeline(InferencePipeline):
 
         object_dataset = self.get_dataset()
  
-        #! load megapose model ==================================================
-        model_name = "megapose-1.0-RGB-multi-hypothesis" # TODO: pass as param
-        self.logger.info(f"Loading model {model_name}.")
-        self.model_info = NAMED_MODELS[model_name]
-        self.pose_estimator = load_named_model(model_name, object_dataset).to(self._device)
+        self.logger.info("Loading model "+str(self._params["megapose"]["model_name"])+".")
+        self.model_info = NAMED_MODELS[self._params["megapose"]["model_name"]]
+        self.pose_estimator = load_named_model(self._params["megapose"]["model_name"], object_dataset).to(self._device)
         self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[::8]
 
 
@@ -299,31 +285,21 @@ class MegaPosePipeline(InferencePipeline):
         yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt" #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"
         # self.yolo_model = YOLO(yolo_model_path)
 
-        self.logger.info("MegaposePipeline initialisation finished")
-
-        # self._multiview = len(self._params["camera_names"]) > 1s
-        # if self._multiview:
-        #     # TODO Raise error
-        #     pass
-
     def get_dataset(self) -> RigidObjectDataset:
         """Returns rigid object dataset used by MegaPose pose estimator
 
         :return: Dataset used by MegaPose pose estimator
         :rtype: RigidObjectDataset
         """
-        self.logger.info("Megapose get dataset called")
         rigid_objects = []
-        mesh_units = "mm"
-        # TODO: find a better way to get path
-        mesh_dir = Path("/docker_files/happypose_ros_data/meshes") 
+        mesh_dir = Path(self._params["megapose"]["mesh_dir"]) 
         assert mesh_dir.exists(), f"Missing mesh directory {mesh_dir}"
 
         for mesh_path in mesh_dir.iterdir():
             if mesh_path.suffix in {".obj", ".ply"}:
                 obj_name = mesh_path.with_suffix("").name
                 rigid_objects.append(
-                    RigidObject(label=obj_name, mesh_path=mesh_path, mesh_units=mesh_units),
+                    RigidObject(label=obj_name, mesh_path=mesh_path, mesh_units=self._params["megapose"]["mesh_units"]),
                 )
         rigid_object_dataset = RigidObjectDataset(rigid_objects)
         return rigid_object_dataset
@@ -340,7 +316,6 @@ class MegaPosePipeline(InferencePipeline):
             was detected None is returned
         :rtype: Union[None, dict]
         """
-        self.logger.info("Megapose called")
         timings = {}
         t1 = time.perf_counter()
 
@@ -352,9 +327,6 @@ class MegaPosePipeline(InferencePipeline):
         rgb_image = rgb_image[0,:,:,:]
         rgb_image = np.moveaxis(rgb_image, [0,1] , [2,0])
 
-       
-
-
         # detections = self.yolo_detector(rgb_image) #! runs but does not return a detection
 
         # temp replacement =====================================================
@@ -362,19 +334,18 @@ class MegaPosePipeline(InferencePipeline):
         y1 = int(217)
         x2 = int(782)
         y2 = int(434)
-        label = 'bar-holder-stripped-bi-v3'
+        label ='bar-holder-stripped-bi-v3' # ! MUST be the name of the mesh
 
         object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
         object_data = [object_data]
         detections = make_detections_from_object_data(object_data).to(self._device) 
 
-        self.logger.info("finished making fake detection")
         # end of temp remplacement =============================================
 
         if detections is None:
             return None
-        
-
+        # TODO change to raise error
+    
         t2 = time.perf_counter()
         timings["detections"] = t2 - t1
 
@@ -383,29 +354,25 @@ class MegaPosePipeline(InferencePipeline):
 
         observation.to(self._device)
 
-        # PB HERE ==============================================================
         data_TCO_final, extra_data = self.pose_estimator.run_inference_pipeline(
                                                                                 observation,
                                                                                 detections=detections,
-                                                                                **self.model_info["inference_parameters"]
+                                                                                **self.model_info["inference_parameters"] #! change this
                                                                                 )
-        # END OF PB? ===========================================================
-        self.logger.info("After inference")
 
-        object_predictions = data_TCO_final #.cpu() #? not sure why there is a .cpu here
-        # self.logger.info(str(object_predictions.infos))
+        object_predictions = data_TCO_final.cpu() #? not sure why there is a .cpu here
 
         t3 = time.perf_counter()
         timings["single_view"] = t3 - t2
 
         object_predictions.cpu()
         timings["total"] = time.perf_counter() - t1
+
+        self.logger.info("Inference results")
         self.logger.info(str(object_predictions.infos.to_string()))
         
-
-        object_predictions.infos.rename(columns={'pose_score':'score'}, inplace=True)
+        object_predictions.infos.rename(columns={'pose_score':'score'}, inplace=True) # todo: find a better way to do it
         object_predictions.infos['score'] = object_predictions.infos['score'].astype(float)
-
 
         return {
             "infos": object_predictions.infos,

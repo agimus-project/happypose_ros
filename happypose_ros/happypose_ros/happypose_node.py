@@ -58,6 +58,7 @@ def happypose_worker_proc(
     results_queue: mp.Queue,
     symmetries_queue: mp.Queue,
     params_queue: mp.Queue,
+    pose_estimator_type: str
 ) -> None:
     """Function used to trigger worker process.
 
@@ -73,10 +74,14 @@ def happypose_worker_proc(
     # Initialize the pipeline
 
     logger = rcutils_logger.RcutilsLogger(name="happypose_worker_proc")
-    logger.info("Starting")
+    logger.info("hppose worker will use: " + pose_estimator_type)
+
     #TODO: change to have a switch
-    # pipeline = CosyPosePipeline(params_queue.get())
-    pipeline = MegaPosePipeline(params_queue.get())
+    if pose_estimator_type=="cosypose":
+        pipeline = CosyPosePipeline(params_queue.get())
+
+    elif pose_estimator_type=="megapose":
+        pipeline = MegaPosePipeline(params_queue.get())
 
     # Inform ROS node about the dataset
     symmetries_queue.put(pipeline.get_dataset())
@@ -160,34 +165,28 @@ class HappyPoseNode(Node):
                 self._results_queue,
                 self._symmetries_queue,
                 self._params_queue,
+                self._params.pose_estimator_type
             ),
         )
 
         self._await_results_task = None
 
-
-        self.get_logger().info("markers file:")
-        self.get_logger().info(str(type(make_object_dataset(self._params.cosypose.dataset_name).ds_dir.as_posix())))
-
-
-
-        # TODO once MegaPose is available initialization
-        # should be handled better
-        # self._vision_info_msg = VisionInfo(
-        #     method=self._params.pose_estimator_type,
-        #     # TODO set this parameter to something more meaningful
-        #     database_location=make_object_dataset(
-        #         self._params.cosypose.dataset_name
-        #     ).ds_dir.as_posix(),
-        #     database_version=0,
-        # )
-
-        self._vision_info_msg = VisionInfo(
-            method=self._params.pose_estimator_type,
-            # TODO set this parameter to something more meaningful
-            database_location="/docker_files/happypose_ros_data/meshes",
-            database_version=0,
-        )
+        if self._params.pose_estimator_type == "cosypose":
+            self._vision_info_msg = VisionInfo(
+                method=self._params.pose_estimator_type,
+                # TODO set this parameter to something more meaningful
+                database_location=make_object_dataset(
+                    self._params.cosypose.dataset_name
+                ).ds_dir.as_posix(),
+                database_version=0,
+            )
+        elif self._params.pose_estimator_type == "megapose":
+            self._vision_info_msg = VisionInfo(
+                method=self._params.pose_estimator_type,
+                # TODO set this parameter to something more meaningful
+                database_location=self._params.megapose.mesh_dir,
+                database_version=0,
+            )
 
         # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
@@ -325,6 +324,13 @@ class HappyPoseNode(Node):
 
         self._multiview = len(self._cameras) > 1
         if self._multiview:
+            if self._params.pose_estimator_type=="megapose":
+                e = ParameterException(
+                    "Multiple views mode is not supported with MegaPose",
+                    ("pose_estimator_type"),
+                )
+                self.get_logger().error(str(e))
+                raise e
             self.get_logger().info(
                 "Node configured to run in multi-view mode."
                 " Minimum number of views expected: "
@@ -653,9 +659,6 @@ class HappyPoseNode(Node):
                                 get_camera_transform(pose, header, cam["frame_id"])
                             )
 
-
-                self.get_logger().info(str(results.keys()))
-                self.get_logger().info(str(header))
                 # In case of multi-view, do not use bounding boxes
                 detections = get_detection_array_msg(
                     results, header, has_bbox=not self._multiview
@@ -670,8 +673,6 @@ class HappyPoseNode(Node):
                     detections=[],
                 )
 
-            # self.get_logger().info("start of publishing")
-            # self.get_logger().info("detections")
             self._detections_publisher.publish(detections)
 
             self._vision_info_msg.header = header
@@ -679,14 +680,22 @@ class HappyPoseNode(Node):
 
             if self._params.visualization.publish_markers:
                 # TODO consider better path handling
-                markers = get_marker_array_msg(
-                    detections,
-                    f"file://{self._vision_info_msg.database_location}",
-                    mesh_file_extension="obj",
-                    prefix=self._params.cosypose.dataset_name + "-",
-                    dynamic_opacity=self._params.visualization.markers.dynamic_opacity,
-                    marker_lifetime=self._params.visualization.markers.lifetime,
-                )
+                if self._params.pose_estimator_type == "cosypose":
+                    markers = get_marker_array_msg(
+                        detections,
+                        f"file://{self._vision_info_msg.database_location}",
+                        prefix=self._params.cosypose.dataset_name + "-", 
+                        dynamic_opacity=self._params.visualization.markers.dynamic_opacity,
+                        marker_lifetime=self._params.visualization.markers.lifetime,
+                    )
+                elif self._params.pose_estimator_type == "megapose":
+                    markers = get_marker_array_msg(
+                        detections,
+                        f"file://{self._vision_info_msg.database_location}",
+                        mesh_file_extension=self._params.megapose.mesh_file_extension,
+                        dynamic_opacity=self._params.visualization.markers.dynamic_opacity,
+                        marker_lifetime=self._params.visualization.markers.lifetime,
+                    )
                 self._marker_publisher.publish(markers)
 
         # Queue was closed
