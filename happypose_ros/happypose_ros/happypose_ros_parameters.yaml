@@ -38,6 +38,11 @@ happypose_ros:
     default_value: false
     description: "Specifies whether to use depth images for pose refinement. If set to `true` all cameras are expected to provide depth images."
     read_only: true
+  publish_seg_masks:
+    type: bool
+    default_value: false
+    description: "Specifies if the combined segmentation mask should be published."
+    read_only: false
   pose_estimator_type:
     type: string
     default_value: "cosypose"
