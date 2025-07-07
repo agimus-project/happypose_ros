@@ -44,8 +44,7 @@ happypose_ros:
     description: "Specifies which pose estimator to use in the pipeline."
     validation:
       one_of<>: [["cosypose","megapose"]]
-    read_only: false
-
+    read_only: true
   cosypose:
     dataset_name:
       type: string
