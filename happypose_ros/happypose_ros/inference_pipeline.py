@@ -6,7 +6,10 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import final
 import math
-# from ultralytics import YOLO
+from ultralytics import YOLO
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from PIL import Image
 
 from happypose.toolbox.inference.types import ObservationTensor, DetectionsType
 from happypose.toolbox.inference.utils import filter_detections , make_detections_from_object_data
@@ -280,10 +283,9 @@ class MegaPosePipeline(InferencePipeline):
         self.pose_estimator = load_named_model(self._params["megapose"]["model_name"], object_dataset).to(self._device)
         self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[::8]
 
-
         # load yolo model
-        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt" #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"
-        # self.yolo_model = YOLO(yolo_model_path)
+        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
+        self.yolo_model = YOLO(yolo_model_path)
 
     def get_dataset(self) -> RigidObjectDataset:
         """Returns rigid object dataset used by MegaPose pose estimator
@@ -327,18 +329,84 @@ class MegaPosePipeline(InferencePipeline):
         rgb_image = rgb_image[0,:,:,:]
         rgb_image = np.moveaxis(rgb_image, [0,1] , [2,0])
 
-        # detections = self.yolo_detector(rgb_image) #! runs but does not return a detection
+        # conversion from float32 to unit8 required for YOLO
+        rgb_image *= 255
+        rgb_image = rgb_image.astype(np.uint8)
+        
+
+        # ! debug ==============================================================
+        plt.imshow(rgb_image)
+        plt.show()
+        # ! ====================================================================
+
+        # detections = self.yolo_detector(self.yolo_model, rgb_image) #! runs but does not return a detection
+# test =========================================================================
+        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
+        yolo_model = YOLO(yolo_model_path)
+        yolo_results = yolo_model(rgb_image, stream=True)
+        
+        self.logger.info(str(yolo_results))
+        for r in yolo_results:
+            boxes = r.boxes
+            min_confidence = 0
+            box_w_max_conf = None
+            self.logger.info("boxes len:" + str(len(boxes)))
+
+            if len(boxes) > 0:
+                self.logger.info("yolo found something")
+                for box in boxes:
+                    confidence = math.ceil((box.conf[0]*100))/100
+                    # ! debug ==================================================
+                    x1, y1, x2, y2 = box.xyxy[0]
+                    self.logger.info("confidence: " + str(confidence) +"\t" + str(int(x1)) + " " + str(int(x2)) + " " + str(int(y1)) + " " + str(int(y2)))
+                    # ! ========================================================
+                    
+                    if confidence > min_confidence :
+                        box_w_max_conf = box
+                        min_confidence = confidence
+
+                # bounding box coordinates
+                x1, y1, x2, y2 = box_w_max_conf.xyxy[0]
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+                self.logger.info("Max confidence: "+ str(int(x1)) + " " + str(int(x2)) + " " + str(int(y1)) + " " + str(int(y2)))
+                # ! debug ======================================================
+                # Create a Rectangle patch for debug
+                # image = Image.fromarray(rgb_image.astype('uint8'), 'RGB')
+                # fig, ax = plt.subplots()
+                # ax.imshow(image)
+                # rect = patches.Rectangle((x1, y2), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
+                
+                # # Add the patch to the Axes
+                # ax.add_patch(rect)
+                # plt.show()
+                # ! ============================================================
+                
+            else:
+                self.logger.info("No detection")
+                return None
+            
+
+        label = "bar-holder-stripped-bi-v3" 
+        object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
+        self.logger.info("Data: " + str(object_data))
+
+        object_data = [object_data]
+
+        detections = make_detections_from_object_data(object_data).to(self._device) 
+
+# ==============================================================================
+        # self.logger.info(detections)
 
         # temp replacement =====================================================
-        x1 = int(392)
-        y1 = int(217)
-        x2 = int(782)
-        y2 = int(434)
-        label ='bar-holder-stripped-bi-v3' # ! MUST be the name of the mesh
+        # x1 = int(392)
+        # y1 = int(217)
+        # x2 = int(782)
+        # y2 = int(434)
+        # label ='bar-holder-stripped-bi-v3' # ! MUST be the name of the mesh
 
-        object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
-        object_data = [object_data]
-        detections = make_detections_from_object_data(object_data).to(self._device) 
+        # object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
+        # object_data = [object_data]
+        # detections = make_detections_from_object_data(object_data).to(self._device) 
 
         # end of temp remplacement =============================================
 
@@ -383,51 +451,51 @@ class MegaPosePipeline(InferencePipeline):
         
 
 
-    # def yolo_detector(self, color_image ) -> DetectionsType:
-    #     """
-    #     TODO
-    #     """
-    #     yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt" #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"
-    #     yolo_model = YOLO(yolo_model_path)
-    #     yolo_results = yolo_model(color_image, stream=True)
+    def yolo_detector(self, yolo_model, color_image ) -> DetectionsType:
+        """
+        TODO
+        """
+        # yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt" #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"
+        # yolo_model = YOLO(yolo_model_path)
+        yolo_results = yolo_model(color_image, stream=True)
         
-    #     for r in yolo_results:
-    #         boxes = r.boxes
-    #         min_confidence = 0
-    #         box_w_max_conf = 0
-    #         self.logger.info("boxes len:" + str(len(boxes)))
+        for r in yolo_results:
+            boxes = r.boxes
+            min_confidence = 0
+            box_w_max_conf = 0
+            self.logger.info("boxes len:" + str(len(boxes)))
 
-    #         if len(boxes) > 0:
-    #             # self.logger.info("yolo found something")
-    #             for box in boxes:
-    #                 confidence = math.ceil((box.conf[0]*100))/100
+            if len(boxes) > 0:
+                # self.logger.info("yolo found something")
+                for box in boxes:
+                    confidence = math.ceil((box.conf[0]*100))/100
 
-    #                 if confidence > min_confidence :
-    #                     box_w_max_conf = box
-    #                     min_confidence = confidence
+                    if confidence > min_confidence :
+                        box_w_max_conf = box
+                        min_confidence = confidence
 
-    #                 # bounding box coordinates
-    #                 x1, y1, x2, y2 = box_w_max_conf.xyxy[0]
-    #                 x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
-    #                 # Create a Rectangle patch
-    #                 rect = patches.Rectangle((x1, y2), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
+                    # bounding box coordinates
+                    x1, y1, x2, y2 = box_w_max_conf.xyxy[0]
+                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+                    # Create a Rectangle patch
+                    rect = patches.Rectangle((x1, y2), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
 
-    #                 # Add the patch to the Axes
-    #                 color_image.add_patch(rect)
-    #                 plt.imshow(color_image)
-    #                 plt.show()
+                    # Add the patch to the Axes
+                    color_image.add_patch(rect)
+                    plt.imshow(color_image)
+                    plt.show()
                 
-    #         else:
-    #             self.logger.info("No detection")
-    #             return None
+            else:
+                self.logger.info("No detection")
+                return None
             
 
-    #     label = "bar-holder" 
-    #     object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
-    #     self.logger.info("Data: " + str(object_data))
+        label = "bar-holder" 
+        object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
+        self.logger.info("Data: " + str(object_data))
 
-    #     object_data = [object_data]
+        object_data = [object_data]
 
-    #     detections = make_detections_from_object_data(object_data).to(self._device) 
-    #     return detections
+        detections = make_detections_from_object_data(object_data).to(self._device) 
+        return detections
         
