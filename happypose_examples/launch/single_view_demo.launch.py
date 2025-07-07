@@ -62,6 +62,7 @@ def launch_setup(
             "model_type": LaunchConfiguration("model_type"),
             "device": LaunchConfiguration("device"),
             "use_rviz": LaunchConfiguration("use_rviz"),
+            "pose_estimator_type": LaunchConfiguration("pose_estimator_type")
         }.items(),
     )
 
@@ -112,6 +113,11 @@ def generate_launch_description():
             "use_rviz",
             default_value="false",
             description="Launch RViz with default view.",
+        ),
+        DeclareLaunchArgument(
+            "pose_estimator_type",
+            default_value="cosypose",
+            description="Specifies which pose estimator to use in the pipeline.",
         ),
     ]
 
