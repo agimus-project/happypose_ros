@@ -9,10 +9,12 @@ import math
 from ultralytics import YOLO
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from PIL import Image
 
 from happypose.toolbox.inference.types import ObservationTensor, DetectionsType
-from happypose.toolbox.inference.utils import filter_detections , make_detections_from_object_data
+from happypose.toolbox.inference.utils import (
+    filter_detections,
+    make_detections_from_object_data,
+)
 from happypose.toolbox.datasets.object_dataset import RigidObject, RigidObjectDataset
 
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
@@ -34,7 +36,6 @@ from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database impor
 from happypose.toolbox.utils.load_model import NAMED_MODELS, load_named_model
 from happypose.toolbox.datasets.scene_dataset import ObjectData
 
-from happypose.pose_estimators.megapose.scripts.run_inference_on_example import setup_pose_estimator, run_inference
 
 #! ==============================================================================
 # #! ros2 logger
@@ -44,12 +45,14 @@ from rclpy.impl import rcutils_logger
 # self.logger.info("Starting")
 # !==============================================================================
 
+
 class InferencePipeline(ABC):
     """TODO"""
+
     def __init__(self, params: dict) -> None:
         """TODO"""
         self.logger = rcutils_logger.RcutilsLogger(name="General-pipeline")
-        
+
         return 0
 
     @final
@@ -75,10 +78,10 @@ class InferencePipeline(ABC):
         pass
 
     @abstractmethod
-    def __call__(self, observation: ObservationTensor) -> Union[None,dict]:
+    def __call__(self, observation: ObservationTensor) -> Union[None, dict]:
         """TODO"""
         pass
-    
+
 
 class CosyPosePipeline(InferencePipeline):
     """Object wrapping HappyPose pipeline extracting its calls from the main ROS node."""
@@ -260,7 +263,8 @@ class CosyPosePipeline(InferencePipeline):
 
 class MegaPosePipeline(InferencePipeline):
     """TODO"""
-    def __init__(self, params : dict) -> None:
+
+    def __init__(self, params: dict) -> None:
         """Creates MegaPosePipeline object and starts loading Torch models to the memory.
 
         :param params: Parameters used to initialize the HappyPose pipeline.
@@ -277,14 +281,18 @@ class MegaPosePipeline(InferencePipeline):
         self.update_params(self._params)
 
         object_dataset = self.get_dataset()
- 
-        self.logger.info("Loading model "+str(self._params["megapose"]["model_name"])+".")
+
+        self.logger.info(
+            "Loading model " + str(self._params["megapose"]["model_name"]) + "."
+        )
         self.model_info = NAMED_MODELS[self._params["megapose"]["model_name"]]
-        self.pose_estimator = load_named_model(self._params["megapose"]["model_name"], object_dataset).to(self._device)
+        self.pose_estimator = load_named_model(
+            self._params["megapose"]["model_name"], object_dataset
+        ).to(self._device)
         self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[::8]
 
         # load yolo model
-        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
+        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  # "/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
         self.yolo_model = YOLO(yolo_model_path)
 
     def get_dataset(self) -> RigidObjectDataset:
@@ -294,19 +302,23 @@ class MegaPosePipeline(InferencePipeline):
         :rtype: RigidObjectDataset
         """
         rigid_objects = []
-        mesh_dir = Path(self._params["megapose"]["mesh_dir"]) 
+        mesh_dir = Path(self._params["megapose"]["mesh_dir"])
         assert mesh_dir.exists(), f"Missing mesh directory {mesh_dir}"
 
         for mesh_path in mesh_dir.iterdir():
             if mesh_path.suffix in {".obj", ".ply"}:
                 obj_name = mesh_path.with_suffix("").name
                 rigid_objects.append(
-                    RigidObject(label=obj_name, mesh_path=mesh_path, mesh_units=self._params["megapose"]["mesh_units"]),
+                    RigidObject(
+                        label=obj_name,
+                        mesh_path=mesh_path,
+                        mesh_units=self._params["megapose"]["mesh_units"],
+                    ),
                 )
         rigid_object_dataset = RigidObjectDataset(rigid_objects)
         return rigid_object_dataset
-        
-    def __call__(self, observation: ObservationTensor) -> Union[None,dict]:
+
+    def __call__(self, observation: ObservationTensor) -> Union[None, dict]:
         """TODO"""
 
         """Performs sequence of actions to estimate pose and optionally merge
@@ -324,15 +336,16 @@ class MegaPosePipeline(InferencePipeline):
         # replace by a yolo for now
         # get detections with a yolo
         # rgb_tensor = observation.rgb # TODO: add to toolbox
-        rgb_tensor = observation.images[:,0:3].cpu() #* copy to cpu before doing operations on it
+        rgb_tensor = observation.images[
+            :, 0:3
+        ].cpu()  # * copy to cpu before doing operations on it
         rgb_image = rgb_tensor.numpy()
-        rgb_image = rgb_image[0,:,:,:]
-        rgb_image = np.moveaxis(rgb_image, [0,1] , [2,0])
+        rgb_image = rgb_image[0, :, :, :]
+        rgb_image = np.moveaxis(rgb_image, [0, 1], [2, 0])
 
         # conversion from float32 to unit8 required for YOLO
         rgb_image *= 255
         rgb_image = rgb_image.astype(np.uint8)
-        
 
         # ! debug ==============================================================
         plt.imshow(rgb_image)
@@ -340,11 +353,11 @@ class MegaPosePipeline(InferencePipeline):
         # ! ====================================================================
 
         # detections = self.yolo_detector(self.yolo_model, rgb_image) #! runs but does not return a detection
-# test =========================================================================
-        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
+        # test =========================================================================
+        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  # "/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
         yolo_model = YOLO(yolo_model_path)
         yolo_results = yolo_model(rgb_image, stream=True)
-        
+
         self.logger.info(str(yolo_results))
         for r in yolo_results:
             boxes = r.boxes
@@ -355,46 +368,70 @@ class MegaPosePipeline(InferencePipeline):
             if len(boxes) > 0:
                 self.logger.info("yolo found something")
                 for box in boxes:
-                    confidence = math.ceil((box.conf[0]*100))/100
+                    confidence = math.ceil((box.conf[0] * 100)) / 100
                     # ! debug ==================================================
                     x1, y1, x2, y2 = box.xyxy[0]
-                    self.logger.info("confidence: " + str(confidence) +"\t" + str(int(x1)) + " " + str(int(x2)) + " " + str(int(y1)) + " " + str(int(y2)))
+                    self.logger.info(
+                        "confidence: "
+                        + str(confidence)
+                        + "\t"
+                        + str(int(x1))
+                        + " "
+                        + str(int(x2))
+                        + " "
+                        + str(int(y1))
+                        + " "
+                        + str(int(y2))
+                    )
                     # ! ========================================================
-                    
-                    if confidence > min_confidence :
+
+                    if confidence > min_confidence:
                         box_w_max_conf = box
                         min_confidence = confidence
 
                 # bounding box coordinates
                 x1, y1, x2, y2 = box_w_max_conf.xyxy[0]
-                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
-                self.logger.info("Max confidence: "+ str(int(x1)) + " " + str(int(x2)) + " " + str(int(y1)) + " " + str(int(y2)))
+                x1, y1, x2, y2 = (
+                    int(x1),
+                    int(y1),
+                    int(x2),
+                    int(y2),
+                )  # convert to int values
+                self.logger.info(
+                    "Max confidence: "
+                    + str(int(x1))
+                    + " "
+                    + str(int(x2))
+                    + " "
+                    + str(int(y1))
+                    + " "
+                    + str(int(y2))
+                )
                 # ! debug ======================================================
                 # Create a Rectangle patch for debug
                 # image = Image.fromarray(rgb_image.astype('uint8'), 'RGB')
                 # fig, ax = plt.subplots()
                 # ax.imshow(image)
                 # rect = patches.Rectangle((x1, y2), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
-                
+
                 # # Add the patch to the Axes
                 # ax.add_patch(rect)
                 # plt.show()
                 # ! ============================================================
-                
+
             else:
                 self.logger.info("No detection")
                 return None
-            
 
-        label = "bar-holder-stripped-bi-v3" 
-        object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
+        label = "bar-holder-stripped-bi-v3"
+        object_data = ObjectData(label=label, bbox_modal=np.array([x1, y1, x2, y2]))
         self.logger.info("Data: " + str(object_data))
 
         object_data = [object_data]
 
-        detections = make_detections_from_object_data(object_data).to(self._device) 
+        detections = make_detections_from_object_data(object_data).to(self._device)
 
-# ==============================================================================
+        # ==============================================================================
         # self.logger.info(detections)
 
         # temp replacement =====================================================
@@ -406,29 +443,29 @@ class MegaPosePipeline(InferencePipeline):
 
         # object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
         # object_data = [object_data]
-        # detections = make_detections_from_object_data(object_data).to(self._device) 
+        # detections = make_detections_from_object_data(object_data).to(self._device)
 
-        # end of temp remplacement =============================================
+        # end of temp replacement =============================================
 
         if detections is None:
             return None
         # TODO change to raise error
-    
+
         t2 = time.perf_counter()
         timings["detections"] = t2 - t1
 
-        if len(detections.infos) == 0: #? redundant ?
+        if len(detections.infos) == 0:  # ? redundant ?
             return None
 
         observation.to(self._device)
 
         data_TCO_final, extra_data = self.pose_estimator.run_inference_pipeline(
-                                                                                observation,
-                                                                                detections=detections,
-                                                                                **self.model_info["inference_parameters"] #! change this
-                                                                                )
+            observation,
+            detections=detections,
+            **self.model_info["inference_parameters"],  #! change this
+        )
 
-        object_predictions = data_TCO_final.cpu() #? not sure why there is a .cpu here
+        object_predictions = data_TCO_final.cpu()  # ? not sure why there is a .cpu here
 
         t3 = time.perf_counter()
         timings["single_view"] = t3 - t2
@@ -438,9 +475,13 @@ class MegaPosePipeline(InferencePipeline):
 
         self.logger.info("Inference results")
         self.logger.info(str(object_predictions.infos.to_string()))
-        
-        object_predictions.infos.rename(columns={'pose_score':'score'}, inplace=True) # todo: find a better way to do it
-        object_predictions.infos['score'] = object_predictions.infos['score'].astype(float)
+
+        object_predictions.infos.rename(
+            columns={"pose_score": "score"}, inplace=True
+        )  # todo: find a better way to do it
+        object_predictions.infos["score"] = object_predictions.infos["score"].astype(
+            float
+        )
 
         return {
             "infos": object_predictions.infos,
@@ -448,17 +489,15 @@ class MegaPosePipeline(InferencePipeline):
             "bboxes": detections.tensors["bboxes"].int().cpu(),
             "timings": timings,
         }
-        
 
-
-    def yolo_detector(self, yolo_model, color_image ) -> DetectionsType:
+    def yolo_detector(self, yolo_model, color_image) -> DetectionsType:
         """
         TODO
         """
         # yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt" #"/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"
         # yolo_model = YOLO(yolo_model_path)
         yolo_results = yolo_model(color_image, stream=True)
-        
+
         for r in yolo_results:
             boxes = r.boxes
             min_confidence = 0
@@ -468,34 +507,44 @@ class MegaPosePipeline(InferencePipeline):
             if len(boxes) > 0:
                 # self.logger.info("yolo found something")
                 for box in boxes:
-                    confidence = math.ceil((box.conf[0]*100))/100
+                    confidence = math.ceil((box.conf[0] * 100)) / 100
 
-                    if confidence > min_confidence :
+                    if confidence > min_confidence:
                         box_w_max_conf = box
                         min_confidence = confidence
 
                     # bounding box coordinates
                     x1, y1, x2, y2 = box_w_max_conf.xyxy[0]
-                    x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2) # convert to int values
+                    x1, y1, x2, y2 = (
+                        int(x1),
+                        int(y1),
+                        int(x2),
+                        int(y2),
+                    )  # convert to int values
                     # Create a Rectangle patch
-                    rect = patches.Rectangle((x1, y2), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
+                    rect = patches.Rectangle(
+                        (x1, y2),
+                        x2 - x1,
+                        y2 - y1,
+                        linewidth=1,
+                        edgecolor="r",
+                        facecolor="none",
+                    )
 
                     # Add the patch to the Axes
                     color_image.add_patch(rect)
                     plt.imshow(color_image)
                     plt.show()
-                
+
             else:
                 self.logger.info("No detection")
                 return None
-            
 
-        label = "bar-holder" 
-        object_data = ObjectData(label=label, bbox_modal=np.array([x1,y1,x2,y2]))
+        label = "bar-holder"
+        object_data = ObjectData(label=label, bbox_modal=np.array([x1, y1, x2, y2]))
         self.logger.info("Data: " + str(object_data))
 
         object_data = [object_data]
 
-        detections = make_detections_from_object_data(object_data).to(self._device) 
+        detections = make_detections_from_object_data(object_data).to(self._device)
         return detections
-        

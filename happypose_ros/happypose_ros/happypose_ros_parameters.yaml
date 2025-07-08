@@ -43,7 +43,7 @@ happypose_ros:
     default_value: "cosypose"
     description: "Specifies which pose estimator to use in the pipeline."
     validation:
-      one_of<>: [["cosypose","megapose"]]
+      one_of<>: [["cosypose", "megapose"]]
     read_only: true
   cosypose:
     dataset_name:
@@ -51,7 +51,7 @@ happypose_ros:
       default_value: ""
       description: "Name of BOP dataset, used to load specific weights and object models."
       validation:
-        one_of<>: [["hope", "tless", "ycbv",""]] # TODO: find a better way
+        one_of<>: [["hope", "tless", "ycbv", ""]] # TODO: find a better way
       read_only: true
     model_type:
       type: string
@@ -172,7 +172,6 @@ happypose_ros:
         default_value: [""]
         validation:
           unique<>:
-  
   megapose:
     model_name:
       type: string
@@ -185,7 +184,7 @@ happypose_ros:
       type: string
       default_value: "/docker_files/happypose_ros_data/meshes"
       description: "Path to the mesh directory."
-    mesh_units :
+    mesh_units:
       type: string
       default_value: "mm"
       description: "Unit of the mesh."
@@ -197,9 +196,8 @@ happypose_ros:
       default_value: "obj"
       description: "Filetype of the mesh."
       validation:
-        one_of<>: [["ply","obj"]]
+        one_of<>: [["ply", "obj"]]
       read_only: true
-  
   camera_names:
     type: string_array
     description: "List of names of cameras to subscribe."
@@ -207,7 +205,6 @@ happypose_ros:
     validation:
       size_gt<>: [0]
       unique<>:
-  
   cameras:
     timeout:
       type: double

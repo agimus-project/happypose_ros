@@ -1,5 +1,5 @@
 /**:
-#! TO MODIFY FOR MEGAPOSE
+  #! TO MODIFY FOR MEGAPOSE
   ros__parameters:
     # Device to which the models will be loaded. Supported options are 'cpu', 'cuda', and 'cuda:x' where 'x' is the GPU number.
     device: $(var device)

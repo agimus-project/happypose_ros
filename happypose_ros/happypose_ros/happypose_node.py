@@ -52,13 +52,14 @@ from rclpy.impl import rcutils_logger
 # self.logger.info("Starting")
 # !==============================================================================
 
+
 def happypose_worker_proc(
     worker_free: mp.Value,
     observation_tensor_queue: mp.Queue,
     results_queue: mp.Queue,
     symmetries_queue: mp.Queue,
     params_queue: mp.Queue,
-    pose_estimator_type: str
+    pose_estimator_type: str,
 ) -> None:
     """Function used to trigger worker process.
 
@@ -76,11 +77,11 @@ def happypose_worker_proc(
     logger = rcutils_logger.RcutilsLogger(name="happypose_worker_proc")
     logger.info("hppose worker will use: " + pose_estimator_type)
 
-    #TODO: change to have a switch
-    if pose_estimator_type=="cosypose":
+    # TODO: change to have a switch
+    if pose_estimator_type == "cosypose":
         pipeline = CosyPosePipeline(params_queue.get())
 
-    elif pose_estimator_type=="megapose":
+    elif pose_estimator_type == "megapose":
         pipeline = MegaPosePipeline(params_queue.get())
 
     # Inform ROS node about the dataset
@@ -165,7 +166,7 @@ class HappyPoseNode(Node):
                 self._results_queue,
                 self._symmetries_queue,
                 self._params_queue,
-                self._params.pose_estimator_type
+                self._params.pose_estimator_type,
             ),
         )
 
@@ -324,7 +325,7 @@ class HappyPoseNode(Node):
 
         self._multiview = len(self._cameras) > 1
         if self._multiview:
-            if self._params.pose_estimator_type=="megapose":
+            if self._params.pose_estimator_type == "megapose":
                 e = ParameterException(
                     "Multiple views mode is not supported with MegaPose",
                     ("pose_estimator_type"),
@@ -684,7 +685,7 @@ class HappyPoseNode(Node):
                     markers = get_marker_array_msg(
                         detections,
                         f"file://{self._vision_info_msg.database_location}",
-                        prefix=self._params.cosypose.dataset_name + "-", 
+                        prefix=self._params.cosypose.dataset_name + "-",
                         dynamic_opacity=self._params.visualization.markers.dynamic_opacity,
                         marker_lifetime=self._params.visualization.markers.lifetime,
                     )

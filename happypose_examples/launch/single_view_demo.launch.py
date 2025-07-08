@@ -62,7 +62,7 @@ def launch_setup(
             "model_type": LaunchConfiguration("model_type"),
             "device": LaunchConfiguration("device"),
             "use_rviz": LaunchConfiguration("use_rviz"),
-            "pose_estimator_type": LaunchConfiguration("pose_estimator_type")
+            "pose_estimator_type": LaunchConfiguration("pose_estimator_type"),
         }.items(),
     )
 

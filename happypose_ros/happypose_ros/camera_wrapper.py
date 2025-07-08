@@ -77,7 +77,7 @@ class CameraWrapper:
                 self._node,
                 img_msg_type,
                 # self._camera_name + "/color" + topic_postfix,
-                self._camera_name  + topic_postfix,
+                self._camera_name + topic_postfix,
                 qos_profile=qos_profile_sensor_data,
                 qos_overriding_options=QoSOverridingOptions.with_default_policies(),
             ),

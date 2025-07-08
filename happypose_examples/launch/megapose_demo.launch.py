@@ -1,14 +1,12 @@
 from launch import LaunchDescription
 from launch.actions import (
     DeclareLaunchArgument,
-    IncludeLaunchDescription,
     OpaqueFunction,
 )
 
 from launch.conditions import IfCondition
 from launch.launch_context import LaunchContext
 from launch.launch_description_entity import LaunchDescriptionEntity
-from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
@@ -29,7 +27,6 @@ def launch_setup(
         else LaunchConfiguration("camera_info_url")
     )
 
-
     # Obtain argument specifying if RViz should be launched
     use_rviz = LaunchConfiguration("use_rviz")
 
@@ -38,7 +35,6 @@ def launch_setup(
 
     # Obtain argument specifying path from which to load RViz config
     rviz_config_path = LaunchConfiguration("rviz_config_path")
-
 
     # Start ROS node for image publishing
     image_publisher_node = Node(
@@ -81,13 +77,14 @@ def launch_setup(
     #     }.items(),
     # )
 
-
     # Start ROS node of happypose
     happypose_node = Node(
         package="happypose_ros",
         executable="happypose_node",
         name="happypose_node",
-        parameters=[ParameterFile(param_file=happypose_params_path, allow_substs=True)], #! modify with own params
+        parameters=[
+            ParameterFile(param_file=happypose_params_path, allow_substs=True)
+        ],  #! modify with own params
     )
 
     # Start RViz2 ROS node
@@ -186,8 +183,7 @@ def generate_launch_description():
                 ]
             ),
             description="Path to a file containing happypose_ros node parameters.",
-        )
-
+        ),
     ]
 
     return LaunchDescription(
