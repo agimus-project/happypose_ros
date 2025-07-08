@@ -1,0 +1,42 @@
+/**:
+  #! TO MODIFY FOR MEGAPOSE
+  ros__parameters:
+    # Device to which the models will be loaded. Supported options are 'cpu', 'cuda', and 'cuda:x' where 'x' is the GPU number.
+    device: $(var device)
+    # Publish detected objects as markers to visualize detections in RViz
+    visualization.publish_markers: true
+    # Extended verbosity on info logs. Show logs with number of detections and more
+    verbose_info_logs: true
+    # Specifies whether to use depth images for pose refinement. If set to `true` all cameras are expected to provide depth images
+    use_depth: false
+    # Specifies which pose estimator to use in the pipeline
+    pose_estimator_type: $(var pose_estimator_type)
+    megapose:
+      # Name of the megapose model to be used for inference
+      model_name: "megapose-1.0-RGB-multi-hypothesis"
+      # Path to the directory of the mesh
+      mesh_dir: "/docker_files/happypose_ros_data/meshes"
+      # Filetype of mesh
+      mesh_file_extension: "obj"
+      # Unit of the mesh
+      mesh_units: "mm"
+    # List of camera names to subscribe to. Those names are internal to happypose_ros node
+    # and can be chosen arbitrarily as long as they are valid YAML keys to be used later
+    camera_names: ["cam_1"]
+    cameras:
+      # Timeout, after which a frame from a camera is considered too old. Value '0.0' disables timeout
+      timeout: 0.0
+      # Minimum number of valid camera views to start pose estimation pipeline
+      n_min_cameras: 1
+      # Configuration of camera "cam_1" defined in "camera_names" param
+      cam_1:
+        # Consider the camera to be leading. If a camera is leading, its frame_id is used as a reference.
+        # Only one camera can be leading, and it can't publish TF at the same time
+        leading: true
+        # Publish TF of a given camera relative to the leading camera
+        publish_tf: false
+        # Expect compressed image messages from given camera
+        compressed: false
+        # Delay [seconds] with which incoming messages can be synchronized.
+        # Value corresponds to synchronization of messages at 23 Hz.
+        time_sync_slop: 0.04
