@@ -44,15 +44,6 @@ from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
-#! ==============================================================================
-# #! ros2 logger
-from rclpy.impl import rcutils_logger
-
-# self.logger = rcutils_logger.RcutilsLogger(name="HHPose-pipeline")
-# self.logger.info("Starting")
-# !==============================================================================
-
-
 def happypose_worker_proc(
     worker_free: mp.Value,
     observation_tensor_queue: mp.Queue,
