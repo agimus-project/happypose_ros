@@ -1,6 +1,9 @@
 from ultralytics import YOLO
 import numpy as np
 import math
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+from PIL import Image
 
 from happypose.toolbox.inference.types import ObservationTensor, DetectionsType
 from happypose.toolbox.datasets.scene_dataset import ObjectData
@@ -10,29 +13,38 @@ from happypose.toolbox.inference.utils import (
 
 from rclpy.impl import rcutils_logger
 
+DEBUG = False
 
 class Detector():
     def __init__(self, params ) -> None:
-            """
-                TODO
-            """
-            super().__init__()
-            self.logger = rcutils_logger.RcutilsLogger(name="Megapose detector")
+        """Setup of Detector object.
 
-            super().__init__()
-            self._params = params
-            self._device = self._params["device"]
+        :param params: Parameters used to initialize the HappyPose pipeline.
+        :type params: dict
+        """
 
-            self.detector_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"
-            self.label = "bar-holder-stripped-bi-v3"
+        super().__init__()
+        self.logger = rcutils_logger.RcutilsLogger(name="Megapose detector")
 
-            yolo_model_path = self.detector_path
-            self.yolo_model = YOLO(yolo_model_path)
+        super().__init__()
+        self._params = params
+        self._device = self._params["device"]
+
+        self.detector_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"
+        self.label = "bar-holder-stripped-bi-v3"
+
+        yolo_model_path = self.detector_path
+        self.yolo_model = YOLO(yolo_model_path)
             
 
     def run(self, observation: ObservationTensor) -> DetectionsType :
-        """
-            TODO
+        """Performs detections using a YOLOv11 model trained to detect only the wanted object.
+
+        :param observation: Tensor containing camera information and incoming images.
+        :type observation: happypose.toolbox.inference.types.ObservationTensor
+        :return: Dictionary with final detections. If pipeline failed or nothing
+            was detected None is returned
+        :rtype: Union[None, dict]
         """
         image = self.convert_obstensor_to_image(observation)
         results = self.yolo_model(image, stream=True)
@@ -41,28 +53,26 @@ class Detector():
             boxes = r.boxes
             min_confidence = 0
             box_w_max_conf = None
-            self.logger.info("boxes len:" + str(len(boxes)))
 
             if len(boxes) > 0:
-                self.logger.info("yolo found something")
                 for box in boxes:
                     confidence = math.ceil((box.conf[0] * 100)) / 100
-                    # ! debug ==================================================
-                    x1, y1, x2, y2 = box.xyxy[0]
-                    self.logger.info(
-                        "confidence: "
-                        + str(confidence)
-                        + "\t"
-                        + str(int(x1))
-                        + " "
-                        + str(int(x2))
-                        + " "
-                        + str(int(y1))
-                        + " "
-                        + str(int(y2))
-                    )
-                    # ! ========================================================
-
+                   
+                    if DEBUG:
+                        x1, y1, x2, y2 = box.xyxy[0]
+                        self.logger.info(
+                            "confidence: "
+                            + str(confidence)
+                            + "\t"
+                            + str(int(x1))
+                            + " "
+                            + str(int(x2))
+                            + " "
+                            + str(int(y1))
+                            + " "
+                            + str(int(y2))
+                        )
+       
                     if confidence > min_confidence:
                         box_w_max_conf = box
                         min_confidence = confidence
@@ -75,34 +85,33 @@ class Detector():
                     int(x2),
                     int(y2),
                 )  # convert to int values
-                self.logger.info(
-                    "Max confidence: "
-                    + str(int(x1))
-                    + " "
-                    + str(int(x2))
-                    + " "
-                    + str(int(y1))
-                    + " "
-                    + str(int(y2))
-                )
-                # ! debug ======================================================
-                # # Create a Rectangle patch for debug
-                # image = Image.fromarray(rgb_image.astype('uint8'), 'RGB')
-                # fig, ax = plt.subplots()
-                # ax.imshow(image)
-                # rect = patches.Rectangle((x1, y1), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
+
+                if DEBUG :
+                    self.logger.info(
+                        "Max confidence: "
+                        + str(int(x1))
+                        + " "
+                        + str(int(x2))
+                        + " "
+                        + str(int(y1))
+                        + " "
+                        + str(int(y2))
+                    )
                 
-                # # Add the patch to the Axes
-                # ax.add_patch(rect)
-                # plt.show()
-                # ! ============================================================
+                    # Create a Rectangle patch for debug
+                    image = Image.fromarray(image.astype('uint8'), 'RGB')
+                    fig, ax = plt.subplots()
+                    ax.imshow(image)
+                    rect = patches.Rectangle((x1, y1), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
+                    
+                    # Add the patch to the Axes
+                    ax.add_patch(rect)
+                    plt.show()
 
             else:
-                self.logger.info("No detection")
                 return None
 
         object_data = ObjectData(label=self.label, bbox_modal=np.array([x1, y1, x2, y2]))
-        self.logger.info("Data: " + str(object_data))
 
         object_data = [object_data]
 
@@ -111,9 +120,14 @@ class Detector():
         return detections
     
     def convert_obstensor_to_image(self, observation: ObservationTensor) -> np.array: # to utils?
+        """Converts an ObservationTensor into a numpy array image legible by a YOLO model.
+
+        :param observation: Tensor containing camera information and incoming images.
+        :type observation: happypose.toolbox.inference.types.ObservationTensor
+        :return: Numpy array of the converted image. 
+        :rtype: numpy.ndarray
         """
-            TODO
-        """
+
         rgb_tensor = observation.images[
             :, 0:3
         ].cpu() 
