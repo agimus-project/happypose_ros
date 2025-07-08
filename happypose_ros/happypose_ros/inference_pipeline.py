@@ -6,10 +6,9 @@ from pathlib import Path
 from abc import ABC, abstractmethod
 from typing import final
 
-from happypose.toolbox.inference.types import ObservationTensor, DetectionsType
+from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.inference.utils import (
     filter_detections,
-    make_detections_from_object_data,
 )
 from happypose.toolbox.datasets.object_dataset import RigidObject, RigidObjectDataset
 
@@ -30,9 +29,9 @@ from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database impor
 )
 
 from happypose.toolbox.utils.load_model import NAMED_MODELS, load_named_model
-from happypose.toolbox.datasets.scene_dataset import ObjectData
 
 from happypose_ros.megapose_detector import Detector
+
 
 class InferencePipeline(ABC):
     """Abstract class from which the CosyPosePipeline and MegaPosePipeline inherit."""
@@ -331,10 +330,10 @@ class MegaPosePipeline(InferencePipeline):
         data_TCO_final, extra_data = self.pose_estimator.run_inference_pipeline(
             observation,
             detections=detections,
-            **self.model_info["inference_parameters"], 
+            **self.model_info["inference_parameters"],
         )
 
-        object_predictions = data_TCO_final.cpu() 
+        object_predictions = data_TCO_final.cpu()
 
         t3 = time.perf_counter()
         timings["single_view"] = t3 - t2

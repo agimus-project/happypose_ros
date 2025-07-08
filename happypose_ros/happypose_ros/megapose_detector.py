@@ -15,8 +15,9 @@ from rclpy.impl import rcutils_logger
 
 DEBUG = False
 
-class Detector():
-    def __init__(self, params ) -> None:
+
+class Detector:
+    def __init__(self, params) -> None:
         """Setup of Detector object.
 
         :param params: Parameters used to initialize the HappyPose pipeline.
@@ -30,14 +31,15 @@ class Detector():
         self._params = params
         self._device = self._params["device"]
 
-        self.detector_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"
+        self.detector_path = (
+            "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"
+        )
         self.label = "bar-holder-stripped-bi-v3"
 
         yolo_model_path = self.detector_path
         self.yolo_model = YOLO(yolo_model_path)
-            
 
-    def run(self, observation: ObservationTensor) -> DetectionsType :
+    def run(self, observation: ObservationTensor) -> DetectionsType:
         """Performs detections using a YOLOv11 model trained to detect only the wanted object.
 
         :param observation: Tensor containing camera information and incoming images.
@@ -57,7 +59,7 @@ class Detector():
             if len(boxes) > 0:
                 for box in boxes:
                     confidence = math.ceil((box.conf[0] * 100)) / 100
-                   
+
                     if DEBUG:
                         x1, y1, x2, y2 = box.xyxy[0]
                         self.logger.info(
@@ -72,7 +74,7 @@ class Detector():
                             + " "
                             + str(int(y2))
                         )
-       
+
                     if confidence > min_confidence:
                         box_w_max_conf = box
                         min_confidence = confidence
@@ -86,7 +88,7 @@ class Detector():
                     int(y2),
                 )  # convert to int values
 
-                if DEBUG :
+                if DEBUG:
                     self.logger.info(
                         "Max confidence: "
                         + str(int(x1))
@@ -97,13 +99,20 @@ class Detector():
                         + " "
                         + str(int(y2))
                     )
-                
+
                     # Create a Rectangle patch for debug
-                    image = Image.fromarray(image.astype('uint8'), 'RGB')
+                    image = Image.fromarray(image.astype("uint8"), "RGB")
                     fig, ax = plt.subplots()
                     ax.imshow(image)
-                    rect = patches.Rectangle((x1, y1), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
-                    
+                    rect = patches.Rectangle(
+                        (x1, y1),
+                        x2 - x1,
+                        y2 - y1,
+                        linewidth=1,
+                        edgecolor="r",
+                        facecolor="none",
+                    )
+
                     # Add the patch to the Axes
                     ax.add_patch(rect)
                     plt.show()
@@ -111,31 +120,33 @@ class Detector():
             else:
                 return None
 
-        object_data = ObjectData(label=self.label, bbox_modal=np.array([x1, y1, x2, y2]))
+        object_data = ObjectData(
+            label=self.label, bbox_modal=np.array([x1, y1, x2, y2])
+        )
 
         object_data = [object_data]
 
         detections = make_detections_from_object_data(object_data).to(self._device)
 
         return detections
-    
-    def convert_obstensor_to_image(self, observation: ObservationTensor) -> np.array: # to utils?
+
+    def convert_obstensor_to_image(
+        self, observation: ObservationTensor
+    ) -> np.array:  # to utils?
         """Converts an ObservationTensor into a numpy array image legible by a YOLO model.
 
         :param observation: Tensor containing camera information and incoming images.
         :type observation: happypose.toolbox.inference.types.ObservationTensor
-        :return: Numpy array of the converted image. 
+        :return: Numpy array of the converted image.
         :rtype: numpy.ndarray
         """
 
-        rgb_tensor = observation.images[
-            :, 0:3
-        ].cpu() 
+        rgb_tensor = observation.images[:, 0:3].cpu()
 
         rgb_image = rgb_tensor.numpy()
 
         # remove extra dimension
-        rgb_image = rgb_image[0, :, :, :] 
+        rgb_image = rgb_image[0, :, :, :]
 
         # rearrange axis to have RGB image
         rgb_image = np.moveaxis(rgb_image, [0, 1], [2, 0])
