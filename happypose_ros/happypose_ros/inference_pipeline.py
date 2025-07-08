@@ -346,12 +346,17 @@ class MegaPosePipeline(InferencePipeline):
         # conversion from float32 to unit8 required for YOLO
         rgb_image *= 255
         rgb_image = rgb_image.astype(np.uint8)
+<<<<<<< HEAD
 
         # ! debug ==============================================================
         plt.imshow(rgb_image)
         plt.show()
         # ! ====================================================================
 
+=======
+        
+        
+>>>>>>> 5d3f437 (cleanup the visualisation for debug)
         # detections = self.yolo_detector(self.yolo_model, rgb_image) #! runs but does not return a detection
         # test =========================================================================
         yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  # "/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
@@ -408,12 +413,17 @@ class MegaPosePipeline(InferencePipeline):
                     + str(int(y2))
                 )
                 # ! debug ======================================================
-                # Create a Rectangle patch for debug
+                # # Create a Rectangle patch for debug
                 # image = Image.fromarray(rgb_image.astype('uint8'), 'RGB')
                 # fig, ax = plt.subplots()
                 # ax.imshow(image)
+<<<<<<< HEAD
                 # rect = patches.Rectangle((x1, y2), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
 
+=======
+                # rect = patches.Rectangle((x1, y1), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
+                
+>>>>>>> 5d3f437 (cleanup the visualisation for debug)
                 # # Add the patch to the Axes
                 # ax.add_patch(rect)
                 # plt.show()
