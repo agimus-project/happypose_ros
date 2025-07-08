@@ -354,8 +354,8 @@ class MegaPosePipeline(InferencePipeline):
         # ! ====================================================================
 
 =======
-        
-        
+
+
 >>>>>>> 5d3f437 (cleanup the visualisation for debug)
         # detections = self.yolo_detector(self.yolo_model, rgb_image) #! runs but does not return a detection
         # test =========================================================================
@@ -422,7 +422,7 @@ class MegaPosePipeline(InferencePipeline):
 
 =======
                 # rect = patches.Rectangle((x1, y1), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
-                
+
 >>>>>>> 5d3f437 (cleanup the visualisation for debug)
                 # # Add the patch to the Axes
                 # ax.add_patch(rect)
