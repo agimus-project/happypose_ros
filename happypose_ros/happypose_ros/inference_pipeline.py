@@ -36,6 +36,7 @@ from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database impor
 from happypose.toolbox.utils.load_model import NAMED_MODELS, load_named_model
 from happypose.toolbox.datasets.scene_dataset import ObjectData
 
+from happypose_ros.megapose_detector import Detector
 
 #! ==============================================================================
 # #! ros2 logger
@@ -292,8 +293,7 @@ class MegaPosePipeline(InferencePipeline):
         self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[::8]
 
         # load yolo model
-        yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  # "/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
-        self.yolo_model = YOLO(yolo_model_path)
+        self.detector = Detector(self._params)
 
     def get_dataset(self) -> RigidObjectDataset:
         """Returns rigid object dataset used by MegaPose pose estimator
@@ -333,6 +333,7 @@ class MegaPosePipeline(InferencePipeline):
         timings = {}
         t1 = time.perf_counter()
 
+        """
         # replace by a yolo for now
         # get detections with a yolo
         # rgb_tensor = observation.rgb # TODO: add to toolbox
@@ -346,18 +347,8 @@ class MegaPosePipeline(InferencePipeline):
         # conversion from float32 to unit8 required for YOLO
         rgb_image *= 255
         rgb_image = rgb_image.astype(np.uint8)
-<<<<<<< HEAD
-
-        # ! debug ==============================================================
-        plt.imshow(rgb_image)
-        plt.show()
-        # ! ====================================================================
-
-=======
 
 
->>>>>>> 5d3f437 (cleanup the visualisation for debug)
-        # detections = self.yolo_detector(self.yolo_model, rgb_image) #! runs but does not return a detection
         # test =========================================================================
         yolo_model_path = "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"  # "/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v2.pt"   # to pass as param or not?
         yolo_model = YOLO(yolo_model_path)
@@ -417,13 +408,8 @@ class MegaPosePipeline(InferencePipeline):
                 # image = Image.fromarray(rgb_image.astype('uint8'), 'RGB')
                 # fig, ax = plt.subplots()
                 # ax.imshow(image)
-<<<<<<< HEAD
-                # rect = patches.Rectangle((x1, y2), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
-
-=======
                 # rect = patches.Rectangle((x1, y1), x2-x1, y2-y1, linewidth=1, edgecolor='r', facecolor='none')
 
->>>>>>> 5d3f437 (cleanup the visualisation for debug)
                 # # Add the patch to the Axes
                 # ax.add_patch(rect)
                 # plt.show()
@@ -440,6 +426,7 @@ class MegaPosePipeline(InferencePipeline):
         object_data = [object_data]
 
         detections = make_detections_from_object_data(object_data).to(self._device)
+   
 
         # ==============================================================================
         # self.logger.info(detections)
@@ -456,6 +443,9 @@ class MegaPosePipeline(InferencePipeline):
         # detections = make_detections_from_object_data(object_data).to(self._device)
 
         # end of temp replacement =============================================
+        """
+
+        detections = self.detector.run(observation)
 
         if detections is None:
             return None
