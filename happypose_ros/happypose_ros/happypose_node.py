@@ -44,6 +44,7 @@ from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
+
 def happypose_worker_proc(
     worker_free: mp.Value,
     observation_tensor_queue: mp.Queue,
