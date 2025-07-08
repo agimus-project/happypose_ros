@@ -262,10 +262,6 @@ class MegaPosePipeline(InferencePipeline):
         :param params: Parameters used to initialize the HappyPose pipeline.
         :type params: dict
         """
-
-        self.logger = rcutils_logger.RcutilsLogger(name="MHPose-pipeline")
-        self.logger.info("Starting MegaPose inference pipeline")
-
         super().__init__(params)
         self._params = params
         self._device = self._params["device"]
@@ -273,10 +269,6 @@ class MegaPosePipeline(InferencePipeline):
         self.update_params(self._params)
 
         object_dataset = self.get_dataset()
-
-        self.logger.info(
-            "Loading model " + str(self._params["megapose"]["model_name"]) + "."
-        )
         self.model_info = NAMED_MODELS[self._params["megapose"]["model_name"]]
         self.pose_estimator = load_named_model(
             self._params["megapose"]["model_name"], object_dataset
@@ -349,9 +341,6 @@ class MegaPosePipeline(InferencePipeline):
 
         object_predictions.cpu()
         timings["total"] = time.perf_counter() - t1
-
-        self.logger.info("Inference results")
-        self.logger.info(str(object_predictions.infos.to_string()))
 
         object_predictions.infos.rename(
             columns={"pose_score": "score"}, inplace=True
