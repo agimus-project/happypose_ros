@@ -317,7 +317,6 @@ class MegaPosePipeline(InferencePipeline):
 
         if detections is None:
             return None
-        # TODO change to raise error
 
         t2 = time.perf_counter()
         timings["detections"] = t2 - t1

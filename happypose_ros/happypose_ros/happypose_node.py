@@ -66,10 +66,6 @@ def happypose_worker_proc(
     """
     # Initialize the pipeline
 
-    logger = rcutils_logger.RcutilsLogger(name="happypose_worker_proc")
-    logger.info("hppose worker will use: " + pose_estimator_type)
-
-    # TODO: change to have a switch
     if pose_estimator_type == "cosypose":
         pipeline = CosyPosePipeline(params_queue.get())
 
