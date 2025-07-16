@@ -32,7 +32,6 @@ from happypose.toolbox.utils.load_model import NAMED_MODELS, load_named_model
 
 from happypose_ros.megapose_detector import Detector
 
-
 class InferencePipeline(ABC):
     """Abstract class from which the CosyPosePipeline and MegaPosePipeline inherit."""
 
@@ -78,7 +77,7 @@ class InferencePipeline(ABC):
 
 
 class CosyPosePipeline(InferencePipeline):
-    """Object wrapping HappyPose pipeline extracting its calls from the main ROS node."""
+    """Object wrapping CosyPose pipeline extracting its calls from the main ROS node."""
 
     def __init__(self, params: dict) -> None:
         """Creates HappyPosePipeline object and starts loading Torch models to the memory.
@@ -253,7 +252,7 @@ class CosyPosePipeline(InferencePipeline):
 
 
 class MegaPosePipeline(InferencePipeline):
-    """TODO"""
+    """Object wrapping MegaPose pipeline used in the main ROS nodeto detect objects and providing their 3D estimated pose."""
 
     def __init__(self, params: dict) -> None:
         """Creates MegaPosePipeline object and starts loading Torch models to the memory.
@@ -272,7 +271,8 @@ class MegaPosePipeline(InferencePipeline):
         self.pose_estimator = load_named_model(
             self._params["megapose"]["model_name"], object_dataset
         ).to(self._device)
-        self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[::8]
+
+        self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[::self._params["megapose"]["subsample_scale"]]
 
         # load yolo model
         self.detector = Detector(self._params)
