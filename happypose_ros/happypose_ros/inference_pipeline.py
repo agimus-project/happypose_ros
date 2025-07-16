@@ -287,7 +287,7 @@ class MegaPosePipeline(InferencePipeline):
         :rtype: RigidObjectDataset
         """
         rigid_objects = []
-        mesh_dir = Path(self._params["megapose"]["mesh_dir"])
+        mesh_dir = Path(self._params["megapose"]["mesh"]["directory_path"])
         assert mesh_dir.exists(), f"Missing mesh directory {mesh_dir}"
 
         for mesh_path in mesh_dir.iterdir():
@@ -297,7 +297,7 @@ class MegaPosePipeline(InferencePipeline):
                     RigidObject(
                         label=obj_name,
                         mesh_path=mesh_path,
-                        mesh_units=self._params["megapose"]["mesh_units"],
+                        mesh_units=self._params["megapose"]["mesh"]["units"],
                     ),
                 )
         rigid_object_dataset = RigidObjectDataset(rigid_objects)

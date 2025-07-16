@@ -180,24 +180,25 @@ happypose_ros:
       validation:
         one_of<>: [["megapose-1.0-RGB-multi-hypothesis", "megapose-1.0-RGB"]]
       read_only: true
-    mesh_dir:
-      type: string
-      default_value: "/docker_files/happypose_ros_data/meshes"
-      description: "Path to the mesh directory."
-    mesh_units:
-      type: string
-      default_value: "mm"
-      description: "Unit of the mesh."
-      validation:
-        one_of<>: [["mm"]]
-      read_only: true
-    mesh_file_extension:
-      type: string
-      default_value: "obj"
-      description: "Filetype of the mesh."
-      validation:
-        one_of<>: [["ply", "obj"]]
-      read_only: true
+    mesh:
+      directory_path:
+        type: string
+        default_value: "/docker_files/happypose_ros_data/meshes"
+        description: "Path to the mesh directory."
+      units:
+        type: string
+        default_value: "mm"
+        description: "Unit of the mesh."
+        validation:
+          one_of<>: [["mm"]]
+        read_only: true
+      file_extension:
+        type: string
+        default_value: "obj"
+        description: "Filetype of the mesh."
+        validation:
+          one_of<>: [["ply", "obj"]]
+        read_only: true
     subsample_scale:
       type: int
       default_value: 8

@@ -173,7 +173,7 @@ class HappyPoseNode(Node):
             self._vision_info_msg = VisionInfo(
                 method=self._params.pose_estimator_type,
                 # TODO set this parameter to something more meaningful
-                database_location=self._params.megapose.mesh_dir,
+                database_location=self._params.megapose.mesh.directory_path,
                 database_version=0,
             )
 
@@ -681,7 +681,7 @@ class HappyPoseNode(Node):
                     markers = get_marker_array_msg(
                         detections,
                         f"file://{self._vision_info_msg.database_location}",
-                        mesh_file_extension=self._params.megapose.mesh_file_extension,
+                        mesh_file_extension=self._params.megapose.mesh.file_extension,
                         dynamic_opacity=self._params.visualization.markers.dynamic_opacity,
                         marker_lifetime=self._params.visualization.markers.lifetime,
                     )
