@@ -31,13 +31,10 @@ class Detector:
         self._params = params
         self._device = self._params["device"]
 
-        self.detector_path = (
-            "/docker_files/happypose_ros_data/yolo-checkpoints/yolo11n.pt"
-        )
-        self.label = "bar-holder-stripped-bi-v3"
+        self.detector_path = self._params["megapose"]["detector"]["detector_path"]
+        self.label = self._params["megapose"]["detector"]["obj_label"]
 
-        yolo_model_path = self.detector_path
-        self.yolo_model = YOLO(yolo_model_path)
+        self.yolo_model = YOLO(self.detector_path)
 
     def run(self, observation: ObservationTensor) -> DetectionsType:
         """Performs detections using a YOLOv11 model trained to detect only the wanted object.
@@ -130,9 +127,7 @@ class Detector:
 
         return detections
 
-    def convert_obstensor_to_image(
-        self, observation: ObservationTensor
-    ) -> np.array:  # to utils?
+    def convert_obstensor_to_image(self, observation: ObservationTensor) -> np.array:
         """Converts an ObservationTensor into a numpy array image legible by a YOLO model.
 
         :param observation: Tensor containing camera information and incoming images.
@@ -140,18 +135,16 @@ class Detector:
         :return: Numpy array of the converted image.
         :rtype: numpy.ndarray
         """
-
         rgb_tensor = observation.images[:, 0:3].cpu()
-
         rgb_image = rgb_tensor.numpy()
 
-        # remove extra dimension
+        # Remove extra dimension
         rgb_image = rgb_image[0, :, :, :]
 
-        # rearrange axis to have RGB image
+        # Rearrange axis to have RGB image
         rgb_image = np.moveaxis(rgb_image, [0, 1], [2, 0])
 
-        # conversion from float32 to unit8 required for YOLO
+        # Conversion from float32 to unit8 required for YOLO
         rgb_image *= 255
         rgb_image = rgb_image.astype(np.uint8)
 
