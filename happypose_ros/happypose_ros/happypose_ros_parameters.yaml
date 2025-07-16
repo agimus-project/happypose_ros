@@ -51,7 +51,7 @@ happypose_ros:
       default_value: ""
       description: "Name of BOP dataset, used to load specific weights and object models."
       validation:
-        one_of<>: [["hope", "tless", "ycbv", ""]] 
+        one_of<>: [["hope", "tless", "ycbv", ""]]
       read_only: true
     model_type:
       type: string
@@ -202,7 +202,7 @@ happypose_ros:
       type: int
       default_value: 8
       description: "Subsampling scale value"
-      read_only: true  
+      read_only: true
   camera_names:
     type: string_array
     description: "List of names of cameras to subscribe."

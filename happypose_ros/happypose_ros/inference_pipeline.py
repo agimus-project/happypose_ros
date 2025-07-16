@@ -32,6 +32,7 @@ from happypose.toolbox.utils.load_model import NAMED_MODELS, load_named_model
 
 from happypose_ros.megapose_detector import Detector
 
+
 class InferencePipeline(ABC):
     """Abstract class from which the CosyPosePipeline and MegaPosePipeline inherit."""
 
@@ -272,7 +273,9 @@ class MegaPosePipeline(InferencePipeline):
             self._params["megapose"]["model_name"], object_dataset
         ).to(self._device)
 
-        self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[::self._params["megapose"]["subsample_scale"]]
+        self.pose_estimator._SO3_grid = self.pose_estimator._SO3_grid[
+            :: self._params["megapose"]["subsample_scale"]
+        ]
 
         # load yolo model
         self.detector = Detector(self._params)
