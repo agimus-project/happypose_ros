@@ -54,37 +54,12 @@ def launch_setup(
         ],
     )
 
-    #! change that
-    # # Include common part of the demo launch files
-    # happypose_example_common_launch = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         [
-    #             PathJoinSubstitution(
-    #                 [
-    #                     FindPackageShare("happypose_examples"),
-    #                     "launch",
-    #                     "common.launch.py",
-    #                 ]
-    #             )
-    #         ]
-    #     ),
-    #     launch_arguments={
-    #         "dataset_name": LaunchConfiguration("dataset_name"),
-    #         "model_type": LaunchConfiguration("model_type"),
-    #         "device": LaunchConfiguration("device"),
-    #         "use_rviz": LaunchConfiguration("use_rviz"),
-    #         "pose_estimator_type": LaunchConfiguration("pose_estimator_type")
-    #     }.items(),
-    # )
-
     # Start ROS node of happypose
     happypose_node = Node(
         package="happypose_ros",
         executable="happypose_node",
         name="happypose_node",
-        parameters=[
-            ParameterFile(param_file=happypose_params_path, allow_substs=True)
-        ],  #! modify with own params
+        parameters=[ParameterFile(param_file=happypose_params_path, allow_substs=True)],
     )
 
     # Start RViz2 ROS node

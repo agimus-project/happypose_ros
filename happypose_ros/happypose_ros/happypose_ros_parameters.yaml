@@ -212,7 +212,6 @@ happypose_ros:
         type: string
         default_value: "bar-holder-stripped-bi-v3"
         description: "Yolo label of the object to detect"
-
   camera_names:
     type: string_array
     description: "List of names of cameras to subscribe."
