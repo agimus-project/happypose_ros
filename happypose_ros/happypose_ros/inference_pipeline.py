@@ -344,9 +344,7 @@ class MegaPosePipeline(InferencePipeline):
         timings["total"] = time.perf_counter() - t1
 
         # Here the "score" column is used to store the resulting pose score (different from the score published when using cosypose)
-        object_predictions.infos.rename(
-            columns={"pose_score": "score"}, inplace=True
-        ) 
+        object_predictions.infos.rename(columns={"pose_score": "score"}, inplace=True)
         object_predictions.infos["score"] = object_predictions.infos["score"].astype(
             float
         )
