@@ -183,7 +183,7 @@ happypose_ros:
     mesh:
       directory_path:
         type: string
-        default_value: "/docker_files/happypose_ros_data/meshes"
+        default_value: "/docker_files/dev_ros2_ws/src/happypose_ros/happypose_examples/resources/meshes"
         description: "Path to the mesh directory."
       units:
         type: string
@@ -207,7 +207,7 @@ happypose_ros:
     detector:
       detector_path:
         type: string
-        default_value: "/docker_files/happypose_ros_data/yolo-checkpoints/bar-holder-stripped-bi-v3.pt"
+        default_value: "/docker_files/dev_ros2_ws/src/happypose_ros/happypose_examples/resources/yolo-checkpoints/bar-holder-stripped-bi-v3.pt"
         description: "Path to the .pt yolo model used as a detector for megapose"
       obj_label:
         type: string
