@@ -48,6 +48,16 @@ To evaluate multi-view capabilities, try:
 ros2 launch happypose_examples multi_view_demo.launch.py use_rviz:=true device:=cpu
 ```
 
+To test megapose inference with a custom object, run:
+```bash
+ros2 launch happypose_examples megapose_demo.launch.py use_rviz:=true device:=cuda image_path:=/src/happypose_ros/happypose_examples/resources/megapose_img.png
+```
+To test another megapose model change the `megapose/model_name` parameter, see [happypose_ros_parameters.yaml](./happypose_ros/happypose_ros/happypose_ros_parameters.yaml) for supported options.
+
+To use another object modify the `megapose/mesh/directory_path`, `megapose/mesh/units` and `megapose/mesh/file_extension` parameters in [happypose_ros_parameters.yaml](./happypose_ros/happypose_ros/happypose_ros_parameters.yaml).
+You must also modify the detector, there is two options :
+- [Train a YOLO model](https://docs.ultralytics.com/modes/train/) to recognize the object and modify `megapose/detector/detector_path` and `megapose/detector/obj_label` in [happypose_ros_parameters.yaml](./happypose_ros/happypose_ros/happypose_ros_parameters.yaml).
+- Modify [megapose_detector.py](./happypose_ros/happypose_ros/megapose_detector.py) to implement your own detector.
 
 ## ROS API
 

@@ -43,7 +43,7 @@ happypose_ros:
     default_value: "cosypose"
     description: "Specifies which pose estimator to use in the pipeline."
     validation:
-      one_of<>: [["cosypose"]]
+      one_of<>: [["cosypose", "megapose"]]
     read_only: true
   cosypose:
     dataset_name:
@@ -51,14 +51,14 @@ happypose_ros:
       default_value: ""
       description: "Name of BOP dataset, used to load specific weights and object models."
       validation:
-        one_of<>: [["hope", "tless", "ycbv"]]
+        one_of<>: [["hope", "tless", "ycbv", ""]]
       read_only: true
     model_type:
       type: string
       default_value: "pbr"
       description: "Type of neural network model to use. Available: 'pbr'|'synth+real'"
       validation:
-        one_of<>: [["pbr", "synth+real"]]
+        one_of<>: [["pbr", "synth+real", ""]]
       read_only: true
     depth_refiner_type:
       type: string
@@ -172,6 +172,47 @@ happypose_ros:
         default_value: [""]
         validation:
           unique<>:
+  megapose:
+    model_name:
+      type: string
+      default_value: "megapose-1.0-RGB-multi-hypothesis"
+      description: "Name of the megapose model to be used in inference, for now no model with depth is supported."
+      validation:
+        one_of<>: [["megapose-1.0-RGB-multi-hypothesis", "megapose-1.0-RGB"]]
+      read_only: true
+    mesh:
+      directory_path:
+        type: string
+        default_value: "src/happypose_ros/happypose_examples/resources/meshes"
+        description: "Path to the mesh directory."
+      units:
+        type: string
+        default_value: "mm"
+        description: "Unit of the mesh."
+        validation:
+          one_of<>: [["mm"]]
+        read_only: true
+      file_extension:
+        type: string
+        default_value: "obj"
+        description: "Filetype of the mesh."
+        validation:
+          one_of<>: [["ply", "obj"]]
+        read_only: true
+    subsample_scale:
+      type: int
+      default_value: 8
+      description: "Subsampling scale value"
+      read_only: true
+    detector:
+      detector_path:
+        type: string
+        default_value: "src/happypose_ros/happypose_examples/resources/yolo-checkpoints/bar-holder-stripped-bi-v3.pt"
+        description: "Path to the .pt yolo model used as a detector for megapose"
+      obj_label:
+        type: string
+        default_value: "bar-holder-stripped-bi-v3"
+        description: "Yolo label of the object to detect"
   camera_names:
     type: string_array
     description: "List of names of cameras to subscribe."

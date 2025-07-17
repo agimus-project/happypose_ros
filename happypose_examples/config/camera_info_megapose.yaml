@@ -1,0 +1,21 @@
+# Camera parameters based on YCBV dataset camera parameters
+image_width: 1920
+image_height: 1080
+camera_name: "webcam"
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [1354.09, 0.0, 981.38, 0.0, 1352.51, 544.437, 0.0, 0.0, 1.0]
+distortion_model: "plumb_bob"
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.0, 0.0, 0.0, 0.0, 0.0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [1354.09, 0.0, 981.38, 0.0, 0.0, 1352.51, 544.437, 0.0, 0.0, 0.0, 1.0, 0.0]
