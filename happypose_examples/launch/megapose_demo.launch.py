@@ -119,7 +119,7 @@ def generate_launch_description():
         ),
         DeclareLaunchArgument(
             "camera_info_url",
-            default_value="package://happypose_examples/config/camera_info.yaml",
+            default_value="package://happypose_examples/config/camera_info_megapose.yaml",
             description="URL of the calibrated camera params. Is overwritten by param `field_of_view`.",
         ),
         DeclareLaunchArgument(
