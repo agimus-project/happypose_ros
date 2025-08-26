@@ -76,14 +76,16 @@ class CameraWrapper:
             Subscriber(
                 self._node,
                 img_msg_type,
-                self._camera_name + "/color" + topic_postfix,
+                # self._camera_name + "/color" + topic_postfix,
+                self._camera_name + topic_postfix,
                 qos_profile=qos_profile_sensor_data,
                 qos_overriding_options=QoSOverridingOptions.with_default_policies(),
             ),
             Subscriber(
                 self._node,
                 CameraInfo,
-                self._camera_name + "/color" + "/camera_info",
+                # self._camera_name + "/color" + "/camera_info",
+                self._camera_name + "/camera_info",
                 qos_profile=qos_profile_sensor_data,
                 qos_overriding_options=QoSOverridingOptions.with_default_policies(),
             ),
