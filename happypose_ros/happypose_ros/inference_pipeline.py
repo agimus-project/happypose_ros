@@ -23,6 +23,8 @@ from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database impor
     MeshDataBase,
 )
 
+from happypose_ros.detector_utils import get_multicrop_detections
+
 
 class HappyPosePipeline:
     """Object wrapping HappyPose pipeline extracting its calls from the main ROS node."""
@@ -97,11 +99,24 @@ class HappyPosePipeline:
         timings = {}
         t1 = time.perf_counter()
 
-        detections = self._wrapper.pose_predictor.detector_model.get_detections(
-            observation,
-            output_masks=False,
-            **self._inference_args["detector"],
-        )
+        # # TODO
+        # use_multicrop_detector = True
+        # tile_detection_scale = 0.6
+        if self._inference_args["use_multicrop_detector"]:
+            detections = get_multicrop_detections(
+                self._wrapper.pose_predictor.detector_model,
+                observation.images,
+                observation.K,
+                self._device,
+                tile_detection_scale=self._inference_args["tile_detection_scale"],
+                detector_args=self._inference_args["detector"],
+            )
+        else:
+            detections = self._wrapper.pose_predictor.detector_model.get_detections(
+                observation,
+                output_masks=False,
+                **self._inference_args["detector"],
+            )
 
         t2 = time.perf_counter()
         timings["detections"] = t2 - t1

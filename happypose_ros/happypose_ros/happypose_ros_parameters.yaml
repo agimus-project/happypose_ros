@@ -96,6 +96,16 @@ happypose_ros:
           description: "Detection threshold of an object used by detector."
           validation:
             bounds<>: [0.0, 1.0]
+      use_multicrop_detector:
+        type: bool
+        default_value: false
+        description: "Use multi-crop detection strategy."
+      tile_detection_scale:
+        type: double
+        default_value: 0.6
+        description: "Scale of tiles used in multi-crop detection strategy."
+        validation:
+          bounds<>: [0.5, 1.0]
       pose_estimator:
         n_refiner_iterations:
           type: int
