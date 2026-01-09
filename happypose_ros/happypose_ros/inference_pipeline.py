@@ -1,7 +1,8 @@
 import time
+from typing import Union
+
 import numpy as np
 import pandas as pd
-from typing import Union
 
 from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.inference.utils import filter_detections
@@ -24,6 +25,7 @@ from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database impor
 )
 
 from happypose_ros.detector_utils import get_multicrop_detections
+from happypose_ros.utils import ObservationMixedTensor
 
 
 class HappyPosePipeline:
@@ -86,34 +88,38 @@ class HappyPosePipeline:
             return dataset
         return dataset.filter_objects(self._inference_args["labels_to_keep"])
 
-    def __call__(self, observation: ObservationTensor) -> Union[None, dict]:
+    def __call__(self, observation: ObservationMixedTensor) -> Union[None, dict]:
         """Performs sequence of actions to estimate pose and optionally merge
         multiview results.
 
         :param observation: Tensor containing camera information and incoming images.
-        :type observation: happypose.toolbox.inference.types.ObservationTensor
+        :type observation: TODO
         :return: Dictionary with final detections. If pipeline failed or nothing
             was detected None is returned
         :rtype: Union[None, dict]
         """
         timings = {}
         t1 = time.perf_counter()
+        # if color and depth are not aligned, create happypose observation only with color images
+        obs_happy = ObservationTensor.from_torch_batched(
+            rgb=observation.rgb, 
+            depth=observation.depth if self._params["aligned_depth"] else None, 
+            K=observation.K_color
+        )
+        obs_happy.to(self._device)
 
-        # # TODO
-        # use_multicrop_detector = True
-        # tile_detection_scale = 0.6
         if self._inference_args["use_multicrop_detector"]:
             detections = get_multicrop_detections(
                 self._wrapper.pose_predictor.detector_model,
-                observation.images,
-                observation.K,
+                obs_happy.images,
+                obs_happy.K,
                 self._device,
                 tile_detection_scale=self._inference_args["tile_detection_scale"],
                 detector_args=self._inference_args["detector"],
             )
         else:
             detections = self._wrapper.pose_predictor.detector_model.get_detections(
-                observation,
+                obs_happy,
                 output_masks=False,
                 **self._inference_args["detector"],
             )
@@ -129,7 +135,7 @@ class HappyPosePipeline:
             return None
 
         cosypose_predictions, _ = self._wrapper.pose_predictor.run_inference_pipeline(
-            observation,
+            obs_happy,
             detections=detections,
             run_detector=False,
             data_TCO_init=None,
@@ -138,21 +144,28 @@ class HappyPosePipeline:
         t3 = time.perf_counter()
         timings["single_view"] = t3 - t2
 
-        if self._params["use_depth"]:
-            object_predictions, extra_data_depth_ref = (
-                self._wrapper.depth_refiner.refine_poses(
-                    predictions=cosypose_predictions,
-                    depth=observation.depth,
-                    K=observation.K,
-                    **self._inference_args[
-                        self._params["cosypose"]["depth_refiner_type"]
-                    ],
-                )
-            )
 
-            # Select only valid ICP results (retval of value 0)
-            valid_icp_ids = np.logical_not(extra_data_depth_ref["retvals_icp"])
-            object_predictions = object_predictions[valid_icp_ids]
+        # if depth refinement is enabled and depth and color are aligned, 
+        # use the happypose depth refiner 
+        if self._params["use_depth"]:
+            if self._params["aligned_depth"]:
+                object_predictions, extra_data_depth_ref = (
+                    self._wrapper.depth_refiner.refine_poses(
+                        predictions=cosypose_predictions,
+                        depth=obs_happy.depth,
+                        K=obs_happy.K,
+                        **self._inference_args[
+                            self._params["cosypose"]["depth_refiner_type"]
+                        ],
+                    )
+                )
+
+                # Select only valid ICP results (retval of value 0)
+                valid_icp_ids = np.logical_not(extra_data_depth_ref["retvals_icp"])
+                object_predictions = object_predictions[valid_icp_ids]
+            else:
+                timings["T_depth_color"] = observation.T_depth_color
+                object_predictions = cosypose_predictions
 
         else:
             object_predictions = cosypose_predictions
@@ -178,8 +191,8 @@ class HappyPosePipeline:
         object_predictions.infos["group_id"] = 0
 
         cameras = PandasTensorCollection(
-            K=observation.K,
-            infos=pd.DataFrame({"view_id": np.arange(observation.batch_size)}),
+            K=obs_happy.K,
+            infos=pd.DataFrame({"view_id": np.arange(obs_happy.batch_size)}),
         )
         cameras.infos["scene_id"] = 1
         cameras.infos["batch_im_id"] = 0

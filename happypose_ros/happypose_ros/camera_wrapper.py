@@ -3,6 +3,7 @@ import numpy as np
 import numpy.typing as npt
 from typing import Callable, Union, TypeVar
 
+import rclpy
 from rclpy.node import Node
 from rclpy.time import Time
 from rclpy.qos import qos_profile_sensor_data
@@ -12,8 +13,12 @@ from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 
 from cv_bridge import CvBridge
 from image_geometry.cameramodels import PinholeCameraModel
+from tf2_ros import Buffer
+from geometry_msgs.msg import TransformStamped
 
 from message_filters import ApproximateTimeSynchronizer, Subscriber
+
+from happypose_ros.utils import transform_msg_to_mat
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros
@@ -34,6 +39,8 @@ class CameraWrapper:
         name: str,
         image_sync_hook: Callable,
         use_depth: bool = False,
+        aligned_depth: bool = False,
+        tf_buffer: Buffer = None,
     ) -> None:
         """Initializes CameraWrapper object. Checks values of the ROS parameters,
         configures and creates camera image and info subscribers.
@@ -52,6 +59,8 @@ class CameraWrapper:
         """
 
         self._image_sync_hook = image_sync_hook
+        self.tf_buffer = tf_buffer
+        self.aligned_depth = aligned_depth
 
         self._node = node
         self._camera_name = name
@@ -68,11 +77,13 @@ class CameraWrapper:
         self._color_camera_info: CameraInfo = None
         self._depth_image: Union[Image, CompressedImage] = None
         self._depth_camera_info: Union[None, Image, CompressedImage] = None
+        self._tf_depth_color: Union[None, TransformStamped] = None
         self._cvb = CvBridge()
         self._estimated_tf_frame_id = camera_params.estimated_tf_frame_id
-        self._cam_model = PinholeCameraModel()
+        self._cam_model_color = PinholeCameraModel()
+        self._cam_model_depth = PinholeCameraModel()
 
-        sync_topics = [
+        self.sync_subs = [
             Subscriber(
                 self._node,
                 img_msg_type,
@@ -90,7 +101,7 @@ class CameraWrapper:
         ]
 
         if use_depth:
-            sync_topics.extend(
+            self.sync_subs.extend(
                 [
                     Subscriber(
                         self._node,
@@ -110,13 +121,13 @@ class CameraWrapper:
             )
 
         # Create time approximate time synchronization
-        self._color_image_approx_time_sync = ApproximateTimeSynchronizer(
-            sync_topics,
+        self._camera_approx_time_sync = ApproximateTimeSynchronizer(
+            self.sync_subs,
             queue_size=5,
             slop=camera_params.time_sync_slop,
         )
         # Register callback depending on the configuration
-        self._color_image_approx_time_sync.registerCallback(
+        self._camera_approx_time_sync.registerCallback(
             self._on_image_with_depth_data_cb if use_depth else self._on_image_data_cb
         )
 
@@ -198,21 +209,22 @@ class CameraWrapper:
         image_discarded_log = (
             f" Image from camera '{self._camera_name}' will be discarded!"
         )
-        connections = self._color_image_approx_time_sync.input_connections
-        frame_ids = {color_image.header.frame_id, color_camera_info.header.frame_id}
-        if len(frame_ids) > 1:
+        
+        # Check color frame ids
+        if color_image.header.frame_id != color_camera_info.header.frame_id:
             self._node.get_logger().warn(
-                "Mismatch in `frame_id` between topics"
-                f" '{connections[0].getTopic()}' and '{connections[1].getTopic()}'!"
+                "Mismatch in `frame_id` between topics color image/info topics"
+                f" '{self.sync_subs[0].topic}' and '{self.sync_subs[1].topic}'!"
                 + image_discarded_log,
                 throttle_duration_sec=5.0,
             )
             return
 
+        # Check color K matrix
         if self._validate_k_matrix(color_camera_info.k):
             self._color_camera_info = color_camera_info
         else:
-            topic = self._color_image_approx_time_sync.input_connections[1].getTopic()
+            topic = self.sync_subs[1].topic
             self._node.get_logger().warn(
                 f"K matrix from topic '{topic}' is incorrect!" + image_discarded_log,
                 throttle_duration_sec=5.0,
@@ -220,59 +232,83 @@ class CameraWrapper:
             return
 
         if depth_camera_info:
-            if not np.allclose(color_camera_info.k, depth_camera_info.k):
-                self._node.get_logger().warn(
-                    f"Topics '{connections[1].getTopic()}' and "
-                    f" '{connections[3].getTopic()}' contain different intrinsics matrices!"
-                    " Both color and depth images have to have the same intrinsics for ICP to work!"
-                    + image_discarded_log,
-                    throttle_duration_sec=5.0,
-                )
-                return
-
-            depth_frame_ids = {
-                depth_image.header.frame_id,
-                depth_camera_info.header.frame_id,
-            }
-            if len(depth_frame_ids) > 1:
-                self._node.get_logger().warn(
-                    "Mismatch in `frame_id` between topics"
-                    f" '{connections[2].getTopic()}' and '{connections[3].getTopic()}'!"
-                    + image_discarded_log,
-                    throttle_duration_sec=5.0,
-                )
-                return
-
-            if len(frame_ids | depth_frame_ids) > 1:
-                self._node.get_logger().warn(
-                    f"Topics '{connections[0].getTopic()}' and"
-                    f" '{connections[2].getTopic()}' contain images with different `frame_id`!"
-                    " Depth image should be projected to mach frame of the color image for ICP to work!"
-                    + image_discarded_log,
-                    throttle_duration_sec=5.0,
-                )
-                return
-
-            if (
-                color_camera_info.width != depth_camera_info.width
-                or color_camera_info.height != depth_camera_info.height
-            ):
-                self._node.get_logger().warn(
-                    f"Topics '{connections[0].getTopic()}' and"
-                    f" '{connections[2].getTopic()}' contain images of a  different size!"
-                    " Depth and color images should have the same size for ICP to work!"
-                    + image_discarded_log,
-                    throttle_duration_sec=5.0,
-                )
-                return
-
+            # Check depth image encoding
             if depth_image.encoding not in ("16UC1", "32FC1"):
                 self._node.get_logger().warn(
                     f"Unsupported encoding '{depth_image.encoding}' on topic"
-                    f" '{connections[2].getTopic()}'." + image_discarded_log,
+                    f" '{self.sync_subs[2].topic}'." + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
                 return
+            
+            # Check depth frame ids
+            if depth_image.header.frame_id != depth_camera_info.header.frame_id:
+                self._node.get_logger().warn(
+                    "Mismatch in `frame_id` between topics"
+                    f" '{self.sync_subs[2].topic}' and '{self.sync_subs[3].topic}'!"
+                    + image_discarded_log,
+                    throttle_duration_sec=5.0,
+                )
+                return
+            
+            # Check depth K matrix
+            if self._validate_k_matrix(depth_camera_info.k):
+                self._depth_camera_info = depth_camera_info
+            else:
+                topic = self.sync_subs[3].topic
+                self._node.get_logger().warn(
+                    f"K matrix from topic '{topic}' is incorrect!" + image_discarded_log,
+                    throttle_duration_sec=5.0,
+                )
+                return
+            
+            # if we assume depth and color are aligned, their 
+            # frame_ids, intrinsics, and sizes must match
+            if self.aligned_depth:
+                # frame ids check
+                if color_image.header.frame_id != depth_image.header.frame_id:
+                    self._node.get_logger().warn(
+                        f"Topics '{self.sync_subs[0].topic}' and"
+                        f" '{self.sync_subs[2].topic}' contain images with different `frame_id`!"
+                        " Depth image should be projected to mach frame of the color image for ICP to work!"
+                        + image_discarded_log,
+                        throttle_duration_sec=5.0,
+                    )
+                    return
+                
+                # Check that color/depht intrinsics are the same
+                if np.allclose(color_camera_info.k, depth_camera_info.k):
+                    self._node.get_logger().warn(
+                        f"Depth aligned is enforced but topics '{self.sync_subs[1].topic}' and "
+                        f" '{self.sync_subs[3].topic}' contain different intrinsics matrices!"
+                        " Both color and depth images have to have the same intrinsics for ICP to work!"
+                        + image_discarded_log,
+                        throttle_duration_sec=5.0,
+                    )
+                    return
+
+                # Check that color/depht resolutions are the same
+                if (
+                    color_camera_info.width != depth_camera_info.width
+                    or color_camera_info.height != depth_camera_info.height
+                ):
+                    self._node.get_logger().warn(
+                        f"Topics '{self.sync_subs[0].topic}' and"
+                        f" '{self.sync_subs[2].topic}' contain images of a  different size!"
+                        " Depth and color images should have the same size for ICP to work!"
+                        + image_discarded_log,
+                        throttle_duration_sec=5.0,
+                    )
+                    return
+            
+            else:
+                # if depth and color are not aligned, store extrinsics
+                self._tf_depth_color = self.tf_buffer.lookup_transform(
+                    target_frame=depth_image.header.frame_id,
+                    source_frame=color_image.header.frame_id,
+                    time=color_image.header.stamp,
+                    timeout=rclpy.duration.Duration(seconds=0.2)
+                )
 
         self._color_image = color_image
         self._depth_image = depth_image
@@ -334,19 +370,29 @@ class CameraWrapper:
         return encoder(self._color_image, desired_encoding)
 
     @data_received_guarded
-    def get_last_k_matrix(self) -> npt.NDArray[np.float64]:
+    def get_last_color_k_matrix(self) -> npt.NDArray[np.float64]:
         """Returns intrinsic matrix associated with last received color camera info message.
-        If depth is used, both color and depth intrinsics matrices have to be equal.
 
         :raises RuntimeError: No camera info messages were received yet.
         :return: 3x3 Numpy array with intrinsic matrix.
         :rtype: numpy.typing.NDArray[numpy.float64]
         """
-        self._cam_model.fromCameraInfo(self._color_camera_info)
-        return np.array(self._cam_model.intrinsicMatrix())
+        self._cam_model_color.fromCameraInfo(self._color_camera_info)
+        return np.array(self._cam_model_color.intrinsicMatrix())
 
     @data_received_guarded
-    def get_last_image_shape(self) -> tuple[int]:
+    def get_last_depth_k_matrix(self) -> npt.NDArray[np.float64]:
+        """Returns intrinsic matrix associated with last received depth camera info message.
+
+        :raises RuntimeError: No camera info messages were received yet.
+        :return: 3x3 Numpy array with intrinsic matrix.
+        :rtype: numpy.typing.NDArray[numpy.float64]
+        """
+        self._cam_model_depth.fromCameraInfo(self._depth_camera_info)
+        return np.array(self._cam_model_depth.intrinsicMatrix())
+
+    @data_received_guarded
+    def get_last_color_shape(self) -> tuple[int]:
         """Returns shape of the last received image in a tuple (height, width).
 
         :raises RuntimeError: No images were received yet.
@@ -354,6 +400,16 @@ class CameraWrapper:
         :rtype: tuple[int]
         """
         return (self._color_camera_info.height, self._color_camera_info.width)
+
+    @data_received_guarded
+    def get_last_depth_shape(self) -> tuple[int]:
+        """Returns shape of the last received depth image in a tuple (height, width).
+
+        :raises RuntimeError: No images were received yet.
+        :return: Tuple with values (height, width).
+        :rtype: tuple[int]
+        """
+        return (self._depth_camera_info.height, self._depth_camera_info.width)
 
     @data_received_guarded
     def get_last_depth_image(self) -> Union[None, npt.NDArray[np.float32]]:
@@ -372,3 +428,16 @@ class CameraWrapper:
             self._cvb.imgmsg_to_cv2(self._depth_image, "passthrough").astype(np.float32)
             * scale
         )
+
+    @data_received_guarded
+    def get_T_depth_color(self) -> tuple[int]:
+        """Returns transformation matrix from depth camera to color camera.
+
+        :raises RuntimeError: No transformation was received yet.
+        :return: 4x4 Numpy array with transformation matrix.
+        :rtype: numpy.typing.NDArray[numpy.float64]
+        """
+        if self._tf_depth_color is None:
+            raise RuntimeError("No depth to color transform was received yet.")
+
+        return transform_msg_to_mat(self._tf_depth_color.transform)

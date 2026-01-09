@@ -10,21 +10,19 @@ import queue
 import rclpy
 from rclpy.duration import Duration
 from rclpy.exceptions import ParameterException
-import rclpy.logging
 from rclpy.node import Node
 from rclpy.time import Time
 from rclpy.qos import qos_profile_system_default
 from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
 from rclpy.qos_overriding_options import QoSOverridingOptions
 
-from tf2_ros import TransformBroadcaster
+from tf2_ros import TransformBroadcaster, Buffer, TransformListener
 
 from std_msgs.msg import Header
 from visualization_msgs.msg import MarkerArray
 from vision_msgs.msg import Detection2DArray, VisionInfo
 
 from happypose.toolbox.datasets.datasets_cfg import make_object_dataset
-from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -37,6 +35,7 @@ from happypose_ros.utils import (  # noqa: E402
     get_detection_array_msg,
     get_marker_array_msg,
     get_object_symmetries_msg,
+    ObservationMixedTensor
 )
 
 from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
@@ -47,7 +46,7 @@ from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
 def happypose_worker_proc(
     worker_free: mp.Value,
-    observation_tensor_queue: mp.Queue,
+    observation_queue: mp.Queue,
     results_queue: mp.Queue,
     symmetries_queue: mp.Queue,
     params_queue: mp.Queue,
@@ -56,8 +55,8 @@ def happypose_worker_proc(
 
     :param worker_free: Boolean, shared value indicating if a worker is free to start processing new data.
     :type worker_free: multiprocessing.Value
-    :param observation_tensor_queue: Queue used to pass images from the main process to worker process.
-    :type observation_tensor_queue: multiprocessing.Queue
+    :param observation_queue: Queue used to pass images from the main process to worker process.
+    :type observation_queue: multiprocessing.Queue
     :param result_queue: Queue used to pass dict with the results to from worker process to the main process.
     :type result_queue: multiprocessing.Queue
     :param params_queue: Queue used to pass new incoming ROS parameters in a form of a dict.
@@ -75,7 +74,7 @@ def happypose_worker_proc(
     try:
         while True:
             # Await any data on all the input queues
-            observation = observation_tensor_queue.get(block=True, timeout=None)
+            observation = observation_queue.get(block=True, timeout=None)
             if observation is None:
                 break
 
@@ -162,6 +161,10 @@ class HappyPoseNode(Node):
             database_version=0,
         )
 
+        # TF needed to get camera color/depth extrinsics
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
+
         # Each camera registers its topics and fires a synchronization callback on new image
         self._cameras = {
             name: CameraWrapper(
@@ -170,9 +173,14 @@ class HappyPoseNode(Node):
                 name,
                 self._on_image_cb,
                 self._params.use_depth,
+                self._params.aligned_depth,
+                self.tf_buffer
             )
             for name in self._params.camera_names
         }
+
+        self.get_logger().info(f"self._params.use_depth: {self._params.use_depth}")
+        self.get_logger().info(f"self._params.aligned_depth: {self._params.aligned_depth}")
 
         self._last_pipeline_trigger = Time()
 
@@ -460,10 +468,10 @@ class HappyPoseNode(Node):
 
         leading_cam_shape = processed_cameras[
             self._leading_camera
-        ].get_last_image_shape()
+        ].get_last_color_shape()
 
         def __check_shape_and_log(name: str, cam: CameraWrapper) -> bool:
-            image_shape = cam.get_last_image_shape()
+            image_shape = cam.get_last_color_shape()
             if image_shape != leading_cam_shape:
                 self.get_logger().warn(
                     f"Mismatch in image shapes for camera '{name}' and leading camera!"
@@ -493,31 +501,40 @@ class HappyPoseNode(Node):
 
         rgb_tensor = torch.as_tensor(
             np.stack([cam.get_last_rgb_image() for cam in processed_cameras.values()])
-        ).permute(0, 3, 1, 2)
+        ).permute(0, 3, 1, 2)  # BxCxHxW
+        
+        K_color_ts = torch.as_tensor(
+            np.stack([cam.get_last_color_k_matrix() for cam in processed_cameras.values()])
+        ) # Bx3x3
 
         if self._params.use_depth:
             depth_tensor = torch.as_tensor(
                 np.stack(
                     [cam.get_last_depth_image() for cam in processed_cameras.values()]
                 )
-            ).unsqueeze(1)
+            ).unsqueeze(1) # Bx1xHxW
         else:
             depth_tensor = None
 
-        K_tensor = torch.as_tensor(
-            np.stack([cam.get_last_k_matrix() for cam in processed_cameras.values()])
-        )
-
+        # TODO: check if necessary
         # Enable shared memory to increase performance
         rgb_tensor.to(self._device).share_memory_()
-        K_tensor.to(self._device).share_memory_()
-        if self._params.use_depth:
+        K_color_ts.to(self._device).share_memory_()
+        if self._params.use_depth and self._params.aligned_depth:
             depth_tensor.to(self._device).share_memory_()
 
-        observation = ObservationTensor.from_torch_batched(
-            rgb=rgb_tensor, depth=depth_tensor, K=K_tensor
-        )
-        observation.to(self._device)
+        if self._params.use_depth and not self._params.aligned_depth:
+            K_depth_ts = torch.as_tensor(
+                np.stack([cam.get_last_depth_k_matrix() for cam in processed_cameras.values()])
+            ) # Bx3x3
+            T_depth_color = torch.as_tensor(
+                np.stack([cam.get_T_depth_color() for cam in processed_cameras.values()])
+            ) # Bx4x4
+        else:
+            K_depth_ts = None
+            T_depth_color = None
+
+        observation = ObservationMixedTensor(rgb_tensor, depth_tensor, K_color_ts, K_depth_ts, T_depth_color)
         self._observation_tensor_queue.put(observation)
 
         with self._worker_free.get_lock():
@@ -569,10 +586,10 @@ class HappyPoseNode(Node):
             if results is not None:
                 if self._params.verbose_info_logs:
                     self.get_logger().info(f"Detected {len(results['infos'])} objects.")
-                    rounded_timings = {
-                        k: round(v, 4) for k, v in results["timings"].items()
-                    }
-                    self.get_logger().info(f" Inference timings [s]: {rounded_timings}")
+                    # rounded_timings = {
+                    #     k: round(v, 4) for k, v in results["timings"].items()
+                    # }
+                    self.get_logger().info(f" Inference timings [s]: {results['timings']}")
 
                 if self._multiview:
                     missing_cameras = len(cam_data) - len(results["camera_infos"])
