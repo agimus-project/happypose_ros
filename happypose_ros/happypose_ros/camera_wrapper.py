@@ -268,19 +268,20 @@ class CameraWrapper:
                 # frame ids check
                 if color_image.header.frame_id != depth_image.header.frame_id:
                     self._node.get_logger().warn(
-                        f"Topics '{self.sync_subs[0].topic}' and"
-                        f" '{self.sync_subs[2].topic}' contain images with different `frame_id`!"
-                        " Depth image should be projected to mach frame of the color image for ICP to work!"
+                        f"Depth aligned is enforced but topics frame_ids do not match: '{self.sync_subs[0].topic}'-> {color_image.header.frame_id} vs"
+                        f" '{self.sync_subs[2].topic}' -> '{depth_image.header.frame_id}'!"
                         + image_discarded_log,
                         throttle_duration_sec=5.0,
                     )
                     return
                 
                 # Check that color/depht intrinsics are the same
-                if np.allclose(color_camera_info.k, depth_camera_info.k):
+                if not np.allclose(color_camera_info.k, depth_camera_info.k):
                     self._node.get_logger().warn(
-                        f"Depth aligned is enforced but topics '{self.sync_subs[1].topic}' and "
+                        f"Depth aligned is enforced but topics '{self.sync_subs[1].topic}' has and "
                         f" '{self.sync_subs[3].topic}' contain different intrinsics matrices!"
+                        f" 'color_camera_info.k': {color_camera_info.k} vs"
+                        f" 'depth_camera_info.k': {depth_camera_info.k}!"
                         " Both color and depth images have to have the same intrinsics for ICP to work!"
                         + image_discarded_log,
                         throttle_duration_sec=5.0,
@@ -294,7 +295,7 @@ class CameraWrapper:
                 ):
                     self._node.get_logger().warn(
                         f"Topics '{self.sync_subs[0].topic}' and"
-                        f" '{self.sync_subs[2].topic}' contain images of a  different size!"
+                        f" '{self.sync_subs[2].topic}' contain images of a different size!"
                         " Depth and color images should have the same size for ICP to work!"
                         + image_discarded_log,
                         throttle_duration_sec=5.0,
