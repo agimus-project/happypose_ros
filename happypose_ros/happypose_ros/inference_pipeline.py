@@ -1,12 +1,15 @@
 import time
 from typing import Union
 
+import torch
 import numpy as np
 import pandas as pd
+import open3d as o3d
 
 from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.inference.utils import filter_detections
 from happypose.toolbox.datasets.object_dataset import RigidObjectDataset
+from happypose.toolbox.renderer.panda3d_batch_renderer import Panda3dBatchRenderer
 
 from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
     CosyPoseWrapper,
@@ -26,7 +29,8 @@ from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database impor
 
 from happypose_ros.detector_utils import get_multicrop_detections
 from happypose_ros.utils import ObservationMixedTensor
-
+from happypose_ros.icp_utils import create_o3d_poincloud_from_depth, orient_normals_toward_camera, crop_pcd_sphere, ICPConvergeCriteria, icp_registration_o3d
+from happypose_ros.icp_utils import extract_np_from_renderings, render_ts, get_panda3d_ambient
 
 class HappyPosePipeline:
     """Object wrapping HappyPose pipeline extracting its calls from the main ROS node."""
@@ -164,8 +168,60 @@ class HappyPosePipeline:
                 valid_icp_ids = np.logical_not(extra_data_depth_ref["retvals_icp"])
                 object_predictions = object_predictions[valid_icp_ids]
             else:
-                timings["T_depth_color"] = observation.T_depth_color
-                object_predictions = cosypose_predictions
+                voxel_size = 0.005
+                dist_thresh_factor = 3.0
+                dist_threshold = voxel_size * dist_thresh_factor
+                icp_method = "generalized"
+                margin_sphere_crop = 1.1
+                mesh_radius = 0.12  # TODO: needed for all objects
+                crop = True
+
+                # loop over camera views
+                renderer: Panda3dBatchRenderer = self._wrapper.pose_predictor.refiner_model.renderer
+                light_datas = [get_panda3d_ambient()]
+
+                object_predictions = cosypose_predictions.clone().cpu()
+                for view_id in range(obs_happy.batch_size):
+                    # Get camera extrinsics for this particular camera/view
+                    T_dc = observation.T_depth_color[view_id].float()
+                    T_cd = T_dc.inverse().float()
+
+                    # Create point cloud from depth image
+                    depth_meas = observation.depth[view_id].cpu().numpy().squeeze(0)
+                    K_depth = observation.K_depth[view_id].cpu().numpy()
+
+                    pcd_ct = create_o3d_poincloud_from_depth(depth_meas, K_depth)
+                    pcd_ct.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(3.0*voxel_size, 40))
+                    pcd_ct = pcd_ct.voxel_down_sample(voxel_size=voxel_size)
+                    h, w = depth_meas.shape
+
+                    # loop over detections in the current view
+                    for det_id in range(len(object_predictions.infos)):
+                        if object_predictions.infos.iloc[det_id]["batch_im_id"] != view_id:
+                            continue
+                        T_co_init = object_predictions.poses[det_id]
+                        T_do_init = T_dc @ T_co_init 
+                        label = object_predictions.infos.label.iloc[det_id]
+                        renderings = renderer.render([label], render_ts(T_do_init), render_ts(K_depth), [light_datas], (h, w), render_depth=True)
+                        ren = extract_np_from_renderings(renderings, 0, ["depth"])
+                        pcd_cp = create_o3d_poincloud_from_depth(ren["depth"], K_depth)
+                        pcd_cp.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(3.0*voxel_size, 40))
+                        pcd_cp = orient_normals_toward_camera(pcd_cp)
+                        pcd_cp = pcd_cp.voxel_down_sample(voxel_size=voxel_size)
+
+                        # ICP refinement
+                        if crop:
+                            pcd_ct_crop = crop_pcd_sphere(pcd_ct, center=T_do_init[:3,3], radius=mesh_radius, margin=margin_sphere_crop)
+                            icp_res_ct_cp = icp_registration_o3d(pcd_cp, pcd_ct_crop, np.eye(4), dist_threshold, icp_method, ICPConvergeCriteria())
+                        else:
+                            icp_res_ct_cp = icp_registration_o3d(pcd_cp, pcd_ct, np.eye(4), dist_threshold, icp_method, ICPConvergeCriteria())
+
+                        T_ct_cp_icp = icp_res_ct_cp.transformation
+
+                        T_do_ref = torch.from_numpy(T_ct_cp_icp).float() @ T_do_init
+                        object_predictions.poses[det_id] = T_cd @ T_do_ref
+
+                # object_predictions = cosypose_predictions  # DEBUG
 
         else:
             object_predictions = cosypose_predictions

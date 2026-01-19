@@ -95,8 +95,11 @@ def happypose_worker_proc(
     # Queues are closed or SIGINT received
     except (ValueError, KeyboardInterrupt):
         pass
+    except AssertionError as e:
+        logger.error(f"Worker got assertion error: {e.args}")
     except Exception as e:
-        logger.error(f"Worker got exception: {str(e)}. Exception type: {type(e)}.")
+        logger.error(f"Worker got exception: {str(e)}. Exception type: {type(e)}. Exception args: {e.args}, ")
+        raise e
 
     logger.info("HappyPoseWorker finished job.")
 

@@ -47,7 +47,7 @@ class ObservationMixedTensor:
     depth: Tensor  # [B,C,H,W]
     K_color: Tensor  # [B,3,3]
     K_depth: Tensor  # [B,3,3]
-    T_depth_color: npt.NDArray = None  # [B,4,4]
+    T_depth_color: Tensor = None  # [B,4,4]
 
 
 def params_to_dict(params: happypose_ros.Params) -> dict:
