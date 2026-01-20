@@ -35,7 +35,7 @@ from happypose_ros.utils import (  # noqa: E402
     get_detection_array_msg,
     get_marker_array_msg,
     get_object_symmetries_msg,
-    ObservationMixedTensor
+    ObservationMixedTensor,
 )
 
 from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
@@ -98,7 +98,9 @@ def happypose_worker_proc(
     except AssertionError as e:
         logger.error(f"Worker got assertion error: {e.args}")
     except Exception as e:
-        logger.error(f"Worker got exception: {str(e)}. Exception type: {type(e)}. Exception args: {e.args}, ")
+        logger.error(
+            f"Worker got exception: {str(e)}. Exception type: {type(e)}. Exception args: {e.args}, "
+        )
         raise e
 
     logger.info("HappyPoseWorker finished job.")
@@ -177,13 +179,15 @@ class HappyPoseNode(Node):
                 self._on_image_cb,
                 self._params.use_depth,
                 self._params.aligned_depth,
-                self.tf_buffer
+                self.tf_buffer,
             )
             for name in self._params.camera_names
         }
 
         self.get_logger().info(f"self._params.use_depth: {self._params.use_depth}")
-        self.get_logger().info(f"self._params.aligned_depth: {self._params.aligned_depth}")
+        self.get_logger().info(
+            f"self._params.aligned_depth: {self._params.aligned_depth}"
+        )
 
         self._last_pipeline_trigger = Time()
 
@@ -505,17 +509,19 @@ class HappyPoseNode(Node):
         rgb_tensor = torch.as_tensor(
             np.stack([cam.get_last_rgb_image() for cam in processed_cameras.values()])
         ).permute(0, 3, 1, 2)  # BxCxHxW
-        
+
         K_color_ts = torch.as_tensor(
-            np.stack([cam.get_last_color_k_matrix() for cam in processed_cameras.values()])
-        ) # Bx3x3
+            np.stack(
+                [cam.get_last_color_k_matrix() for cam in processed_cameras.values()]
+            )
+        )  # Bx3x3
 
         if self._params.use_depth:
             depth_tensor = torch.as_tensor(
                 np.stack(
                     [cam.get_last_depth_image() for cam in processed_cameras.values()]
                 )
-            ).unsqueeze(1) # Bx1xHxW
+            ).unsqueeze(1)  # Bx1xHxW
         else:
             depth_tensor = None
 
@@ -528,16 +534,25 @@ class HappyPoseNode(Node):
 
         if self._params.use_depth and not self._params.aligned_depth:
             K_depth_ts = torch.as_tensor(
-                np.stack([cam.get_last_depth_k_matrix() for cam in processed_cameras.values()])
-            ) # Bx3x3
+                np.stack(
+                    [
+                        cam.get_last_depth_k_matrix()
+                        for cam in processed_cameras.values()
+                    ]
+                )
+            )  # Bx3x3
             T_depth_color = torch.as_tensor(
-                np.stack([cam.get_T_depth_color() for cam in processed_cameras.values()])
-            ) # Bx4x4
+                np.stack(
+                    [cam.get_T_depth_color() for cam in processed_cameras.values()]
+                )
+            )  # Bx4x4
         else:
             K_depth_ts = None
             T_depth_color = None
 
-        observation = ObservationMixedTensor(rgb_tensor, depth_tensor, K_color_ts, K_depth_ts, T_depth_color)
+        observation = ObservationMixedTensor(
+            rgb_tensor, depth_tensor, K_color_ts, K_depth_ts, T_depth_color
+        )
         self._observation_tensor_queue.put(observation)
 
         with self._worker_free.get_lock():
@@ -592,7 +607,9 @@ class HappyPoseNode(Node):
                     # rounded_timings = {
                     #     k: round(v, 4) for k, v in results["timings"].items()
                     # }
-                    self.get_logger().info(f" Inference timings [s]: {results['timings']}")
+                    self.get_logger().info(
+                        f" Inference timings [s]: {results['timings']}"
+                    )
 
                 if self._multiview:
                     missing_cameras = len(cam_data) - len(results["camera_infos"])

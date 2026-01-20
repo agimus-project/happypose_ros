@@ -58,7 +58,7 @@
           # Note that if the output of CosyPose is considered good, ``num_levels`` does not have to be high
           num_levels: 4
     icp_open3d:
-      # Voxel size used to downsample point clouds before applying ICP 
+      # Voxel size used to downsample point clouds before applying ICP
       voxel_size: 0.005
       # This value is multiplied by the 'voxel_size' to obtain a threshold used for the nearest neighbor ICP step
       dist_thresh_factor: 3.0

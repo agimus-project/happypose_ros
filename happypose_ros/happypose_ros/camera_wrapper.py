@@ -209,7 +209,7 @@ class CameraWrapper:
         image_discarded_log = (
             f" Image from camera '{self._camera_name}' will be discarded!"
         )
-        
+
         # Check color frame ids
         if color_image.header.frame_id != color_camera_info.header.frame_id:
             self._node.get_logger().warn(
@@ -240,7 +240,7 @@ class CameraWrapper:
                     throttle_duration_sec=5.0,
                 )
                 return
-            
+
             # Check depth frame ids
             if depth_image.header.frame_id != depth_camera_info.header.frame_id:
                 self._node.get_logger().warn(
@@ -250,19 +250,20 @@ class CameraWrapper:
                     throttle_duration_sec=5.0,
                 )
                 return
-            
+
             # Check depth K matrix
             if self._validate_k_matrix(depth_camera_info.k):
                 self._depth_camera_info = depth_camera_info
             else:
                 topic = self.sync_subs[3].topic
                 self._node.get_logger().warn(
-                    f"K matrix from topic '{topic}' is incorrect!" + image_discarded_log,
+                    f"K matrix from topic '{topic}' is incorrect!"
+                    + image_discarded_log,
                     throttle_duration_sec=5.0,
                 )
                 return
-            
-            # if we assume depth and color are aligned, their 
+
+            # if we assume depth and color are aligned, their
             # frame_ids, intrinsics, and sizes must match
             if self.aligned_depth:
                 # frame ids check
@@ -274,7 +275,7 @@ class CameraWrapper:
                         throttle_duration_sec=5.0,
                     )
                     return
-                
+
                 # Check that color/depht intrinsics are the same
                 if not np.allclose(color_camera_info.k, depth_camera_info.k):
                     self._node.get_logger().warn(
@@ -301,14 +302,14 @@ class CameraWrapper:
                         throttle_duration_sec=5.0,
                     )
                     return
-            
+
             else:
                 # if depth and color are not aligned, store extrinsics
                 self._tf_depth_color = self.tf_buffer.lookup_transform(
                     target_frame=depth_image.header.frame_id,
                     source_frame=color_image.header.frame_id,
                     time=color_image.header.stamp,
-                    timeout=rclpy.duration.Duration(seconds=0.2)
+                    timeout=rclpy.duration.Duration(seconds=0.2),
                 )
 
         self._color_image = color_image

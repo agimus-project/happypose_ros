@@ -43,6 +43,7 @@ from happypose_ros.happypose_ros_parameters import happypose_ros
 @dataclass
 class ObservationMixedTensor:
     """Dataclass wrapping observation tensors for RGB and Depth modalities."""
+
     rgb: Tensor  # [B,C,H,W]
     depth: Tensor  # [B,C,H,W]
     K_color: Tensor  # [B,3,3]
@@ -238,6 +239,7 @@ def transform_mat_to_msg(transform: npt.NDArray[np.float64]) -> Transform:
         translation=Vector3(**dict(zip("xyz", pose_vec[:3]))),
         rotation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
     )
+
 
 def transform_msg_to_mat(transform: Transform) -> npt.NDArray[np.float64]:
     """Converts ROS Transform message to 4x4 transformation matrix.
