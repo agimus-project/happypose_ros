@@ -168,13 +168,10 @@ class HappyPosePipeline:
                 valid_icp_ids = np.logical_not(extra_data_depth_ref["retvals_icp"])
                 object_predictions = object_predictions[valid_icp_ids]
             else:
-                voxel_size = 0.005
-                dist_thresh_factor = 3.0
-                dist_threshold = voxel_size * dist_thresh_factor
-                icp_method = "generalized"
-                margin_sphere_crop = 1.1
+                po3d = self._params["cosypose"]["icp_open3d"]
+                voxel_size = po3d["voxel_size"]
                 mesh_radius = 0.12  # TODO: needed for all objects
-                crop = True
+                dist_threshold = voxel_size * po3d["dist_thresh_factor"]
 
                 # loop over camera views
                 renderer: Panda3dBatchRenderer = self._wrapper.pose_predictor.refiner_model.renderer
@@ -209,19 +206,16 @@ class HappyPosePipeline:
                         pcd_cp = orient_normals_toward_camera(pcd_cp)
                         pcd_cp = pcd_cp.voxel_down_sample(voxel_size=voxel_size)
 
-                        # ICP refinement
-                        if crop:
-                            pcd_ct_crop = crop_pcd_sphere(pcd_ct, center=T_do_init[:3,3], radius=mesh_radius, margin=margin_sphere_crop)
-                            icp_res_ct_cp = icp_registration_o3d(pcd_cp, pcd_ct_crop, np.eye(4), dist_threshold, icp_method, ICPConvergeCriteria())
+                        if po3d["crop"]:
+                            pcd_ct_crop = crop_pcd_sphere(pcd_ct, center=T_do_init[:3,3], radius=mesh_radius, margin=po3d["margin_sphere_crop"])
+                            icp_res_ct_cp = icp_registration_o3d(pcd_cp, pcd_ct_crop, np.eye(4), dist_threshold, po3d["icp_method"], ICPConvergeCriteria())
                         else:
-                            icp_res_ct_cp = icp_registration_o3d(pcd_cp, pcd_ct, np.eye(4), dist_threshold, icp_method, ICPConvergeCriteria())
+                            icp_res_ct_cp = icp_registration_o3d(pcd_cp, pcd_ct, np.eye(4), dist_threshold, po3d["icp_method"], ICPConvergeCriteria())
 
                         T_ct_cp_icp = icp_res_ct_cp.transformation
 
-                        T_do_ref = torch.from_numpy(T_ct_cp_icp).float() @ T_do_init
+                        T_do_ref = torch.from_numpy(T_ct_cp_icp.copy()).float() @ T_do_init
                         object_predictions.poses[det_id] = T_cd @ T_do_ref
-
-                # object_predictions = cosypose_predictions  # DEBUG
 
         else:
             object_predictions = cosypose_predictions
