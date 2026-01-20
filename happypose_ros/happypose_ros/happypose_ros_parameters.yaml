@@ -38,6 +38,11 @@ happypose_ros:
     default_value: false
     description: "Specifies whether to use depth images for pose refinement. If set to `true` all cameras are expected to provide depth images."
     read_only: true
+  aligned_depth:
+    type: bool
+    default_value: true
+    description: "Specifies whether depth images are aligned to color images. If set to `true`, depth and color images are expected to have the same resolution and frame_id."
+    read_only: true
   pose_estimator_type:
     type: string
     default_value: "cosypose"
@@ -96,6 +101,16 @@ happypose_ros:
           description: "Detection threshold of an object used by detector."
           validation:
             bounds<>: [0.0, 1.0]
+      use_multicrop_detector:
+        type: bool
+        default_value: false
+        description: "Use multi-crop detection strategy."
+      tile_detection_scale:
+        type: double
+        default_value: 0.6
+        description: "Scale of tiles used in multi-crop detection strategy."
+        validation:
+          bounds<>: [0.5, 1.0]
       pose_estimator:
         n_refiner_iterations:
           type: int
@@ -172,6 +187,35 @@ happypose_ros:
         default_value: [""]
         validation:
           unique<>:
+    icp_open3d:
+      voxel_size:
+        type: double
+        default_value: 0.005
+        description: "Voxel size used to downsample point clouds before applying ICP."
+        validation:
+          gt<>: [0.0]
+      dist_thresh_factor:
+        type: double
+        default_value: 3.0
+        description: "This value is multiplied by the 'voxel_size' to obtain a threshold used for the nearest neighbor ICP step."
+        validation:
+          gt<>: [0.0]
+      icp_method:
+        type: string
+        default_value: "point2plane"
+        description: "ICP method used, use among ['point2point', 'point2plane', 'generalized']."
+        validation:
+          one_of<>: [["point2point", "point2plane", "generalized"]]
+      crop:
+        type: bool
+        default_value: true
+        description: "Crop the measured point cloud around a sphere centered around the origin of the object."
+      margin_sphere_crop:
+        type: double
+        default_value: 1.1
+        description: "Margin scale factor on the object diameter when cropping."
+        validation:
+          gt<>: [1.0]
   camera_names:
     type: string_array
     description: "List of names of cameras to subscribe."

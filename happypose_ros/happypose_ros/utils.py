@@ -1,8 +1,10 @@
 import numbers
+from typing import Any, Union
+from dataclasses import dataclass
+
 import numpy as np
 import numpy.typing as npt
 import pinocchio as pin
-from typing import Any, Union
 from torch import Tensor
 
 from rclpy.duration import Duration
@@ -36,6 +38,17 @@ from happypose.toolbox.datasets.object_dataset import RigidObject, RigidObjectDa
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros
+
+
+@dataclass
+class ObservationMixedTensor:
+    """Dataclass wrapping observation tensors for RGB and Depth modalities."""
+
+    rgb: Tensor  # [B,C,H,W]
+    depth: Tensor  # [B,C,H,W]
+    K_color: Tensor  # [B,3,3]
+    K_depth: Tensor  # [B,3,3]
+    T_depth_color: Tensor = None  # [B,4,4]
 
 
 def params_to_dict(params: happypose_ros.Params) -> dict:
@@ -226,6 +239,24 @@ def transform_mat_to_msg(transform: npt.NDArray[np.float64]) -> Transform:
         translation=Vector3(**dict(zip("xyz", pose_vec[:3]))),
         rotation=Quaternion(**dict(zip("xyzw", pose_vec[3:]))),
     )
+
+
+def transform_msg_to_mat(transform: Transform) -> npt.NDArray[np.float64]:
+    """Converts ROS Transform message to 4x4 transformation matrix.
+
+    :param transform: ROS Transform message.
+    :type transform: geometry_msgs.msg.Transform
+    :return: 4x4 transformation array.
+    :rtype: npt.NDArray[np.float64]
+    """
+    tx = transform.translation.x
+    ty = transform.translation.y
+    tz = transform.translation.z
+    qx = transform.rotation.x
+    qy = transform.rotation.y
+    qz = transform.rotation.z
+    qw = transform.rotation.w
+    return pin.XYZQUATToSE3(np.array([tx, ty, tz, qx, qy, qz, qw])).homogeneous
 
 
 def get_camera_transform(

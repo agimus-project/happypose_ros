@@ -29,6 +29,7 @@
   <depend>visualization_msgs</depend>
   <depend version_eq="1.26.4">python3-numpy</depend>
   <depend version_eq="1.13.1">python3-torch</depend>
+  <depend>python-open3d-pip</depend>
 
   <test_depend>python3-pytest</test_depend>
   <test_depend>python3-mock</test_depend>

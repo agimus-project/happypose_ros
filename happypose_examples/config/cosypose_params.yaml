@@ -57,6 +57,17 @@
           # Corresponds to iterative ICP, where the original point cloud is subsampled.
           # Note that if the output of CosyPose is considered good, ``num_levels`` does not have to be high
           num_levels: 4
+    icp_open3d:
+      # Voxel size used to downsample point clouds before applying ICP
+      voxel_size: 0.005
+      # This value is multiplied by the 'voxel_size' to obtain a threshold used for the nearest neighbor ICP step
+      dist_thresh_factor: 3.0
+      # "ICP method used, use among ['point2point', 'point2plane', 'generalized']."
+      icp_method: "point2plane"
+      # Crop the measured point cloud around a sphere centered around the origin of the object.
+      crop: true
+      # Margin scale factor on the object diameter when cropping
+      margin_sphere_crop: 1.1
     # List of camera names to subscribe to. Those names are internal to happypose_ros node
     # and can be chosen arbitrarily as long as they are valid YAML keys to be used later
     camera_names: ["cam_1"]
