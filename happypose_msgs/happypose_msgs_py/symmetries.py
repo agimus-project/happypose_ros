@@ -1,10 +1,9 @@
 from copy import copy
+
 import numpy as np
 import numpy.typing as npt
 import transforms3d
-from typing import List, Union
-
-from geometry_msgs.msg import Transform, Vector3, Quaternion
+from geometry_msgs.msg import Quaternion, Transform, Vector3
 
 from happypose_msgs.msg import ObjectSymmetries
 
@@ -13,7 +12,7 @@ def discretize_symmetries(
     object_symmetries: ObjectSymmetries,
     n_symmetries_continuous: int = 8,
     return_ros_msg: bool = False,
-) -> Union[npt.NDArray[np.float64], List[Transform]]:
+) -> npt.NDArray[np.float64] | list[Transform]:
     """Converts discrete and continuous symmetries to a list of discrete symmetries.
 
     :param object_symmetries: ROS message containing symmetries of a given object.

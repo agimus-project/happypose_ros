@@ -1,17 +1,14 @@
 #!/usr/bin/env python
 
-import pytest
-import torch
-
 import launch_ros.actions
 import launch_testing.actions
 import launch_testing.markers
-
+import pytest
+import torch
+from happypose_testing_utils import create_camera_reliable_qos_config
 from launch import LaunchDescription
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.substitutions import FindPackageShare
-
-from happypose_testing_utils import create_camera_reliable_qos_config
 from single_view_base import SingleViewBase
 
 

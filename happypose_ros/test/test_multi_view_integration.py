@@ -1,33 +1,16 @@
 #!/usr/bin/env python
 
-import numpy as np
-import PIL.Image
-import pytest
 import time
-import torch
-from typing import List
-
-from rclpy.clock import ClockType
-from rclpy.constants import S_TO_NS
-from rclpy.parameter import Parameter
-from rclpy.time import Time
-
-
-from geometry_msgs.msg import Point, Pose, Transform, Vector3, Quaternion
-from sensor_msgs.msg import Image, CompressedImage
-
-from ament_index_python.packages import get_package_share_directory
 
 import launch_ros.actions
 import launch_testing.actions
 import launch_testing.markers
-
-from launch import LaunchDescription
-from launch.substitutions import PathJoinSubstitution
-from launch_ros.substitutions import FindPackageShare
-
-from launch_testing.io_handler import ActiveIoHandler
-
+import numpy as np
+import PIL.Image
+import pytest
+import torch
+from ament_index_python.packages import get_package_share_directory
+from geometry_msgs.msg import Point, Pose, Quaternion, Transform, Vector3
 from happypose_testing_utils import (
     HappyPoseTestCase,
     assert_and_find_detection,
@@ -35,6 +18,15 @@ from happypose_testing_utils import (
     assert_transform_equal,
     create_camera_reliable_qos_config,
 )
+from launch import LaunchDescription
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
+from launch_testing.io_handler import ActiveIoHandler
+from rclpy.clock import ClockType
+from rclpy.constants import S_TO_NS
+from rclpy.parameter import Parameter
+from rclpy.time import Time
+from sensor_msgs.msg import CompressedImage, Image
 
 
 @pytest.mark.launch_test
@@ -404,7 +396,7 @@ class TestHappyposeTesterMultiViewNode(HappyPoseTestCase):
         self.node.assert_message_received("happypose/detections", timeout=60.0)
 
     def setup_timestamp_test(
-        self, offsets: List[float], expected: float, strategy: str
+        self, offsets: list[float], expected: float, strategy: str
     ) -> None:
         now = self.node.get_clock().now()
         cam_1_stamp = now - Time(seconds=offsets[0], clock_type=ClockType.ROS_TIME)
