@@ -1,42 +1,37 @@
+import time
+import unittest
+import urllib
+from typing import Any
+
 import numpy as np
 import numpy.typing as npt
 import pinocchio as pin
-import time
-from typing import Any, Dict, List, Optional, Tuple, Union
-import unittest
-import urllib
-
 import rclpy
+from cv_bridge import CvBridge
+from geometry_msgs.msg import Pose, Transform
+from launch_testing_ros import MessagePump
+from rcl_interfaces.msg import Parameter as RCL_Parameter
+from rcl_interfaces.srv import GetParameters, SetParametersAtomically
 from rclpy.duration import Duration
 from rclpy.node import Node
 from rclpy.parameter import Parameter
-from rclpy.time import Time
 from rclpy.qos import (
     DurabilityPolicy,
     HistoryPolicy,
-    ReliabilityPolicy,
     QoSProfile,
+    ReliabilityPolicy,
     qos_profile_system_default,
 )
-
-from tf2_ros.buffer import Buffer
-from tf2_ros.transform_listener import TransformListener
-
-from launch_testing_ros import MessagePump
-
-from cv_bridge import CvBridge
-
-from geometry_msgs.msg import Pose, Transform
-from sensor_msgs.msg import CameraInfo, Image, CompressedImage, RegionOfInterest
+from rclpy.time import Time
+from sensor_msgs.msg import CameraInfo, CompressedImage, Image, RegionOfInterest
 from sensor_msgs.msg._image import Metaclass_Image
 from std_msgs.msg import Header
-from vision_msgs.msg import Detection2D, Detection2DArray, BoundingBox2D, VisionInfo
-from visualization_msgs.msg import MarkerArray, Marker
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+from vision_msgs.msg import BoundingBox2D, Detection2D, Detection2DArray, VisionInfo
+from visualization_msgs.msg import Marker, MarkerArray
 
-from rcl_interfaces.msg import Parameter as RCL_Parameter
-from rcl_interfaces.srv import GetParameters, SetParametersAtomically
-
-from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
+from happypose_msgs.msg import ObjectSymmetriesArray
 
 
 class HappyPoseTestCase(unittest.TestCase):
@@ -45,7 +40,7 @@ class HappyPoseTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(
         cls,
-        cameras: List[Tuple[str, Union[Image, CompressedImage], bool]],
+        cameras: list[tuple[str, Image | CompressedImage, bool]],
         namespace: str,
     ) -> None:
         """Sets up test case class
@@ -79,7 +74,7 @@ class HappyPoseTestCase(unittest.TestCase):
 class HappyPoseTesterNode(Node):
     def __init__(
         self,
-        cameras: List[Tuple[str, Union[Image, CompressedImage], bool]],
+        cameras: list[tuple[str, Image | CompressedImage, bool]],
         tested_node_name: str,
         node_name: str = "happypose_tester_node",
         **kwargs,
@@ -105,7 +100,7 @@ class HappyPoseTesterNode(Node):
         )
 
         def camera_topics(
-            cam_name: str, msg_type: Union[Image, CompressedImage], is_depth: bool
+            cam_name: str, msg_type: Image | CompressedImage, is_depth: bool
         ):
             cam_type = "depth" if is_depth else "color"
             img_topic = (
@@ -265,8 +260,8 @@ class HappyPoseTesterNode(Node):
         )
 
     def get_params(
-        self, param_names: List[str], timeout: float = 5.0
-    ) -> List[Parameter]:
+        self, param_names: list[str], timeout: float = 5.0
+    ) -> list[Parameter]:
         """Get list of values of parameters from the tested node.
 
         :param param_names: List of names of parameters to fetch.
@@ -306,7 +301,7 @@ class HappyPoseTesterNode(Node):
             for name, param in zip(param_names, future.result().values)
         ]
 
-    def set_params(self, parameters: List[Parameter], timeout: float = 5.0) -> None:
+    def set_params(self, parameters: list[Parameter], timeout: float = 5.0) -> None:
         """Set parameters for the tested node.
 
         :param parameters: List of parameters to set.
@@ -350,7 +345,7 @@ class HappyPoseTesterNode(Node):
         bgr: npt.NDArray[np.uint8],
         K: npt.NDArray[np.float32],
         depth: npt.NDArray[np.uint32] = None,
-        stamp: Optional[Time] = None,
+        stamp: Time | None = None,
         width: int = 0,
         height: int = 0,
         x_offset: int = 0,
@@ -449,7 +444,7 @@ class HappyPoseTesterNode(Node):
             self._cam_pubs[cam + "_depth"][0].publish(depth_msg)
             self._cam_pubs[cam + "_depth"][1].publish(info_msg)
 
-    def clear_msg_buffer(self, topics: Optional[List[str]] = None) -> None:
+    def clear_msg_buffer(self, topics: list[str] | None = None) -> None:
         """Clears received message buffer.
 
         :param topics: List of topics to clear messages from the queue.
@@ -666,7 +661,7 @@ def assert_transform_equal(
 
 
 def assert_bbox(
-    msg: BoundingBox2D, bbox: List[int], percent_error: float = 30.0
+    msg: BoundingBox2D, bbox: list[int], percent_error: float = 30.0
 ) -> None:
     """Check if a bounding box is close to a specified value.
     Bounding boxes are compared in a percentage error relative to the size of
@@ -713,7 +708,7 @@ def assert_bbox(
 
 def create_camera_reliable_qos_config(
     namespace: str, cam_name: str, compressed: bool, is_depth: bool
-) -> Dict[str, Union[str, int]]:
+) -> dict[str, str | int]:
     """Creates dictionary with parameters configuring reliability of sensor topics.
 
     :param namespace: Namespace of the sensor topic.

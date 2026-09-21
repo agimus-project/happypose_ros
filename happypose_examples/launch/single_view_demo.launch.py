@@ -7,7 +7,7 @@ from launch.actions import (
 from launch.launch_context import LaunchContext
 from launch.launch_description_entity import LaunchDescriptionEntity
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
 
