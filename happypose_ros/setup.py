@@ -1,9 +1,7 @@
 from pathlib import Path
-from typing import List
-
-from setuptools import find_packages, setup
 
 from generate_parameter_library_py.setup_helper import generate_parameter_module
+from setuptools import find_packages, setup
 
 package_name = "happypose_ros"
 project_source_dir = Path(__file__).parent
@@ -14,7 +12,7 @@ validation_module = "happypose_ros.custom_validation"
 generate_parameter_module(module_name, yaml_file, validation_module=validation_module)
 
 
-def get_files(dir: Path, pattern: str) -> List[str]:
+def get_files(dir: Path, pattern: str) -> list[str]:
     return [x.as_posix() for x in (dir).glob(pattern) if x.is_file()]
 
 
