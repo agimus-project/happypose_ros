@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-import mock
+from unittest import mock
+
 import pytest
-from typing import List
-
 import rclpy
-from rclpy.exceptions import ParameterException
 import rclpy.node
-from rclpy.parameter import Parameter
-
 from happypose_ros.happypose_node import HappyPoseNode
+from rclpy.exceptions import ParameterException
+from rclpy.parameter import Parameter
 
 
 @pytest.fixture(autouse=True)
@@ -38,7 +36,7 @@ def happypose_params(request: pytest.FixtureRequest) -> dict:
 
 
 @pytest.fixture()
-def minimal_overwrites() -> List[Parameter]:
+def minimal_overwrites() -> list[Parameter]:
     """Crete set minimal set of ROS parameters needed for the ROS node to start correctly.
 
     :return: Default, minimal parameters for the ROS node to start.
@@ -71,7 +69,7 @@ def test_no_leading(happypose_params: dict) -> None:
 
 
 @mock.patch("multiprocessing.context.SpawnContext.Process")
-def test_minimal(happypose_params: dict, minimal_overwrites: List[Parameter]) -> None:
+def test_minimal(happypose_params: dict, minimal_overwrites: list[Parameter]) -> None:
     # Check if node starts correctly with minimal number of required parameters
     happypose_node = HappyPoseNode(
         **happypose_params,
@@ -139,7 +137,7 @@ def test_leading_estimated_tf_frame_id(happypose_params: dict) -> None:
 
 
 def test_device_unknown(
-    happypose_params: dict, minimal_overwrites: List[Parameter]
+    happypose_params: dict, minimal_overwrites: list[Parameter]
 ) -> None:
     with pytest.raises(ParameterException) as excinfo:
         HappyPoseNode(
