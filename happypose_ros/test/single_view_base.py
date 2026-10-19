@@ -1,28 +1,24 @@
 #!/usr/bin/env python
 
-import numpy as np
-import PIL.Image
 import time
 import unittest
 
-from rclpy.constants import S_TO_NS
-from rclpy.parameter import Parameter
-
-from geometry_msgs.msg import Point, Pose, Quaternion
-from sensor_msgs.msg import Image, CompressedImage
-
+import numpy as np
+import PIL.Image
 from ament_index_python.packages import get_package_share_directory
-
-from launch_testing.io_handler import ActiveIoHandler
-
+from geometry_msgs.msg import Point, Pose, Quaternion
 from happypose_testing_utils import (
     HappyPoseTestCase,
-    assert_bbox,
     assert_and_find_detection,
     assert_and_find_marker,
+    assert_bbox,
     assert_pose_equal,
     assert_url_exists,
 )
+from launch_testing.io_handler import ActiveIoHandler
+from rclpy.constants import S_TO_NS
+from rclpy.parameter import Parameter
+from sensor_msgs.msg import CompressedImage, Image
 
 
 class SingleViewBase(HappyPoseTestCase):

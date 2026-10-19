@@ -3,7 +3,7 @@ from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.conditions import IfCondition
 from launch.launch_context import LaunchContext
 from launch.launch_description_entity import LaunchDescriptionEntity
-from launch.substitutions import PathJoinSubstitution, LaunchConfiguration
+from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare

@@ -1,23 +1,23 @@
 import numbers
+from typing import Any
+
+import happypose.toolbox.lib3d.symmetries as happypose_symmetries
 import numpy as np
 import numpy.typing as npt
 import pinocchio as pin
-from typing import Any, Union
-from torch import Tensor
-
-from rclpy.duration import Duration
-
 from geometry_msgs.msg import (
     Point,
-    PoseWithCovariance,
     Pose,
+    PoseWithCovariance,
+    Quaternion,
     Transform,
     TransformStamped,
-    Quaternion,
     Vector3,
 )
+from happypose.toolbox.datasets.object_dataset import RigidObject, RigidObjectDataset
+from rclpy.duration import Duration
 from std_msgs.msg import ColorRGBA, Header
-from visualization_msgs.msg import Marker, MarkerArray
+from torch import Tensor
 from vision_msgs.msg import (
     BoundingBox2D,
     Detection2D,
@@ -25,14 +25,13 @@ from vision_msgs.msg import (
     ObjectHypothesis,
     ObjectHypothesisWithPose,
 )
+from visualization_msgs.msg import Marker, MarkerArray
+
 from happypose_msgs.msg import (
     ContinuousSymmetry,
     ObjectSymmetries,
     ObjectSymmetriesArray,
 )
-
-import happypose.toolbox.lib3d.symmetries as happypose_symmetries
-from happypose.toolbox.datasets.object_dataset import RigidObject, RigidObjectDataset
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros
@@ -76,7 +75,7 @@ def params_to_dict(params: happypose_ros.Params) -> dict:
 
 
 def create_bounding_box_msg(
-    bbox_data: Union[list[float], npt.NDArray[np.float32]], format: str = "xyxy"
+    bbox_data: list[float] | npt.NDArray[np.float32], format: str = "xyxy"
 ) -> BoundingBox2D:
     """Converts a bounding box passed as a list or array to a ROS message.
 
