@@ -1,48 +1,48 @@
-from ctypes import c_bool
 import math
-import numpy as np
+import queue
+from ctypes import c_bool
 from statistics import mean
 from threading import Thread
+
+import numpy as np
+import rclpy
+import rclpy.logging
 import torch
 import torch.multiprocessing as mp
-import queue
-
-import rclpy
-from rclpy.duration import Duration
-from rclpy.exceptions import ParameterException
-import rclpy.logging
-from rclpy.node import Node
-from rclpy.time import Time
-from rclpy.qos import qos_profile_system_default
-from rclpy.qos import DurabilityPolicy, HistoryPolicy, QoSProfile
-from rclpy.qos_overriding_options import QoSOverridingOptions
-
-from tf2_ros import TransformBroadcaster
-
-from std_msgs.msg import Header
-from visualization_msgs.msg import MarkerArray
-from vision_msgs.msg import Detection2DArray, VisionInfo
-
 from happypose.toolbox.datasets.datasets_cfg import make_object_dataset
 from happypose.toolbox.inference.types import ObservationTensor
 from happypose.toolbox.utils.logging import get_logger
+from rclpy.duration import Duration
+from rclpy.exceptions import ParameterException
+from rclpy.node import Node
+from rclpy.qos import (
+    DurabilityPolicy,
+    HistoryPolicy,
+    QoSProfile,
+    qos_profile_system_default,
+)
+from rclpy.qos_overriding_options import QoSOverridingOptions
+from rclpy.time import Time
+from std_msgs.msg import Header
+from tf2_ros import TransformBroadcaster
+from vision_msgs.msg import Detection2DArray, VisionInfo
+from visualization_msgs.msg import MarkerArray
 
 logger = get_logger(__name__)
 
-from happypose_ros.camera_wrapper import CameraWrapper  # noqa: E402
-from happypose_ros.inference_pipeline import HappyPosePipeline  # noqa: E402
-from happypose_ros.utils import (  # noqa: E402
-    params_to_dict,
+from happypose_msgs.msg import ObjectSymmetriesArray
+from happypose_ros.camera_wrapper import CameraWrapper
+
+# Automatically generated file
+from happypose_ros.happypose_ros_parameters import happypose_ros
+from happypose_ros.inference_pipeline import HappyPosePipeline
+from happypose_ros.utils import (
     get_camera_transform,
     get_detection_array_msg,
     get_marker_array_msg,
     get_object_symmetries_msg,
+    params_to_dict,
 )
-
-from happypose_msgs.msg import ObjectSymmetriesArray  # noqa: E402
-
-# Automatically generated file
-from happypose_ros.happypose_ros_parameters import happypose_ros  # noqa: E402
 
 
 def happypose_worker_proc(
@@ -97,7 +97,7 @@ def happypose_worker_proc(
     except (ValueError, KeyboardInterrupt):
         pass
     except Exception as e:
-        logger.error(f"Worker got exception: {str(e)}. Exception type: {type(e)}.")
+        logger.error(f"Worker got exception: {e!s}. Exception type: {type(e)}.")
 
     logger.info("HappyPoseWorker finished job.")
 
@@ -449,7 +449,7 @@ class HappyPoseNode(Node):
             )
         )
 
-        if self._leading_camera not in processed_cameras.keys():
+        if self._leading_camera not in processed_cameras:
             if (now - self._last_pipeline_trigger) > Duration(seconds=20):
                 self.get_logger().warn(
                     "Failed to include leading camera in"
@@ -660,7 +660,7 @@ class HappyPoseNode(Node):
         except ValueError:
             return
         except Exception as e:
-            self.get_logger().error(f"Publishing data failed. Reason: {str(e)}")
+            self.get_logger().error(f"Publishing data failed. Reason: {e!s}")
 
 
 def main() -> None:
