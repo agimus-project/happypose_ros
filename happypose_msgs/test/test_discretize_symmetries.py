@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
+
 import numpy as np
 import numpy.typing as npt
 import pinocchio as pin
-from typing import List
-
-from geometry_msgs.msg import Transform, Vector3, Quaternion
-
+from geometry_msgs.msg import Quaternion, Transform, Vector3
 from happypose_msgs_py.symmetries import discretize_symmetries
 
 from happypose_msgs.msg import ContinuousSymmetry, ObjectSymmetries
@@ -53,7 +51,7 @@ def are_transform_msgs_close(t1: Transform, t2: Transform) -> bool:
     return are_transforms_close(T1, T2)
 
 
-def is_transform_msg_in_list(t1: Transform, t_list: List[Transform]) -> bool:
+def is_transform_msg_in_list(t1: Transform, t_list: list[Transform]) -> bool:
     """Checks if a transform is in the list of transformations.
 
     :param t1: Transform to check if in the list.
@@ -67,7 +65,7 @@ def is_transform_msg_in_list(t1: Transform, t_list: List[Transform]) -> bool:
 
 
 def is_transform_in_se3_list(
-    t1: npt.NDArray[np.float64], t_list: List[pin.SE3]
+    t1: npt.NDArray[np.float64], t_list: list[pin.SE3]
 ) -> bool:
     """Checks if a transform is in the tensor of transformations.
 
