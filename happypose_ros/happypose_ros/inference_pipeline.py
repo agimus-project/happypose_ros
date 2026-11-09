@@ -1,27 +1,25 @@
 import time
+
 import numpy as np
 import pandas as pd
-from typing import Union
-
-from happypose.toolbox.inference.types import ObservationTensor
-from happypose.toolbox.inference.utils import filter_detections
-from happypose.toolbox.datasets.object_dataset import RigidObjectDataset
-
-from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
-    CosyPoseWrapper,
+from happypose.pose_estimators.cosypose.cosypose.datasets.bop_object_datasets import (
+    BOPObjectDataset,
 )
 from happypose.pose_estimators.cosypose.cosypose.integrated.multiview_predictor import (
     MultiviewScenePredictor,
 )
-from happypose.pose_estimators.cosypose.cosypose.utils.tensor_collection import (
-    PandasTensorCollection,
-)
-from happypose.pose_estimators.cosypose.cosypose.datasets.bop_object_datasets import (
-    BOPObjectDataset,
-)
 from happypose.pose_estimators.cosypose.cosypose.lib3d.rigid_mesh_database import (
     MeshDataBase,
 )
+from happypose.pose_estimators.cosypose.cosypose.utils.cosypose_wrapper import (
+    CosyPoseWrapper,
+)
+from happypose.pose_estimators.cosypose.cosypose.utils.tensor_collection import (
+    PandasTensorCollection,
+)
+from happypose.toolbox.datasets.object_dataset import RigidObjectDataset
+from happypose.toolbox.inference.types import ObservationTensor
+from happypose.toolbox.inference.utils import filter_detections
 
 
 class HappyPosePipeline:
@@ -84,7 +82,7 @@ class HappyPosePipeline:
             return dataset
         return dataset.filter_objects(self._inference_args["labels_to_keep"])
 
-    def __call__(self, observation: ObservationTensor) -> Union[None, dict]:
+    def __call__(self, observation: ObservationTensor) -> None | dict:
         """Performs sequence of actions to estimate pose and optionally merge
         multiview results.
 
