@@ -1,34 +1,27 @@
 #!/usr/bin/env python
 
-import numpy as np
-import PIL.Image
 import time
-import pytest
-import torch
 
 import launch_ros.actions
 import launch_testing.actions
 import launch_testing.markers
-
-from launch import LaunchDescription
-from launch.substitutions import PathJoinSubstitution
-from launch_ros.substitutions import FindPackageShare
-
-from happypose_testing_utils import create_camera_reliable_qos_config
-
-
-from geometry_msgs.msg import Point, Pose, Quaternion
-from sensor_msgs.msg import Image
-
+import numpy as np
+import PIL.Image
+import pytest
+import torch
 from ament_index_python.packages import get_package_share_directory
-
-from launch_testing.io_handler import ActiveIoHandler
-
+from geometry_msgs.msg import Point, Pose, Quaternion
 from happypose_testing_utils import (
     HappyPoseTestCase,
     assert_and_find_detection,
     assert_pose_equal,
+    create_camera_reliable_qos_config,
 )
+from launch import LaunchDescription
+from launch.substitutions import PathJoinSubstitution
+from launch_ros.substitutions import FindPackageShare
+from launch_testing.io_handler import ActiveIoHandler
+from sensor_msgs.msg import Image
 
 
 @pytest.mark.launch_test

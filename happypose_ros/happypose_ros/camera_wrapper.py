@@ -1,19 +1,17 @@
 import math
+from collections.abc import Callable
+from typing import TypeVar
+
 import numpy as np
 import numpy.typing as npt
-from typing import Callable, Union, TypeVar
-
-from rclpy.node import Node
-from rclpy.time import Time
-from rclpy.qos import qos_profile_sensor_data
-from rclpy.qos_overriding_options import QoSOverridingOptions
-
-from sensor_msgs.msg import CameraInfo, CompressedImage, Image
-
 from cv_bridge import CvBridge
 from image_geometry.cameramodels import PinholeCameraModel
-
 from message_filters import ApproximateTimeSynchronizer, Subscriber
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from rclpy.qos_overriding_options import QoSOverridingOptions
+from rclpy.time import Time
+from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 
 # Automatically generated file
 from happypose_ros.happypose_ros_parameters import happypose_ros
@@ -64,10 +62,10 @@ class CameraWrapper:
             img_msg_type = Image
             topic_postfix = "/image_raw"
 
-        self._color_image: Union[Image, CompressedImage] = None
+        self._color_image: Image | CompressedImage = None
         self._color_camera_info: CameraInfo = None
-        self._depth_image: Union[Image, CompressedImage] = None
-        self._depth_camera_info: Union[None, Image, CompressedImage] = None
+        self._depth_image: Image | CompressedImage = None
+        self._depth_camera_info: None | Image | CompressedImage = None
         self._cvb = CvBridge()
         self._estimated_tf_frame_id = camera_params.estimated_tf_frame_id
         self._cam_model = PinholeCameraModel()
@@ -162,7 +160,7 @@ class CameraWrapper:
         return np.all(k_arr[keep_vals] > 0.0) and math.isclose(k_arr[-1], 1.0)
 
     def _on_image_data_cb(
-        self, image: Union[Image, CompressedImage], info: CameraInfo
+        self, image: Image | CompressedImage, info: CameraInfo
     ) -> None:
         """Called on every time synchronized image and camera info are received.
         Saves the image and checks if intrinsics are correct. If all checks pass
@@ -177,10 +175,10 @@ class CameraWrapper:
 
     def _on_image_with_depth_data_cb(
         self,
-        color_image: Union[Image, CompressedImage],
+        color_image: Image | CompressedImage,
         color_camera_info: CameraInfo,
-        depth_image: Union[None, Image, CompressedImage] = None,
-        depth_camera_info: Union[None, CameraInfo] = None,
+        depth_image: None | Image | CompressedImage = None,
+        depth_camera_info: None | CameraInfo = None,
     ) -> None:
         """Called on every time synchronized image and camera info are received.
         Saves the image and checks if intrinsics are correct. If all checks pass
@@ -356,7 +354,7 @@ class CameraWrapper:
         return (self._color_camera_info.height, self._color_camera_info.width)
 
     @data_received_guarded
-    def get_last_depth_image(self) -> Union[None, npt.NDArray[np.float32]]:
+    def get_last_depth_image(self) -> None | npt.NDArray[np.float32]:
         """Returns last received depth image.
 
         :raises RuntimeError: No images were received yet.
